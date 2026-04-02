@@ -1,0 +1,25 @@
+{
+  "name": "@get-dx/cli",
+  "version": "0.1.0",
+  "description": "DX CLI",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "dx": "./dist/index.js"
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "commander": "^14.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
