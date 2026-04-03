@@ -108,7 +108,7 @@ function getContext(command: Command): CliContext {
   };
 }
 
-function wrapAction<T extends any[]>(
+function wrapAction<T extends unknown[]>(
   action: (...args: T) => Promise<void>,
 ): (...args: T) => Promise<void> {
   return async (...args: T) => {
