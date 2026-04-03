@@ -1,10 +1,10 @@
 import { Command } from "commander";
 
-import { wrapAction } from "../commandHelpers.js";
-import { buildRuntime } from "../runtime.js";
-import { getContext } from "../commandHelpers.js";
-import { getEntity } from "../api.js";
-import { renderStructuredResponse } from "../renderers.js";
+import { wrapAction } from "../../commandHelpers.js";
+import { buildRuntime } from "../../runtime.js";
+import { getContext } from "../../commandHelpers.js";
+import { getEntity } from "../../api.js";
+import { renderStructuredResponse } from "../../renderers.js";
 
 export function entitiesCommand() {
   const entities = new Command()

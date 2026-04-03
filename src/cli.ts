@@ -1,7 +1,7 @@
 import { Command, Option } from "commander";
 
 import { authCommand } from "./commands/auth.js";
-import { entitiesCommand } from "./commands/entities.js";
+import { catalogCommand } from "./commands/catalog.js";
 
 import cliPackage from "../package.json" with { type: "json" };
 
@@ -24,7 +24,7 @@ export function createProgram(): Command {
     );
 
   program.addCommand(authCommand());
-  program.addCommand(entitiesCommand());
+  program.addCommand(catalogCommand());
 
   return program;
 }
