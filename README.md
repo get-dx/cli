@@ -7,7 +7,7 @@ Standalone DX CLI for existing token-authenticated DX web API endpoints.
 - `dx auth login --token <account-web-api-token>`
 - `dx auth logout`
 - `dx auth status`
-- `dx entities get <identifier>`
+- `dx catalog entities get <identifier>`
 
 ## Agent Provenance
 
@@ -22,7 +22,7 @@ Deferred in this repo version:
 
 - `dx init`
 - `dx scorecards list|get|create|update`
-- `dx entities list|create|update`
+- `dx catalog entities list|create|update`
 - `dx workflows list`
 - `dx workflows trigger`
 - `dx studio query`
