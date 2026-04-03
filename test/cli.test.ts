@@ -31,21 +31,31 @@ describe("cli commands", () => {
     process.env.DX_BASE_URL = "https://api.example.com";
 
     const writes: string[] = [];
-    vi.spyOn(process.stdout, "write").mockImplementation(((chunk: string | Uint8Array) => {
+    vi.spyOn(process.stdout, "write").mockImplementation(((
+      chunk: string | Uint8Array,
+    ) => {
       writes.push(String(chunk));
       return true;
     }) as typeof process.stdout.write);
 
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      ok: true,
-      auth: {
-        token_type: "account_web_api",
-        token_name: "cli",
-        scopes: ["entities:read"],
-        created_at: "2026-03-31T12:00:00Z",
-      },
-      account: { name: "DX" },
-    }), { status: 200 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            auth: {
+              token_type: "account_web_api",
+              token_name: "cli",
+              scopes: ["entities:read"],
+              created_at: "2026-03-31T12:00:00Z",
+            },
+            account: { name: "DX" },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
 
     const { createProgram } = await import("../src/cli.js");
     await createProgram().parseAsync([
@@ -62,14 +72,19 @@ describe("cli commands", () => {
       "https://api.example.com/auth.info",
       expect.objectContaining({ method: "GET" }),
     );
-    expect(setToken).toHaveBeenCalledWith("https://api.example.com", "secret-token");
+    expect(setToken).toHaveBeenCalledWith(
+      "https://api.example.com",
+      "secret-token",
+    );
     expect(writes.join("")).toContain('"base_url": "https://api.example.com"');
     expect(writes.join("")).toContain('"token_name": "cli"');
   });
 
   it("entities get uses the configured token and endpoint", async () => {
     const writes: string[] = [];
-    vi.spyOn(process.stdout, "write").mockImplementation(((chunk: string | Uint8Array) => {
+    vi.spyOn(process.stdout, "write").mockImplementation(((
+      chunk: string | Uint8Array,
+    ) => {
       writes.push(String(chunk));
       return true;
     }) as typeof process.stdout.write);
@@ -77,10 +92,18 @@ describe("cli commands", () => {
     process.env.DX_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      ok: true,
-      entity: { identifier: "svc-a", name: "Service A" },
-    }), { status: 200 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            entity: { identifier: "svc-a", name: "Service A" },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
 
     const { createProgram } = await import("../src/cli.js");
     await createProgram().parseAsync([
@@ -104,7 +127,9 @@ describe("cli commands", () => {
 
   it("auth status shows the current auth details", async () => {
     const writes: string[] = [];
-    vi.spyOn(process.stdout, "write").mockImplementation(((chunk: string | Uint8Array) => {
+    vi.spyOn(process.stdout, "write").mockImplementation(((
+      chunk: string | Uint8Array,
+    ) => {
       writes.push(String(chunk));
       return true;
     }) as typeof process.stdout.write);
@@ -112,16 +137,24 @@ describe("cli commands", () => {
     process.env.DX_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-1234");
 
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      ok: true,
-      auth: {
-        token_type: "account_web_api",
-        token_name: "cli",
-        scopes: ["entities:read"],
-        created_at: "2026-03-31T12:00:00Z",
-      },
-      account: { name: "DX" },
-    }), { status: 200 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            auth: {
+              token_type: "account_web_api",
+              token_name: "cli",
+              scopes: ["entities:read"],
+              created_at: "2026-03-31T12:00:00Z",
+            },
+            account: { name: "DX" },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
 
     const { createProgram } = await import("../src/cli.js");
     await createProgram().parseAsync([
@@ -142,7 +175,9 @@ describe("cli commands", () => {
 
   it("auth status is human-readable by default", async () => {
     const writes: string[] = [];
-    vi.spyOn(process.stdout, "write").mockImplementation(((chunk: string | Uint8Array) => {
+    vi.spyOn(process.stdout, "write").mockImplementation(((
+      chunk: string | Uint8Array,
+    ) => {
       writes.push(String(chunk));
       return true;
     }) as typeof process.stdout.write);
@@ -150,27 +185,32 @@ describe("cli commands", () => {
     process.env.DX_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-1234");
 
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      ok: true,
-      auth: {
-        token_type: "account_web_api",
-        token_name: "cli",
-        scopes: ["entities:read", "auth:read"],
-        created_at: "2026-03-31T12:00:00Z",
-      },
-      account: { name: "DX" },
-    }), { status: 200 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            auth: {
+              token_type: "account_web_api",
+              token_name: "cli",
+              scopes: ["entities:read", "auth:read"],
+              created_at: "2026-03-31T12:00:00Z",
+            },
+            account: { name: "DX" },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
 
     const { createProgram } = await import("../src/cli.js");
-    await createProgram().parseAsync([
-      "node",
-      "dx",
-      "auth",
-      "status",
-    ]);
+    await createProgram().parseAsync(["node", "dx", "auth", "status"]);
 
     const output = writes.join("");
-    expect(output).toContain("* Logged in to https://api.example.com account DX");
+    expect(output).toContain(
+      "* Logged in to https://api.example.com account DX",
+    );
     expect(output).toContain("  - Token: toke**1234");
     expect(output).toContain("  - Token type: account_web_api");
     expect(output).toContain("  - Token name: cli");
@@ -181,12 +221,17 @@ describe("cli commands", () => {
 
   it("auth status uses colors when stdout is a tty", async () => {
     const writes: string[] = [];
-    vi.spyOn(process.stdout, "write").mockImplementation(((chunk: string | Uint8Array) => {
+    vi.spyOn(process.stdout, "write").mockImplementation(((
+      chunk: string | Uint8Array,
+    ) => {
       writes.push(String(chunk));
       return true;
     }) as typeof process.stdout.write);
 
-    const originalDescriptor = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
+    const originalDescriptor = Object.getOwnPropertyDescriptor(
+      process.stdout,
+      "isTTY",
+    );
     Object.defineProperty(process.stdout, "isTTY", {
       configurable: true,
       value: true,
@@ -196,24 +241,27 @@ describe("cli commands", () => {
     delete process.env.NO_COLOR;
     getToken.mockReturnValue("token-1234");
 
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      ok: true,
-      auth: {
-        token_type: "account_web_api",
-        token_name: "cli",
-        scopes: ["entities:read"],
-        created_at: "2026-03-31T12:00:00Z",
-      },
-      account: { name: "DX" },
-    }), { status: 200 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            auth: {
+              token_type: "account_web_api",
+              token_name: "cli",
+              scopes: ["entities:read"],
+              created_at: "2026-03-31T12:00:00Z",
+            },
+            account: { name: "DX" },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
 
     const { createProgram } = await import("../src/cli.js");
-    await createProgram().parseAsync([
-      "node",
-      "dx",
-      "auth",
-      "status",
-    ]);
+    await createProgram().parseAsync(["node", "dx", "auth", "status"]);
 
     if (originalDescriptor) {
       Object.defineProperty(process.stdout, "isTTY", originalDescriptor);
@@ -233,10 +281,18 @@ describe("cli commands", () => {
     process.env.DX_AGENT_SESSION_ID = "session-123";
     getToken.mockReturnValue("token-123");
 
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      ok: true,
-      entity: { identifier: "svc-a", name: "Service A" },
-    }), { status: 200 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            entity: { identifier: "svc-a", name: "Service A" },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
 
     const { createProgram } = await import("../src/cli.js");
     await createProgram().parseAsync([
@@ -258,7 +314,8 @@ describe("cli commands", () => {
       }),
     );
 
-    const headers = (vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit).headers as Headers;
+    const headers = (vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit)
+      .headers as Headers;
     expect(headers.get("X-DX-Agent-Name")).toBe("codex");
     expect(headers.get("X-DX-Agent-Session-Id")).toBe("session-123");
   });
@@ -267,7 +324,9 @@ describe("cli commands", () => {
     process.env.DX_BASE_URL = "https://api.example.com";
 
     const writes: string[] = [];
-    vi.spyOn(process.stdout, "write").mockImplementation(((chunk: string | Uint8Array) => {
+    vi.spyOn(process.stdout, "write").mockImplementation(((
+      chunk: string | Uint8Array,
+    ) => {
       writes.push(String(chunk));
       return true;
     }) as typeof process.stdout.write);

@@ -24,7 +24,10 @@ export async function getAuthInfo(runtime: Runtime): Promise<unknown> {
   });
 }
 
-export async function getEntity(runtime: Runtime, identifier: string): Promise<unknown> {
+export async function getEntity(
+  runtime: Runtime,
+  identifier: string,
+): Promise<unknown> {
   return request(runtime.baseUrl, "/entities.info", {
     ...requestOptions(runtime),
     method: "GET",

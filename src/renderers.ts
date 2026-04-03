@@ -1,6 +1,11 @@
 import { printHuman, printJson } from "./output.js";
 
-export function renderAuthInfo(response: unknown, token: string | null, baseUrl: string, json: boolean): void {
+export function renderAuthInfo(
+  response: unknown,
+  token: string | null,
+  baseUrl: string,
+  json: boolean,
+): void {
   const payload = response as Record<string, any>;
   const account = payload.account || {};
   const auth = payload.auth || {};
@@ -23,17 +28,22 @@ export function renderAuthInfo(response: unknown, token: string | null, baseUrl:
   const accountName = stringValue(account.name);
   const maskedToken = maskToken(token) || "not configured";
 
-  process.stdout.write([
-    `${marker} Logged in to ${valueText(baseUrl, useColor, true)} account ${valueText(accountName, useColor)}`,
-    detailLine("Token", maskedToken, useColor),
-    detailLine("Token type", stringValue(auth.token_type), useColor),
-    detailLine("Token name", stringValue(auth.token_name), useColor),
-    detailLine("Token scopes", formatScopes(auth.scopes), useColor),
-    detailLine("Token created at", stringValue(auth.created_at), useColor),
-  ].join("\n") + "\n");
+  process.stdout.write(
+    [
+      `${marker} Logged in to ${valueText(baseUrl, useColor, true)} account ${valueText(accountName, useColor)}`,
+      detailLine("Token", maskedToken, useColor),
+      detailLine("Token type", stringValue(auth.token_type), useColor),
+      detailLine("Token name", stringValue(auth.token_name), useColor),
+      detailLine("Token scopes", formatScopes(auth.scopes), useColor),
+      detailLine("Token created at", stringValue(auth.created_at), useColor),
+    ].join("\n") + "\n",
+  );
 }
 
-export function renderStructuredResponse(response: unknown, json: boolean): void {
+export function renderStructuredResponse(
+  response: unknown,
+  json: boolean,
+): void {
   if (json) {
     printJson(response);
     return;

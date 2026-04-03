@@ -1,7 +1,11 @@
 import { HttpError } from "./errors.js";
 import type { RequestOptions } from "./types.js";
 
-export async function request(baseUrl: string, route: string, options: RequestOptions = {}): Promise<unknown> {
+export async function request(
+  baseUrl: string,
+  route: string,
+  options: RequestOptions = {},
+): Promise<unknown> {
   const method = options.method || "GET";
   const headers = new Headers({
     Accept: "application/json",
@@ -38,7 +42,8 @@ export async function request(baseUrl: string, route: string, options: RequestOp
     response = await fetch(url, {
       method,
       headers,
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      body:
+        options.body !== undefined ? JSON.stringify(options.body) : undefined,
     });
   } catch (error) {
     throw new HttpError(`Request failed: ${(error as Error).message}`);
@@ -48,7 +53,9 @@ export async function request(baseUrl: string, route: string, options: RequestOp
   const body = text ? tryParseJson(text) : null;
 
   if (!response.ok) {
-    const message = extractErrorMessage(body) || `Request failed with status ${response.status}`;
+    const message =
+      extractErrorMessage(body) ||
+      `Request failed with status ${response.status}`;
     throw new HttpError(message, response.status, body);
   }
 

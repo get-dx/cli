@@ -35,21 +35,20 @@ function getSecretStore(platform = process.platform): SecretStore {
     return linuxSecretStore();
   }
 
-  throw new CliError(`Unsupported platform for secure token storage: ${platform}`);
+  throw new CliError(
+    `Unsupported platform for secure token storage: ${platform}`,
+  );
 }
 
 function macosSecretStore(): SecretStore {
   return {
     get(baseUrl) {
       try {
-        return execFileSync("security", [
-          "find-generic-password",
-          "-s",
-          SERVICE,
-          "-a",
-          baseUrl,
-          "-w",
-        ], { encoding: "utf8" }).trim();
+        return execFileSync(
+          "security",
+          ["find-generic-password", "-s", SERVICE, "-a", baseUrl, "-w"],
+          { encoding: "utf8" },
+        ).trim();
       } catch {
         return null;
       }
@@ -103,7 +102,9 @@ function linuxSecretStore(): SecretStore {
       );
     },
     delete(_baseUrl) {
-      throw new CliError("Linux token deletion is not supported by secret-tool in this implementation");
+      throw new CliError(
+        "Linux token deletion is not supported by secret-tool in this implementation",
+      );
     },
   };
 }

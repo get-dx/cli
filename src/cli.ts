@@ -19,33 +19,41 @@ export function createProgram(): Command {
     .description("DX CLI")
     .version(cliPackage.version)
     .addOption(new Option("--json", "Print machine-readable JSON"))
-    .addOption(new Option("--agent <name>", "Agent name to send as an HTTP header"))
-    .addOption(new Option("--agent-session-id <id>", "Agent session ID to send as an HTTP header"));
+    .addOption(
+      new Option("--agent <name>", "Agent name to send as an HTTP header"),
+    )
+    .addOption(
+      new Option(
+        "--agent-session-id <id>",
+        "Agent session ID to send as an HTTP header",
+      ),
+    );
 
   const auth = program.command("auth").description("Manage DX authentication");
 
   auth
     .command("login")
     .requiredOption("--token <token>", "Account web API token")
-    .action(wrapAction(async (commandOptions, command) => {
-      const context = getContext(command);
-      const baseUrl = resolveBaseUrl();
-      const runtime = {
-        baseUrl,
-        token: commandOptions.token,
-        context,
-        version: cliPackage.version,
-      };
+    .action(
+      wrapAction(async (commandOptions, command) => {
+        const context = getContext(command);
+        const baseUrl = resolveBaseUrl();
+        const runtime = {
+          baseUrl,
+          token: commandOptions.token,
+          context,
+          version: cliPackage.version,
+        };
 
-      const response = await getAuthInfo(runtime);
-      persistBaseUrl(baseUrl);
-      setToken(baseUrl, commandOptions.token);
-      renderAuthInfo(response, commandOptions.token, baseUrl, context.json);
-    }));
+        const response = await getAuthInfo(runtime);
+        persistBaseUrl(baseUrl);
+        setToken(baseUrl, commandOptions.token);
+        renderAuthInfo(response, commandOptions.token, baseUrl, context.json);
+      }),
+    );
 
-  auth
-    .command("logout")
-    .action(wrapAction(async (_options, command) => {
+  auth.command("logout").action(
+    wrapAction(async (_options, command) => {
       const context = getContext(command);
       const baseUrl = resolveBaseUrl();
       deleteToken(baseUrl);
@@ -55,26 +63,34 @@ export function createProgram(): Command {
       }
 
       renderStructuredResponse({ ok: true, baseUrl, loggedOut: true }, false);
-    }));
+    }),
+  );
 
-  auth
-    .command("status")
-    .action(wrapAction(async (_options, command) => {
+  auth.command("status").action(
+    wrapAction(async (_options, command) => {
       const runtime = buildRuntime(getContext(command));
       const response = await getAuthInfo(runtime);
-      renderAuthInfo(response, runtime.token, runtime.baseUrl, runtime.context.json);
-    }));
+      renderAuthInfo(
+        response,
+        runtime.token,
+        runtime.baseUrl,
+        runtime.context.json,
+      );
+    }),
+  );
 
   const entities = program.command("entities").description("Manage entities");
 
   entities
     .command("get")
     .argument("<identifier>", "Entity identifier")
-    .action(wrapAction(async (identifier, _options, command) => {
-      const runtime = buildRuntime(getContext(command));
-      const response = await getEntity(runtime, identifier);
-      renderStructuredResponse(response, runtime.context.json);
-    }));
+    .action(
+      wrapAction(async (identifier, _options, command) => {
+        const runtime = buildRuntime(getContext(command));
+        const response = await getEntity(runtime, identifier);
+        renderStructuredResponse(response, runtime.context.json);
+      }),
+    );
 
   return program;
 }
@@ -127,7 +143,9 @@ function handleError(error: unknown, command?: Command): never {
       });
     }
   } else {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
   }
 
   process.exit(error instanceof CliError ? error.exitCode : 1);

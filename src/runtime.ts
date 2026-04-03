@@ -10,7 +10,9 @@ export function buildRuntime(context: CliContext) {
   const token = getToken(baseUrl);
 
   if (!token) {
-    throw new CliError("No API token configured. Run `dx auth login --token <token>` or set DX_API_TOKEN.");
+    throw new CliError(
+      "No API token configured. Run `dx auth login --token <token>` or set DX_API_TOKEN.",
+    );
   }
 
   return {

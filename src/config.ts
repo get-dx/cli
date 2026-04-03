@@ -31,7 +31,11 @@ export function readConfig(): StoredConfig {
 
 export function writeConfig(config: StoredConfig): void {
   fs.mkdirSync(getConfigDir(), { recursive: true });
-  fs.writeFileSync(getConfigPath(), JSON.stringify(config, null, 2) + "\n", "utf8");
+  fs.writeFileSync(
+    getConfigPath(),
+    JSON.stringify(config, null, 2) + "\n",
+    "utf8",
+  );
 }
 
 export function resolveBaseUrl(): string {
