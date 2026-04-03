@@ -6,6 +6,8 @@ export function renderAuthInfo(
   baseUrl: string,
   json: boolean,
 ): void {
+  // TODO: lock down response type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const payload = response as Record<string, any>;
   const account = payload.account || {};
   const auth = payload.auth || {};
