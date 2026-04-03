@@ -5,5 +5,7 @@ export function printJson(value: unknown): void {
 }
 
 export function printHuman(value: unknown): void {
-  process.stdout.write(util.inspect(value, { depth: null, colors: process.stdout.isTTY }) + "\n");
+  process.stdout.write(
+    util.inspect(value, { depth: null, colors: process.stdout.isTTY }) + "\n",
+  );
 }
