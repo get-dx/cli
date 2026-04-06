@@ -55,3 +55,22 @@ export function handleError(error: unknown, command?: Command): never {
 
   process.exit(error instanceof CliError ? error.exitCode : 1);
 }
+
+type Example = {
+  label: string;
+  command: string;
+};
+
+export function createExampleText(examples: Example[]): string {
+  const lines = [];
+
+  lines.push(""); // separate from the rest of the help text
+  lines.push("Examples:");
+
+  for (const example of examples) {
+    lines.push(`  ${example.label}:`);
+    lines.push(`    ${example.command}`);
+  }
+
+  return lines.join("\n");
+}

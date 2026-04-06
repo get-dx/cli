@@ -7,7 +7,7 @@ Standalone DX CLI for existing token-authenticated DX web API endpoints.
 - `dx auth login --token <account-web-api-token>`
 - `dx auth logout`
 - `dx auth status`
-- `dx catalog entities get <identifier>`
+- `dx catalog entities info <identifier>`
 
 ## Agent Provenance
 

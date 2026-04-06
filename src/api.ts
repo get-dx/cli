@@ -1,12 +1,18 @@
 import { request } from "./http.js";
-import type { CliContext } from "./types.js";
+import type { Runtime } from "./types.js";
 
-interface Runtime {
-  baseUrl: string;
-  token: string;
-  context: CliContext;
-  version: string;
-}
+export type Entity = {
+  identifier: string;
+  name: string | null;
+  type: string;
+  created_at: string;
+  updated_at: string;
+  description: string;
+  owner_teams: { id: string; name: string }[];
+  owner_users: { id: string; email: string }[];
+  properties: Record<string, unknown>;
+  aliases: Record<string, unknown[]>;
+};
 
 function requestOptions(runtime: Runtime) {
   return {
@@ -27,10 +33,12 @@ export async function getAuthInfo(runtime: Runtime): Promise<unknown> {
 export async function getEntity(
   runtime: Runtime,
   identifier: string,
-): Promise<unknown> {
-  return request(runtime.baseUrl, "/entities.info", {
+): Promise<{ ok: true; entity: Entity }> {
+  const response = await request(runtime.baseUrl, "/catalog.entities.info", {
     ...requestOptions(runtime),
     method: "GET",
     query: { identifier },
   });
+
+  return { ok: true, entity: response.entity as Entity };
 }
