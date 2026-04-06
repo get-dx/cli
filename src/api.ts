@@ -41,7 +41,7 @@ export async function getEntity(
   runtime: Runtime,
   identifier: string,
 ): Promise<{ ok: true; entity: Entity } | ApiErrorResponse> {
-  const response = await request(runtime.baseUrl, "/entities.info", {
+  const response = await request(runtime.baseUrl, "/catalog.entities.info", {
     ...requestOptions(runtime),
     method: "GET",
     query: { identifier },
