@@ -1,7 +1,7 @@
 import { request } from "./http.js";
 import type { Runtime } from "./types.js";
 
-type Entity = {
+export type Entity = {
   identifier: string;
   name: string | null;
   type: string;

@@ -117,13 +117,74 @@ describe("cli commands", () => {
     ]);
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://api.example.com/entities.info?identifier=svc-a",
+      "https://api.example.com/catalog.entities.info?identifier=svc-a",
       expect.objectContaining({
         method: "GET",
         headers: expect.any(Headers),
       }),
     );
     expect(writes.join("")).toContain('"identifier": "svc-a"');
+  });
+
+  it("catalog entities info --include redacts entity on the client", async () => {
+    const writes: string[] = [];
+    vi.spyOn(process.stdout, "write").mockImplementation(((
+      chunk: string | Uint8Array,
+    ) => {
+      writes.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write);
+
+    process.env.DX_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            entity: {
+              identifier: "svc-a",
+              name: "Service A",
+              type: "service",
+              created_at: "2026-01-01T00:00:00Z",
+              updated_at: "2026-01-02T00:00:00Z",
+              description: "A service",
+              owner_teams: [{ id: "t1", name: "Team" }],
+              owner_users: [],
+              properties: { Language: ["Ruby"] },
+              aliases: { github_repo: [] },
+            },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const { createProgram } = await import("../src/cli.js");
+    await createProgram().parseAsync([
+      "node",
+      "dx",
+      "--json",
+      "catalog",
+      "entities",
+      "info",
+      "svc-a",
+      "--include",
+      "core",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/catalog.entities.info?identifier=svc-a",
+      expect.any(Object),
+    );
+    const out = writes.join("");
+    expect(out).toContain('"include": [\n    "core"\n  ]');
+    expect(out).toContain('"identifier": "svc-a"');
+    expect(out).not.toContain("owner_teams");
+    expect(out).not.toContain("properties");
+    expect(out).not.toContain("aliases");
   });
 
   it("auth status shows the current auth details", async () => {
@@ -307,7 +368,7 @@ describe("cli commands", () => {
     ]);
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://api.example.com/entities.info?identifier=svc-a",
+      "https://api.example.com/catalog.entities.info?identifier=svc-a",
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({
