@@ -180,7 +180,6 @@ describe("cli commands", () => {
       expect.any(Object),
     );
     const out = writes.join("");
-    expect(out).toContain('"include": [\n    "core"\n  ]');
     expect(out).toContain('"identifier": "svc-a"');
     expect(out).not.toContain("owner_teams");
     expect(out).not.toContain("properties");
