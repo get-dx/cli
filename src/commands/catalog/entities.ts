@@ -12,7 +12,7 @@ export function entitiesCommand() {
     .description("Manage entities");
 
   entities
-    .command("get")
+    .command("info")
     .argument("<identifier>", "Entity identifier")
     .action(
       wrapAction(async (identifier, _options, command) => {

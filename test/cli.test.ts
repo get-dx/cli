@@ -80,7 +80,7 @@ describe("cli commands", () => {
     expect(writes.join("")).toContain('"token_name": "cli"');
   });
 
-  it("catalog entities get uses the configured token and endpoint", async () => {
+  it("catalog entities info uses the configured token and endpoint", async () => {
     const writes: string[] = [];
     vi.spyOn(process.stdout, "write").mockImplementation(((
       chunk: string | Uint8Array,
@@ -112,7 +112,7 @@ describe("cli commands", () => {
       "--json",
       "catalog",
       "entities",
-      "get",
+      "info",
       "svc-a",
     ]);
 
@@ -276,7 +276,7 @@ describe("cli commands", () => {
     expect(output).toContain("Logged in to");
   });
 
-  it("catalog entities get sends agent provenance from environment variables", async () => {
+  it("catalog entities info sends agent provenance from environment variables", async () => {
     process.env.DX_BASE_URL = "https://api.example.com";
     process.env.DX_AGENT_NAME = "codex";
     process.env.DX_AGENT_SESSION_ID = "session-123";
@@ -302,7 +302,7 @@ describe("cli commands", () => {
       "--json",
       "catalog",
       "entities",
-      "get",
+      "info",
       "svc-a",
     ]);
 
