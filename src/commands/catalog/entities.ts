@@ -1,6 +1,10 @@
 import { Command } from "commander";
 
-import { getContext, wrapAction } from "../../commandHelpers.js";
+import {
+  createExampleText,
+  getContext,
+  wrapAction,
+} from "../../commandHelpers.js";
 import { Entity, getEntity } from "../../api.js";
 import { CliError, EXIT_CODES } from "../../errors.js";
 import { renderStructuredResponse } from "../../renderers.js";
@@ -26,6 +30,24 @@ export function entitiesCommand() {
     .option(
       "--include <include>",
       "Show only these comma-separated sections: core, owners, properties, aliases",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Fetch info for the `login-frontend` entity",
+          command: "dx catalog entities info login-frontend",
+        },
+        {
+          label: "Fetch info and return as JSON",
+          command: "dx catalog entities info login-frontend --json",
+        },
+        {
+          label: "Fetch info but only include the `core` and `owners` sections",
+          command:
+            "dx catalog entities info login-frontend --include core,owners",
+        },
+      ]),
     )
     .action(
       wrapAction(async (identifier, options, command) => {
