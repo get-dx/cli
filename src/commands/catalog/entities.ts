@@ -42,7 +42,7 @@ export function entitiesCommand() {
 
 function processIncludes(
   response: { ok: true; entity: Entity },
-  options: { include: string },
+  options: { include?: string },
 ): { ok: true; entity: Partial<Entity> } {
   const includeSections = parseIncludeSections(options.include);
 
@@ -67,7 +67,11 @@ function processIncludes(
   return { ok: true, entity: entity as Partial<Entity> };
 }
 
-function parseIncludeSections(include: string): EntityIncludeSection[] {
+function parseIncludeSections(include?: string): EntityIncludeSection[] {
+  if (!include) {
+    return [];
+  }
+
   const results = include.split(",");
   for (const result of results) {
     if (!ENTITY_INCLUDE_SECTIONS.includes(result as EntityIncludeSection)) {
