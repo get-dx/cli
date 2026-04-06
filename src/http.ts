@@ -1,11 +1,13 @@
 import { HttpError } from "./errors.js";
 import type { RequestOptions } from "./types.js";
 
+type HttpSuccessResponse = Record<string, unknown> & { ok: true };
+
 export async function request(
   baseUrl: string,
   route: string,
   options: RequestOptions = {},
-): Promise<unknown> {
+): Promise<HttpSuccessResponse> {
   const method = options.method || "GET";
   const headers = new Headers({
     Accept: "application/json",
@@ -49,24 +51,26 @@ export async function request(
     throw new HttpError(`Request failed: ${(error as Error).message}`);
   }
 
-  const text = await response.text();
-  const body = text ? tryParseJson(text) : null;
+  const responseBodyText = await response.text();
 
   if (!response.ok) {
+    let responseBodyJson = null;
+    try {
+      responseBodyJson = JSON.parse(responseBodyText);
+    } catch {
+      responseBodyJson = responseBodyText;
+    }
+
     const message =
-      extractErrorMessage(body) ||
+      extractErrorMessage(responseBodyJson) ||
       `Request failed with status ${response.status}`;
-    throw new HttpError(message, response.status, body);
+    throw new HttpError(message, response.status, responseBodyJson);
   }
 
-  return body;
-}
-
-function tryParseJson(text: string): unknown {
   try {
-    return JSON.parse(text);
-  } catch {
-    return text;
+    return JSON.parse(responseBodyText) as HttpSuccessResponse;
+  } catch (error) {
+    throw new HttpError(`Invalid JSON response: ${(error as Error).message}`);
   }
 }
 
