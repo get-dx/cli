@@ -54,7 +54,7 @@ export async function request(
   const responseBodyText = await response.text();
 
   if (!response.ok) {
-    let responseBodyJson = null;
+    let responseBodyJson: unknown;
     try {
       responseBodyJson = JSON.parse(responseBodyText);
     } catch {
