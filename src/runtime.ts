@@ -1,11 +1,11 @@
 import { resolveBaseUrl } from "./config.js";
 import { CliError } from "./errors.js";
 import { getToken } from "./secrets.js";
-import type { CliContext } from "./types.js";
+import type { CliContext, Runtime } from "./types.js";
 
 import cliPackage from "../package.json" with { type: "json" };
 
-export function buildRuntime(context: CliContext) {
+export function buildRuntime(context: CliContext): Runtime {
   const baseUrl = resolveBaseUrl();
   const token = getToken(baseUrl);
 

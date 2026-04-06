@@ -1,12 +1,5 @@
 import { request } from "./http.js";
-import type { CliContext } from "./types.js";
-
-interface Runtime {
-  baseUrl: string;
-  token: string;
-  context: CliContext;
-  version: string;
-}
+import type { Runtime } from "./types.js";
 
 function requestOptions(runtime: Runtime) {
   return {

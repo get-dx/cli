@@ -1,3 +1,10 @@
+export interface Runtime {
+  baseUrl: string;
+  token: string;
+  context: CliContext;
+  version: string;
+}
+
 export interface CliContext {
   json: boolean;
   agent?: string;
