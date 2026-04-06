@@ -1,13 +1,6 @@
 import { request } from "./http.js";
 import type { Runtime } from "./types.js";
 
-type ApiErrorResponse = {
-  ok: false;
-  error: string;
-  status: number;
-  body: Record<string, unknown>;
-};
-
 type Entity = {
   identifier: string;
   name: string | null;
@@ -40,7 +33,7 @@ export async function getAuthInfo(runtime: Runtime): Promise<unknown> {
 export async function getEntity(
   runtime: Runtime,
   identifier: string,
-): Promise<{ ok: true; entity: Entity } | ApiErrorResponse> {
+): Promise<{ ok: true; entity: Entity }> {
   const response = await request(runtime.baseUrl, "/catalog.entities.info", {
     ...requestOptions(runtime),
     method: "GET",
