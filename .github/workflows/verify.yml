@@ -1,0 +1,30 @@
+name: verify
+on:
+  pull_request:
+    branches: [main]
+    types:
+      - opened
+      - synchronize
+      - labeled
+      - unlabeled
+      - reopened
+      - ready_for_review
+env: {}
+jobs:
+  verify:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+      - uses: useblacksmith/setup-node@v5
+        with:
+          node-version: 20
+          cache: "pnpm"
+      - name: Run make
+        run: make
+      - name: Run verify
+        run: make verify
