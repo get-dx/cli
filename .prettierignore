@@ -1,4 +1,7 @@
 # Ignore artifacts:
 pnpm-lock.yaml
-dist
-coverage
+dist/
+coverage/
+
+# Ignore caches:
+.pnpm-store/
