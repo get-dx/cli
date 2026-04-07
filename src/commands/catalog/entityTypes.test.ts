@@ -56,15 +56,8 @@ describe("catalog entityTypes commands", () => {
         ),
       );
 
-      const { createProgram } = await import("../../cli.js");
-      await createProgram().parseAsync([
-        "node",
-        "dx",
-        "--json",
-        "catalog",
-        "entityTypes",
-        "list",
-      ]);
+      const { run } = await import("../../cli.js");
+      await run(["node", "dx", "--json", "catalog", "entityTypes", "list"]);
 
       expect(fetch).toHaveBeenCalledWith(
         "https://api.example.com/catalog.entityTypes.list",
@@ -113,8 +106,8 @@ describe("catalog entityTypes commands", () => {
         ),
       );
 
-      const { createProgram } = await import("../../cli.js");
-      await createProgram().parseAsync([
+      const { run } = await import("../../cli.js");
+      await run([
         "node",
         "dx",
         "--json",
