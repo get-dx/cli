@@ -385,8 +385,8 @@ describe("catalog entities commands", () => {
         ),
       );
 
-      const { createProgram } = await import("../../cli.js");
-      await createProgram().parseAsync([
+      const { run } = await import("../../cli.js");
+      await run([
         "node",
         "dx",
         "--json",
@@ -424,8 +424,8 @@ describe("catalog entities commands", () => {
         ),
       );
 
-      const { createProgram } = await import("../../cli.js");
-      await createProgram().parseAsync([
+      const { run } = await import("../../cli.js");
+      await run([
         "node",
         "dx",
         "--json",
@@ -469,8 +469,8 @@ describe("catalog entities commands", () => {
         ),
       );
 
-      const { createProgram } = await import("../../cli.js");
-      await createProgram().parseAsync([
+      const { run } = await import("../../cli.js");
+      await run([
         "node",
         "dx",
         "--json",
