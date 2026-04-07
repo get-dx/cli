@@ -12,19 +12,6 @@ import { renderStructuredResponse } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 
-export type Entity = {
-  identifier: string;
-  name: string | null;
-  type: string;
-  created_at: string;
-  updated_at: string;
-  description: string;
-  owner_teams: { id: string; name: string }[];
-  owner_users: { id: string; email: string }[];
-  properties: Record<string, unknown>;
-  aliases: Record<string, unknown[]>;
-};
-
 export function entitiesCommand() {
   const entities = new Command()
     .name("entities")
@@ -275,8 +262,21 @@ type ListEntitiesParams = {
 
 type ListEntitiesResponse = {
   ok: true;
-  entities: unknown[];
+  entities: Entity[];
   response_metadata?: { next_cursor?: string | null };
+};
+
+export type Entity = {
+  identifier: string;
+  name: string | null;
+  type: string;
+  created_at: string;
+  updated_at: string;
+  description: string;
+  owner_teams: { id: string; name: string }[];
+  owner_users: { id: string; email: string }[];
+  properties: Record<string, unknown>;
+  aliases: Record<string, unknown[]>;
 };
 
 function requestOptions(runtime: Runtime) {
@@ -288,17 +288,22 @@ function requestOptions(runtime: Runtime) {
   };
 }
 
+type GetEntityResponse = {
+  ok: true;
+  entity: Entity;
+};
+
 async function getEntity(
   runtime: Runtime,
   identifier: string,
-): Promise<{ ok: true; entity: Entity }> {
+): Promise<GetEntityResponse> {
   const response = await request(runtime.baseUrl, "/catalog.entities.info", {
     ...requestOptions(runtime),
     method: "GET",
     query: { identifier },
   });
 
-  return { ok: true, entity: response.entity as Entity };
+  return response as GetEntityResponse;
 }
 
 async function listEntities(

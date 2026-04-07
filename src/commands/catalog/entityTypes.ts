@@ -124,7 +124,7 @@ type ListEntityTypesParams = {
 
 type ListEntityTypesResponse = {
   ok: true;
-  entity_types: unknown[];
+  entity_types: EntityType[];
   response_metadata?: { next_cursor?: string | null };
 };
 
@@ -139,8 +139,49 @@ function requestOptions(runtime: Runtime) {
 
 type GetEntityTypeResponse = {
   ok: true;
-  entity_type: unknown;
+  entity_type: EntityType;
 };
+
+type EntityType = {
+  identifier: string;
+  name: string | null;
+  description: string;
+  icon: string | null;
+  ordering: number;
+  created_at: string;
+  updated_at: string;
+  properties: Property[];
+  aliases: Record<string, unknown[]>;
+};
+
+type Property = {
+  identifier: string;
+  name: string | null;
+  description: string;
+  type: PropertyType;
+  ordering: number;
+  created_at: string;
+  updated_at: string;
+  definition: Record<string, unknown>;
+};
+
+type PropertyType =
+  | "text"
+  | "number"
+  | "boolean"
+  | "select"
+  | "multi_select"
+  | "computed"
+  | "date"
+  | "json"
+  | "url"
+  | "user"
+  | "file_matching_rule"
+  | "list"
+  | "openapi"
+  | "slack_channel"
+  | "msteams_channel"
+  | "email";
 
 async function getEntityType(
   runtime: Runtime,
