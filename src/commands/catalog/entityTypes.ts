@@ -36,8 +36,10 @@ export function entityTypesCommand() {
           command: "dx catalog entityTypes info service --json",
         },
         {
-          label: "Fetch info but only include the `core` and `properties` sections",
-          command: "dx catalog entityTypes info service --include core,properties",
+          label:
+            "Fetch info but only include the `core` and `properties` sections",
+          command:
+            "dx catalog entityTypes info service --include core,properties",
         },
       ]),
     )
@@ -144,15 +146,11 @@ async function getEntityType(
   runtime: Runtime,
   identifier: string,
 ): Promise<GetEntityTypeResponse> {
-  const response = await request(
-    runtime.baseUrl,
-    "/catalog.entityTypes.info",
-    {
-      ...requestOptions(runtime),
-      method: "GET",
-      query: { identifier },
-    },
-  );
+  const response = await request(runtime.baseUrl, "/catalog.entityTypes.info", {
+    ...requestOptions(runtime),
+    method: "GET",
+    query: { identifier },
+  });
 
   return response as GetEntityTypeResponse;
 }
