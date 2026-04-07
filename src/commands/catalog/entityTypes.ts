@@ -37,8 +37,7 @@ export function entityTypesCommand() {
         },
         {
           label: "Fetch the next page using a cursor from the prior response",
-          command:
-            "dx catalog entityTypes list --cursor avsgf30ccan3",
+          command: "dx catalog entityTypes list --cursor avsgf30ccan3",
         },
       ]),
     )

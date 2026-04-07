@@ -106,15 +106,11 @@ export async function listEntityTypes(
     query.limit = params.limit;
   }
 
-  const response = await request(
-    runtime.baseUrl,
-    "/catalog.entityTypes.list",
-    {
-      ...requestOptions(runtime),
-      method: "GET",
-      query,
-    },
-  );
+  const response = await request(runtime.baseUrl, "/catalog.entityTypes.list", {
+    ...requestOptions(runtime),
+    method: "GET",
+    query,
+  });
 
   return response as ListEntityTypesResponse;
 }
