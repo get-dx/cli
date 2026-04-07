@@ -125,6 +125,43 @@ export function entitiesCommand() {
     );
 
   entities
+    .command("tasks")
+    .description("Get outstanding initiative tasks for an entity")
+    .argument("<identifier>", "Entity identifier")
+    .option("--cursor <cursor>", "Cursor for the next page of results")
+    .option("--limit <n>", "Max tasks per page (default is 50)", (value) =>
+      parsePositiveIntOption(value, "--limit"),
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Get tasks for the `login-frontend` entity",
+          command: "dx catalog entities tasks login-frontend",
+        },
+        {
+          label: "Get tasks and return as JSON",
+          command: "dx catalog entities tasks login-frontend --json",
+        },
+        {
+          label: "Fetch the next page of tasks",
+          command:
+            "dx catalog entities tasks login-frontend --cursor xuvkgfq9t0ty",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (identifier, options, command) => {
+        const runtime = buildRuntime(getContext(command));
+        const response = await getEntityTasks(runtime, identifier, {
+          cursor: options.cursor,
+          limit: options.limit,
+        });
+        renderStructuredResponse(response, runtime.context.json);
+      }),
+    );
+
+  entities
     .command("scorecards")
     .description("Get the current scorecard report for an entity")
     .argument("<identifier>", "Entity identifier")
@@ -299,6 +336,70 @@ async function getEntityScorecards(
   );
 
   return response as GetEntityScorecardsResponse;
+}
+
+type GetEntityTasksParams = {
+  cursor?: string;
+  limit?: number;
+};
+
+export type TaskCheck = {
+  id: string;
+  name: string;
+  description: string;
+  external_url: string | null;
+};
+
+export type EntityCheckIssue = {
+  id: string | null;
+  url: string | null;
+};
+
+export type TaskInitiative = {
+  id: string;
+  name: string;
+  description: string;
+  complete_by: string;
+  priority: number | string;
+};
+
+export type TaskOwner = {
+  id: number;
+  name: string;
+  email: string;
+  avatar: string;
+  slack_ext_id: string | null;
+};
+
+export type Task = {
+  check: TaskCheck;
+  entity_check_issue: EntityCheckIssue | null;
+  initiative: TaskInitiative;
+  owner: TaskOwner;
+};
+
+type GetEntityTasksResponse = {
+  ok: true;
+  tasks: Task[];
+  response_metadata?: { next_cursor?: string | null };
+};
+
+async function getEntityTasks(
+  runtime: Runtime,
+  identifier: string,
+  params: GetEntityTasksParams,
+): Promise<GetEntityTasksResponse> {
+  const query: Record<string, string | number | undefined> = { identifier };
+  if (params.cursor !== undefined) query.cursor = params.cursor;
+  if (params.limit !== undefined) query.limit = params.limit;
+
+  const response = await request(runtime.baseUrl, "/catalog.entities.tasks", {
+    ...requestOptions(runtime),
+    method: "GET",
+    query,
+  });
+
+  return response as GetEntityTasksResponse;
 }
 
 // --- Include helpers ---
