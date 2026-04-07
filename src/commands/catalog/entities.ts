@@ -124,6 +124,43 @@ export function entitiesCommand() {
       }),
     );
 
+  entities
+    .command("scorecards")
+    .description("Get the current scorecard report for an entity")
+    .argument("<identifier>", "Entity identifier")
+    .option("--cursor <cursor>", "Cursor for the next page of results")
+    .option("--limit <n>", "Max scorecards per page (default is 50)", (value) =>
+      parsePositiveIntOption(value, "--limit"),
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Get scorecards for the `login-frontend` entity",
+          command: "dx catalog entities scorecards login-frontend",
+        },
+        {
+          label: "Get scorecards and return as JSON",
+          command: "dx catalog entities scorecards login-frontend --json",
+        },
+        {
+          label: "Fetch the next page of scorecards",
+          command:
+            "dx catalog entities scorecards login-frontend --cursor xuvkgfq9t0ty",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (identifier, options, command) => {
+        const runtime = buildRuntime(getContext(command));
+        const response = await getEntityScorecards(runtime, identifier, {
+          cursor: options.cursor,
+          limit: options.limit,
+        });
+        renderStructuredResponse(response, runtime.context.json);
+      }),
+    );
+
   return entities;
 }
 
@@ -181,6 +218,87 @@ async function listEntities(
   });
 
   return response as ListEntitiesResponse;
+}
+
+type GetEntityScorecardsParams = {
+  cursor?: string;
+  limit?: number;
+};
+
+export type ScorecardLevel = {
+  id: string;
+  name: string;
+  color: string;
+  rank?: number;
+};
+
+export type ScorecardEmptyLevel = {
+  label: string;
+  color: string;
+};
+
+export type ScorecardTag = {
+  value: string;
+  color: string;
+};
+
+export type ScorecardCheckResult = {
+  id: string;
+  name: string;
+  description: string;
+  ordering: number;
+  passed: boolean;
+  status: "PASS" | "WARN" | "FAIL";
+  published?: boolean;
+  metadata?: Record<string, unknown>;
+  level?: { id: string; name: string };
+  output?: { value: unknown; type: string } | null;
+  message?: string | null;
+  related_properties?: string[] | null;
+  executed_at?: string | null;
+};
+
+export type ScorecardReport = {
+  id: string;
+  name: string;
+  type: "LEVEL" | "POINTS";
+  tags: ScorecardTag[];
+  checks: ScorecardCheckResult[];
+  // Level-based scorecard fields
+  levels?: ScorecardLevel[];
+  current_level?: ScorecardLevel | null;
+  empty_level?: ScorecardEmptyLevel;
+  // Points-based scorecard fields
+  points_meta?: Record<string, unknown>;
+  check_groups?: unknown[];
+};
+
+type GetEntityScorecardsResponse = {
+  ok: true;
+  scorecards: ScorecardReport[];
+  response_metadata?: { next_cursor?: string | null };
+};
+
+async function getEntityScorecards(
+  runtime: Runtime,
+  identifier: string,
+  params: GetEntityScorecardsParams,
+): Promise<GetEntityScorecardsResponse> {
+  const query: Record<string, string | number | undefined> = { identifier };
+  if (params.cursor !== undefined) query.cursor = params.cursor;
+  if (params.limit !== undefined) query.limit = params.limit;
+
+  const response = await request(
+    runtime.baseUrl,
+    "/catalog.entities.scorecards",
+    {
+      ...requestOptions(runtime),
+      method: "GET",
+      query,
+    },
+  );
+
+  return response as GetEntityScorecardsResponse;
 }
 
 // --- Include helpers ---
