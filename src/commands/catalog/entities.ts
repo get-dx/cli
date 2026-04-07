@@ -22,11 +22,11 @@ export function entitiesCommand() {
   entities
     .command("create")
     .description("Create a new entity in your software catalog")
+    .option("--type <type>", "Entity type identifier (required)")
     .option(
       "--identifier <identifier>",
       "Unique identifier for the new entity (required)",
     )
-    .option("--type <type>", "Entity type identifier (required)")
     .option("--name <name>", "Display name of the entity")
     .option("--description <desc>", "Description of the entity")
     .option("--owner-team-ids <ids>", "Comma-separated owner team IDs")
@@ -43,22 +43,22 @@ export function entitiesCommand() {
         {
           label: "Create a new service entity",
           command:
-            "dx catalog entities create --identifier my-service --type service",
+            "dx catalog entities create --type service --identifier my-service",
         },
         {
           label: "Create with a name and return as JSON",
           command:
-            'dx catalog entities create --identifier my-service --type service --name "My Service" --json',
+            'dx catalog entities create --type service --identifier my-service --name "My Service" --json',
         },
         {
           label: "Create and assign owner teams",
           command:
-            "dx catalog entities create --identifier my-service --type service --owner-team-ids MzI1NTA,MzI1NTk",
+            "dx catalog entities create --type service --identifier my-service --owner-team-ids MzI1NTA,MzI1NTk",
         },
         {
           label: "Create with properties",
           command:
-            'dx catalog entities create --identifier my-service --type service --property tier=Tier-1 --property "languages=Ruby,TypeScript"',
+            'dx catalog entities create --type service --identifier my-service --property tier=Tier-1 --property "languages=Ruby,TypeScript"',
         },
       ]),
     )
