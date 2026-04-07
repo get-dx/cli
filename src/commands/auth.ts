@@ -6,8 +6,9 @@ import { renderAuthInfo, renderStructuredResponse } from "../renderers.js";
 import { wrapAction } from "../commandHelpers.js";
 import { getContext } from "../commandHelpers.js";
 import { persistBaseUrl, resolveBaseUrl } from "../config.js";
+import { request } from "../http.js";
 import { buildRuntime } from "../runtime.js";
-import { getAuthInfo } from "../api.js";
+import type { Runtime } from "../types.js";
 import cliPackage from "../../package.json" with { type: "json" };
 
 export function authCommand(): Command {
@@ -64,4 +65,20 @@ export function authCommand(): Command {
   );
 
   return auth;
+}
+
+function requestOptions(runtime: Runtime) {
+  return {
+    token: runtime.token,
+    agent: runtime.context.agent,
+    agentSessionId: runtime.context.agentSessionId,
+    userAgent: `dx-cli/${runtime.version}`,
+  };
+}
+
+async function getAuthInfo(runtime: Runtime): Promise<unknown> {
+  return request(runtime.baseUrl, "/auth.info", {
+    ...requestOptions(runtime),
+    method: "GET",
+  });
 }
