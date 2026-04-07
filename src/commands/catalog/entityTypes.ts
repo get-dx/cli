@@ -18,6 +18,45 @@ export function entityTypesCommand() {
     .description("Manage catalog entity types");
 
   entityTypes
+    .command("info")
+    .argument("<identifier>", "Entity type identifier")
+    .option(
+      "--include <include>",
+      "Show only these comma-separated sections: core, properties, aliases",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Fetch info for the `service` entity type",
+          command: "dx catalog entityTypes info service",
+        },
+        {
+          label: "Fetch info and return as JSON",
+          command: "dx catalog entityTypes info service --json",
+        },
+        {
+          label: "Fetch info but only include the `core` and `properties` sections",
+          command: "dx catalog entityTypes info service --include core,properties",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (identifier, options, command) => {
+        const runtime = buildRuntime(getContext(command));
+        const response = await getEntityType(runtime, identifier);
+        const processedEntityType = processEntityTypeIncludes(
+          response.entity_type as Record<string, unknown>,
+          options,
+        );
+        renderStructuredResponse(
+          { ...response, entity_type: processedEntityType },
+          runtime.context.json,
+        );
+      }),
+    );
+
+  entityTypes
     .command("list")
     .description("List all entity types in your software catalog")
     .option("--cursor <cursor>", "Cursor for the next page of results")
@@ -94,6 +133,28 @@ function requestOptions(runtime: Runtime) {
     agentSessionId: runtime.context.agentSessionId,
     userAgent: `dx-cli/${runtime.version}`,
   };
+}
+
+type GetEntityTypeResponse = {
+  ok: true;
+  entity_type: unknown;
+};
+
+async function getEntityType(
+  runtime: Runtime,
+  identifier: string,
+): Promise<GetEntityTypeResponse> {
+  const response = await request(
+    runtime.baseUrl,
+    "/catalog.entityTypes.info",
+    {
+      ...requestOptions(runtime),
+      method: "GET",
+      query: { identifier },
+    },
+  );
+
+  return response as GetEntityTypeResponse;
 }
 
 async function listEntityTypes(
