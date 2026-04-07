@@ -26,6 +26,159 @@ afterEach(() => {
 });
 
 describe("catalog entityTypes commands", () => {
+  describe("info", () => {
+    it("fetches entity type info", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              entity_type: {
+                identifier: "service",
+                name: "Service",
+                description: "A microservice",
+                ordering: 0,
+                created_at: "2026-01-01T00:00:00Z",
+                updated_at: "2026-01-02T00:00:00Z",
+                properties: [{ name: "Language" }],
+                aliases: { github_repo: true },
+              },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entityTypes",
+        "info",
+        "service",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entityTypes.info?identifier=service",
+        expect.objectContaining({ method: "GET" }),
+      );
+      const out = writes.join("");
+      expect(out).toContain('"identifier": "service"');
+      expect(out).toContain('"name": "Service"');
+    });
+
+    it("supports filtering sections with --include", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              entity_type: {
+                identifier: "service",
+                name: "Service",
+                description: "A microservice",
+                ordering: 0,
+                created_at: "2026-01-01T00:00:00Z",
+                updated_at: "2026-01-02T00:00:00Z",
+                properties: [{ name: "Language" }],
+                aliases: { github_repo: true },
+              },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entityTypes",
+        "info",
+        "service",
+        "--include",
+        "core",
+      ]);
+
+      const out = writes.join("");
+      expect(out).toContain('"identifier": "service"');
+      expect(out).not.toContain("properties");
+      expect(out).not.toContain("aliases");
+    });
+
+    it("rejects an invalid --include section", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              entity_type: { identifier: "service", name: "Service" },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "entityTypes",
+        "info",
+        "service",
+        "--include",
+        "owners",
+      ]);
+
+      expect(stderrWrites.join("")).toContain('Invalid --include "owners"');
+      expect(exitSpy).toHaveBeenCalledWith(2);
+    });
+  });
+
   describe("list", () => {
     it("lists entity types in the catalog", async () => {
       const writes: string[] = [];
