@@ -11,16 +11,16 @@ make            # install + build + link globally (default target)
 
 ## Key Commands
 
-| Task | Command |
-|---|---|
-| Install deps | `pnpm install` |
-| Build | `pnpm build` |
-| Test | `pnpm test` |
-| Typecheck | `pnpm typecheck` |
-| Lint | `pnpm lint` |
-| Format | `pnpm format` |
-| Check format | `pnpm format:check` |
-| Full CI check | `make verify` |
+| Task          | Command             |
+| ------------- | ------------------- |
+| Install deps  | `pnpm install`      |
+| Build         | `pnpm build`        |
+| Test          | `pnpm test`         |
+| Typecheck     | `pnpm typecheck`    |
+| Lint          | `pnpm lint`         |
+| Format        | `pnpm format`       |
+| Check format  | `pnpm format:check` |
+| Full CI check | `make verify`       |
 
 `make verify` runs `format-check`, `typecheck`, `lint`, and `test` — run this before committing.
 
