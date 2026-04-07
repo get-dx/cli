@@ -74,6 +74,16 @@ If `--help` does not show the expected description or `afterAll` examples (once 
 - Reuse **`CliError`** / **`EXIT_CODES`** from `src/errors.ts` for invalid user input (e.g. bad enum, missing combinations).
 - Follow existing import style: **`commander`** `Command`, `.js` extensions on local imports.
 
+## Step 4: Add tests
+
+Add tests in the co-located test file `src/commands/<group>/<subcommand>.test.ts` (create it if it does not exist). Follow the patterns in existing test files such as `src/commands/catalog/entities.test.ts` and `src/commands/catalog/entityTypes.test.ts`. At minimum, cover:
+
+- **Happy path:** mock the HTTP layer and assert the command exits `0` and produces the expected output.
+- **`--json` flag:** assert the output is valid JSON matching the mocked response shape.
+- **Argument/option validation errors:** assert `CliError` is thrown (or the process exits non-zero) for invalid input (e.g. bad `--limit`, invalid enum value).
+
+Run `pnpm test` after adding tests to confirm they pass.
+
 ## Checklist
 
 - [ ] Docs URL validated and content fetched.
@@ -82,3 +92,4 @@ If `--help` does not show the expected description or `afterAll` examples (once 
 - [ ] Build succeeds and `dx … --help` shows description and examples (`make`, or `pnpm build` / `tsc` + `node dist/index.js` if `make` fails on link/install).
 - [ ] API call matches docs; action uses `wrapAction` and `renderStructuredResponse` (or equivalent).
 - [ ] Required resource key is a positional argument when appropriate; other params are options; snake_case query params map correctly from Commander options.
+- [ ] Co-located test file exists with happy path, `--json`, validation error, and missing-auth cases; `pnpm test` passes.
