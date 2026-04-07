@@ -171,4 +171,157 @@ describe("scorecards commands", () => {
       expect(stderrWrites.join("")).toMatch(/not authenticated|token/i);
     });
   });
+
+  describe("list", () => {
+    it("lists published scorecards", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              scorecards: [
+                { ...MOCK_SCORECARD, id: "qjfj1a6cmit4", name: "Reliability" },
+                {
+                  ...MOCK_SCORECARD,
+                  id: "glgixbdsuiyx",
+                  name: "Security",
+                  type: "POINTS",
+                },
+              ],
+              response_metadata: { next_cursor: "xuvkgfq9t0ty" },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "--json", "scorecards", "list"]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/scorecards.list",
+        expect.objectContaining({ method: "GET" }),
+      );
+      const out = writes.join("");
+      const parsed = JSON.parse(out);
+      expect(parsed.ok).toBe(true);
+      expect(parsed.scorecards).toHaveLength(2);
+      expect(parsed.scorecards[0].name).toBe("Reliability");
+      expect(parsed.scorecards[1].name).toBe("Security");
+      expect(parsed.response_metadata.next_cursor).toBe("xuvkgfq9t0ty");
+    });
+
+    it("passes --cursor and --limit to the API", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              scorecards: [],
+              response_metadata: { next_cursor: null },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "scorecards",
+        "list",
+        "--cursor",
+        "xuvkgfq9t0ty",
+        "--limit",
+        "10",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/scorecards.list?cursor=xuvkgfq9t0ty&limit=10",
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("passes include_unpublished when --include-unpublished is set", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              scorecards: [],
+              response_metadata: { next_cursor: null },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "scorecards", "list", "--include-unpublished"]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/scorecards.list?include_unpublished=true",
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("rejects an invalid --limit value", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "scorecards", "list", "--limit", "bad"]);
+
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+      expect(stderrWrites.join("")).toContain("--limit");
+    });
+  });
 });

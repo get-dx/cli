@@ -13,6 +13,11 @@ import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import { getEntityType } from "./entityTypes.js";
 import type { Property } from "./entityTypes.js";
+import type {
+  ScorecardCheckGroup,
+  ScorecardLevel,
+  ScorecardTag,
+} from "../scorecards.js";
 
 export function entitiesCommand() {
   const entities = new Command()
@@ -406,20 +411,8 @@ type GetEntityScorecardsParams = {
   limit?: number;
 };
 
-export type ScorecardLevel = {
-  id: string;
-  name: string;
-  color: string;
-  rank?: number;
-};
-
 export type ScorecardEmptyLevel = {
   label: string;
-  color: string;
-};
-
-export type ScorecardTag = {
-  value: string;
   color: string;
 };
 
@@ -451,7 +444,7 @@ export type ScorecardReport = {
   empty_level?: ScorecardEmptyLevel;
   // Points-based scorecard fields
   points_meta?: Record<string, unknown>;
-  check_groups?: unknown[];
+  check_groups?: ScorecardCheckGroup[];
 };
 
 type GetEntityScorecardsResponse = {
