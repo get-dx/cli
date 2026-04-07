@@ -6,7 +6,7 @@ import {
   parsePositiveIntOption,
   wrapAction,
 } from "../../commandHelpers.js";
-import { CliError, EXIT_CODES } from "../../errors.js";
+import { CliError, EXIT_CODES, HttpError } from "../../errors.js";
 import { request } from "../../http.js";
 import { renderStructuredResponse } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
@@ -77,10 +77,24 @@ export function entitiesCommand() {
 
         let properties: Record<string, unknown> | undefined;
         if ((options.property as string[]).length > 0) {
-          const entityTypeResponse = await getEntityType(
-            runtime,
-            options.type as string,
-          );
+          let entityTypeResponse;
+          try {
+            entityTypeResponse = await getEntityType(
+              runtime,
+              options.type as string,
+            );
+          } catch (err) {
+            const exitCode =
+              err instanceof HttpError &&
+              err.status !== undefined &&
+              err.status < 500
+                ? EXIT_CODES.ARGUMENT_ERROR
+                : EXIT_CODES.RETRY_RECOMMENDED;
+            throw new CliError(
+              `Failed to fetch entity type "${options.type as string}" to resolve property types: ${err instanceof Error ? err.message : String(err)}`,
+              exitCode,
+            );
+          }
           properties = parseEntityProperties(
             options.property as string[],
             entityTypeResponse.entity_type.properties,
