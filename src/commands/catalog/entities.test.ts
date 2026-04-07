@@ -385,13 +385,11 @@ describe("catalog entities commands", () => {
 
       vi.stubGlobal(
         "fetch",
-        vi
-          .fn()
-          .mockResolvedValue(
-            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
-              status: 200,
-            }),
-          ),
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+            status: 200,
+          }),
+        ),
       );
 
       const { createProgram } = await import("../../cli.js");
@@ -425,13 +423,11 @@ describe("catalog entities commands", () => {
 
       vi.stubGlobal(
         "fetch",
-        vi
-          .fn()
-          .mockResolvedValue(
-            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
-              status: 200,
-            }),
-          ),
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+            status: 200,
+          }),
+        ),
       );
 
       const { createProgram } = await import("../../cli.js");
@@ -471,13 +467,11 @@ describe("catalog entities commands", () => {
 
       vi.stubGlobal(
         "fetch",
-        vi
-          .fn()
-          .mockResolvedValue(
-            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
-              status: 200,
-            }),
-          ),
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+            status: 200,
+          }),
+        ),
       );
 
       const { createProgram } = await import("../../cli.js");
