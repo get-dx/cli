@@ -154,7 +154,7 @@ type EntityType = {
   aliases: Record<string, unknown[]>;
 };
 
-type Property = {
+export type Property = {
   identifier: string;
   name: string | null;
   description: string;
@@ -165,7 +165,7 @@ type Property = {
   definition: Record<string, unknown>;
 };
 
-type PropertyType =
+export type PropertyType =
   | "text"
   | "number"
   | "boolean"
@@ -183,7 +183,7 @@ type PropertyType =
   | "msteams_channel"
   | "email";
 
-async function getEntityType(
+export async function getEntityType(
   runtime: Runtime,
   identifier: string,
 ): Promise<GetEntityTypeResponse> {

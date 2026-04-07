@@ -230,6 +230,519 @@ describe("catalog entities commands", () => {
     });
   });
 
+  describe("create with properties", () => {
+    const mockEntity = {
+      identifier: "my-service",
+      name: "My Service",
+      type: "service",
+      created_at: "2025-01-02T20:48:45.779Z",
+      updated_at: "2025-01-02T20:48:45.779Z",
+      description: "",
+      owner_teams: [],
+      owner_users: [],
+      properties: {},
+      aliases: {},
+    };
+
+    const makeProperty = (
+      identifier: string,
+      type: string,
+    ): Record<string, unknown> => ({
+      identifier,
+      name: identifier,
+      description: "",
+      type,
+      ordering: 0,
+      created_at: "2025-01-01T00:00:00.000Z",
+      updated_at: "2025-01-01T00:00:00.000Z",
+      definition: {},
+    });
+
+    const mockEntityType = (properties: Record<string, unknown>[]) => ({
+      ok: true,
+      entity_type: {
+        identifier: "service",
+        name: "Service",
+        description: "",
+        icon: null,
+        ordering: 0,
+        created_at: "2025-01-01T00:00:00.000Z",
+        updated_at: "2025-01-01T00:00:00.000Z",
+        properties,
+        aliases: {},
+      },
+    });
+
+    it("fetches entity type and sends properties in the request body", async () => {
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(mockEntityType([makeProperty("tier", "select")])),
+              { status: 200 },
+            ),
+          )
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+              status: 200,
+            }),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "create",
+        "--identifier",
+        "my-service",
+        "--type",
+        "service",
+        "--property",
+        "tier=Tier-1",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entityTypes.info?identifier=service",
+        expect.objectContaining({ method: "GET" }),
+      );
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.create",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            identifier: "my-service",
+            type: "service",
+            properties: { tier: "Tier-1" },
+          }),
+        }),
+      );
+    });
+
+    it("sends multiple properties of different types", async () => {
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(
+                mockEntityType([
+                  makeProperty("tier", "select"),
+                  makeProperty("languages", "multi_select"),
+                  makeProperty("reviewed", "boolean"),
+                  makeProperty("incident-count", "number"),
+                ]),
+              ),
+              { status: 200 },
+            ),
+          )
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+              status: 200,
+            }),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "create",
+        "--identifier",
+        "my-service",
+        "--type",
+        "service",
+        "--property",
+        "tier=Tier-1",
+        "--property",
+        "languages=Ruby,TypeScript",
+        "--property",
+        "reviewed=true",
+        "--property",
+        "incident-count=5",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.create",
+        expect.objectContaining({
+          body: JSON.stringify({
+            identifier: "my-service",
+            type: "service",
+            properties: {
+              tier: "Tier-1",
+              languages: ["Ruby", "TypeScript"],
+              reviewed: true,
+              "incident-count": 5,
+            },
+          }),
+        }),
+      );
+    });
+
+    it("sends null to remove a property when value is 'null'", async () => {
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(mockEntityType([makeProperty("tier", "select")])),
+              { status: 200 },
+            ),
+          )
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+              status: 200,
+            }),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "create",
+        "--identifier",
+        "my-service",
+        "--type",
+        "service",
+        "--property",
+        "tier=null",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.create",
+        expect.objectContaining({
+          body: JSON.stringify({
+            identifier: "my-service",
+            type: "service",
+            properties: { tier: null },
+          }),
+        }),
+      );
+    });
+
+    it("parses json property values with JSON.parse", async () => {
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(
+                mockEntityType([makeProperty("deployment-facts", "json")]),
+              ),
+              { status: 200 },
+            ),
+          )
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+              status: 200,
+            }),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "create",
+        "--identifier",
+        "my-service",
+        "--type",
+        "service",
+        "--property",
+        'deployment-facts={"region":"us-east-1","replicas":5}',
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.create",
+        expect.objectContaining({
+          body: JSON.stringify({
+            identifier: "my-service",
+            type: "service",
+            properties: {
+              "deployment-facts": { region: "us-east-1", replicas: 5 },
+            },
+          }),
+        }),
+      );
+    });
+
+    it("exits with code 2 when --property key is missing =", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(mockEntityType([makeProperty("tier", "select")])),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "entities",
+        "create",
+        "--identifier",
+        "my-service",
+        "--type",
+        "service",
+        "--property",
+        "tierTier-1",
+      ]);
+
+      expect(stderrWrites.join("")).toContain(
+        'Invalid --property "tierTier-1": expected format key=value',
+      );
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+    });
+
+    it("exits with code 2 when the property identifier is unknown", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(mockEntityType([makeProperty("tier", "select")])),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "entities",
+        "create",
+        "--identifier",
+        "my-service",
+        "--type",
+        "service",
+        "--property",
+        "unknown-prop=value",
+      ]);
+
+      expect(stderrWrites.join("")).toContain(
+        'Unknown property "unknown-prop"',
+      );
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+    });
+
+    it("exits with code 2 when boolean value is invalid", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(
+                mockEntityType([makeProperty("reviewed", "boolean")]),
+              ),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "entities",
+        "create",
+        "--identifier",
+        "my-service",
+        "--type",
+        "service",
+        "--property",
+        "reviewed=yes",
+      ]);
+
+      expect(stderrWrites.join("")).toContain(
+        'Invalid boolean value for property "reviewed"',
+      );
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+    });
+
+    it("exits with code 2 when number value is invalid", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(
+                mockEntityType([makeProperty("incident-count", "number")]),
+              ),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "entities",
+        "create",
+        "--identifier",
+        "my-service",
+        "--type",
+        "service",
+        "--property",
+        "incident-count=notanumber",
+      ]);
+
+      expect(stderrWrites.join("")).toContain(
+        'Invalid number value for property "incident-count"',
+      );
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+    });
+
+    it("exits with code 2 when setting a read-only computed property", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(
+                mockEntityType([makeProperty("open-prs", "computed")]),
+              ),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "entities",
+        "create",
+        "--identifier",
+        "my-service",
+        "--type",
+        "service",
+        "--property",
+        "open-prs=5",
+      ]);
+
+      expect(stderrWrites.join("")).toContain(
+        'Property "open-prs" is read-only',
+      );
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+    });
+  });
+
   describe("info", () => {
     it("uses the configured token and endpoint", async () => {
       const writes: string[] = [];

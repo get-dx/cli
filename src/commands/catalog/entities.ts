@@ -11,6 +11,8 @@ import { request } from "../../http.js";
 import { renderStructuredResponse } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
+import { getEntityType } from "./entityTypes.js";
+import type { Property } from "./entityTypes.js";
 
 export function entitiesCommand() {
   const entities = new Command()
@@ -29,6 +31,12 @@ export function entitiesCommand() {
     .option("--description <desc>", "Description of the entity")
     .option("--owner-team-ids <ids>", "Comma-separated owner team IDs")
     .option("--owner-user-ids <ids>", "Comma-separated owner user IDs")
+    .option(
+      "--property <kv>",
+      "Set a property value as key=value. Repeat for multiple properties.",
+      (val: string, prev: string[]) => [...prev, val],
+      [] as string[],
+    )
     .addHelpText(
       "afterAll",
       createExampleText([
@@ -47,6 +55,11 @@ export function entitiesCommand() {
           command:
             "dx catalog entities create --identifier my-service --type service --owner-team-ids MzI1NTA,MzI1NTk",
         },
+        {
+          label: "Create with properties",
+          command:
+            'dx catalog entities create --identifier my-service --type service --property tier=Tier-1 --property "languages=Ruby,TypeScript"',
+        },
       ]),
     )
     .action(
@@ -61,6 +74,19 @@ export function entitiesCommand() {
           throw new CliError("--type is required", EXIT_CODES.ARGUMENT_ERROR);
         }
         const runtime = buildRuntime(getContext(command));
+
+        let properties: Record<string, unknown> | undefined;
+        if ((options.property as string[]).length > 0) {
+          const entityTypeResponse = await getEntityType(
+            runtime,
+            options.type as string,
+          );
+          properties = parseEntityProperties(
+            options.property as string[],
+            entityTypeResponse.entity_type.properties,
+          );
+        }
+
         const response = await createEntity(
           runtime,
           options.identifier as string,
@@ -74,6 +100,7 @@ export function entitiesCommand() {
             owner_user_ids: options.ownerUserIds
               ?.split(",")
               .map((s: string) => s.trim()),
+            properties,
           },
         );
         renderStructuredResponse(response, runtime.context.json);
@@ -331,6 +358,7 @@ type CreateEntityParams = {
   description?: string;
   owner_team_ids?: string[];
   owner_user_ids?: string[];
+  properties?: Record<string, unknown>;
 };
 
 async function createEntity(
@@ -348,6 +376,7 @@ async function createEntity(
     body.owner_team_ids = params.owner_team_ids;
   if (params.owner_user_ids?.length)
     body.owner_user_ids = params.owner_user_ids;
+  if (params.properties !== undefined) body.properties = params.properties;
 
   const response = await request(runtime.baseUrl, "/catalog.entities.create", {
     ...requestOptions(runtime),
@@ -501,6 +530,100 @@ async function getEntityTasks(
   });
 
   return response as GetEntityTasksResponse;
+}
+
+// --- Property parsing helpers ---
+
+export function parseEntityProperties(
+  rawProperties: string[],
+  knownProperties: Property[],
+): Record<string, unknown> {
+  const propMap = new Map(knownProperties.map((p) => [p.identifier, p]));
+  const result: Record<string, unknown> = {};
+
+  for (const kv of rawProperties) {
+    const eqIndex = kv.indexOf("=");
+    if (eqIndex === -1) {
+      throw new CliError(
+        `Invalid --property "${kv}": expected format key=value`,
+        EXIT_CODES.ARGUMENT_ERROR,
+      );
+    }
+    const key = kv.slice(0, eqIndex);
+    const rawValue = kv.slice(eqIndex + 1);
+
+    const prop = propMap.get(key);
+    if (!prop) {
+      throw new CliError(
+        `Unknown property "${key}". Available properties: ${[...propMap.keys()].join(", ") || "(none)"}`,
+        EXIT_CODES.ARGUMENT_ERROR,
+      );
+    }
+
+    result[key] = parsePropertyValue(prop, rawValue);
+  }
+
+  return result;
+}
+
+export function parsePropertyValue(prop: Property, rawValue: string): unknown {
+  if (rawValue === "null") return null;
+
+  switch (prop.type) {
+    case "text":
+    case "url":
+    case "date":
+    case "email":
+    case "slack_channel":
+    case "msteams_channel":
+    case "select":
+      return rawValue;
+
+    case "number": {
+      const n = Number(rawValue);
+      if (isNaN(n)) {
+        throw new CliError(
+          `Invalid number value for property "${prop.identifier}": "${rawValue}"`,
+          EXIT_CODES.ARGUMENT_ERROR,
+        );
+      }
+      return n;
+    }
+
+    case "boolean":
+      if (rawValue === "true") return true;
+      if (rawValue === "false") return false;
+      throw new CliError(
+        `Invalid boolean value for property "${prop.identifier}": expected "true" or "false", got "${rawValue}"`,
+        EXIT_CODES.ARGUMENT_ERROR,
+      );
+
+    case "multi_select":
+    case "list":
+    case "user":
+      return rawValue.split(",").map((s) => s.trim());
+
+    case "json":
+    case "openapi":
+      try {
+        return JSON.parse(rawValue);
+      } catch {
+        throw new CliError(
+          `Invalid JSON value for property "${prop.identifier}": ${rawValue}`,
+          EXIT_CODES.ARGUMENT_ERROR,
+        );
+      }
+
+    case "computed":
+    case "file_matching_rule":
+      throw new CliError(
+        `Property "${prop.identifier}" is read-only (type: ${prop.type}) and cannot be set`,
+        EXIT_CODES.ARGUMENT_ERROR,
+      );
+
+    default:
+      return rawValue;
+  }
 }
 
 // --- Include helpers ---
