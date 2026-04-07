@@ -125,6 +125,55 @@ export function entitiesCommand() {
     );
 
   entities
+    .command("create")
+    .description("Create a new entity in your software catalog")
+    .argument("<identifier>", "Unique identifier for the new entity")
+    .option("--type <type>", "Entity type identifier (required)")
+    .option("--name <name>", "Display name of the entity")
+    .option("--description <desc>", "Description of the entity")
+    .option("--owner-team-ids <ids>", "Comma-separated owner team IDs")
+    .option("--owner-user-ids <ids>", "Comma-separated owner user IDs")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Create a new service entity",
+          command: "dx catalog entities create my-service --type service",
+        },
+        {
+          label: "Create with a name and return as JSON",
+          command:
+            'dx catalog entities create my-service --type service --name "My Service" --json',
+        },
+        {
+          label: "Create and assign owner teams",
+          command:
+            "dx catalog entities create my-service --type service --owner-team-ids MzI1NTA,MzI1NTk",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (identifier, options, command) => {
+        if (!options.type) {
+          throw new CliError("--type is required", EXIT_CODES.ARGUMENT_ERROR);
+        }
+        const runtime = buildRuntime(getContext(command));
+        const response = await createEntity(runtime, identifier, {
+          type: options.type as string,
+          name: options.name,
+          description: options.description,
+          owner_team_ids: options.ownerTeamIds
+            ?.split(",")
+            .map((s: string) => s.trim()),
+          owner_user_ids: options.ownerUserIds
+            ?.split(",")
+            .map((s: string) => s.trim()),
+        });
+        renderStructuredResponse(response, runtime.context.json);
+      }),
+    );
+
+  entities
     .command("tasks")
     .description("Get outstanding initiative tasks for an entity")
     .argument("<identifier>", "Entity identifier")
@@ -255,6 +304,39 @@ async function listEntities(
   });
 
   return response as ListEntitiesResponse;
+}
+
+type CreateEntityParams = {
+  type: string;
+  name?: string;
+  description?: string;
+  owner_team_ids?: string[];
+  owner_user_ids?: string[];
+};
+
+async function createEntity(
+  runtime: Runtime,
+  identifier: string,
+  params: CreateEntityParams,
+): Promise<{ ok: true; entity: Entity }> {
+  const body: Record<string, unknown> = {
+    identifier,
+    type: params.type,
+  };
+  if (params.name !== undefined) body.name = params.name;
+  if (params.description !== undefined) body.description = params.description;
+  if (params.owner_team_ids?.length)
+    body.owner_team_ids = params.owner_team_ids;
+  if (params.owner_user_ids?.length)
+    body.owner_user_ids = params.owner_user_ids;
+
+  const response = await request(runtime.baseUrl, "/catalog.entities.create", {
+    ...requestOptions(runtime),
+    method: "POST",
+    body,
+  });
+
+  return { ok: true, entity: response.entity as Entity };
 }
 
 type GetEntityScorecardsParams = {

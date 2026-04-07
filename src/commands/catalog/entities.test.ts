@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EXIT_CODES } from "../../errors.js";
 
 const setToken = vi.fn();
 const deleteToken = vi.fn();
@@ -353,6 +354,177 @@ describe("catalog entities commands", () => {
         "--limit must be a positive integer",
       );
       expect(exitSpy).toHaveBeenCalledWith(2);
+    });
+  });
+
+  describe("create", () => {
+    const mockEntity = {
+      identifier: "my-service",
+      name: "My Service",
+      type: "service",
+      created_at: "2025-01-02T20:48:45.779Z",
+      updated_at: "2025-01-02T20:48:45.779Z",
+      description: "",
+      owner_teams: [],
+      owner_users: [],
+      properties: {},
+      aliases: {},
+    };
+
+    it("creates an entity and outputs the result", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+              status: 200,
+            }),
+          ),
+      );
+
+      const { createProgram } = await import("../../cli.js");
+      await createProgram().parseAsync([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "create",
+        "my-service",
+        "--type",
+        "service",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.create",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ identifier: "my-service", type: "service" }),
+        }),
+      );
+      const out = writes.join("");
+      expect(out).toContain('"my-service"');
+      expect(out).toContain('"My Service"');
+    });
+
+    it("includes optional fields in the request body when provided", async () => {
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+              status: 200,
+            }),
+          ),
+      );
+
+      const { createProgram } = await import("../../cli.js");
+      await createProgram().parseAsync([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "create",
+        "my-service",
+        "--type",
+        "service",
+        "--name",
+        "My Service",
+        "--description",
+        "A test service",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.create",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            identifier: "my-service",
+            type: "service",
+            name: "My Service",
+            description: "A test service",
+          }),
+        }),
+      );
+    });
+
+    it("splits --owner-team-ids into an array in the request body", async () => {
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+              status: 200,
+            }),
+          ),
+      );
+
+      const { createProgram } = await import("../../cli.js");
+      await createProgram().parseAsync([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "create",
+        "my-service",
+        "--type",
+        "service",
+        "--owner-team-ids",
+        "MzI1NTk,abc123",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.create",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            identifier: "my-service",
+            type: "service",
+            owner_team_ids: ["MzI1NTk", "abc123"],
+          }),
+        }),
+      );
+    });
+
+    it("exits non-zero when --type is missing", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      const { run } = await import("../../cli.js");
+      await run(["node", "dx", "catalog", "entities", "create", "my-service"]);
+
+      expect(stderrWrites.join("")).toContain("--type is required");
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
   });
 
