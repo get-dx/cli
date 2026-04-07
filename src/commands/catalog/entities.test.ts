@@ -355,4 +355,136 @@ describe("catalog entities commands", () => {
       expect(exitSpy).toHaveBeenCalledWith(2);
     });
   });
+
+  describe("scorecards", () => {
+    it("fetches scorecards for the given entity identifier", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              scorecards: [
+                {
+                  id: "7o75a314lejw",
+                  name: "Production Readiness",
+                  type: "LEVEL",
+                  checks: [{ id: "NDQ", name: "Wiki doc link", passed: true }],
+                },
+              ],
+              response_metadata: { next_cursor: null },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { createProgram } = await import("../../cli.js");
+      await createProgram().parseAsync([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "scorecards",
+        "login-frontend",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.scorecards?identifier=login-frontend",
+        expect.objectContaining({ method: "GET" }),
+      );
+      const out = writes.join("");
+      expect(out).toContain('"Production Readiness"');
+      expect(out).toContain('"Wiki doc link"');
+    });
+
+    it("supports cursor-based pagination", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              scorecards: [],
+              response_metadata: { next_cursor: null },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { createProgram } = await import("../../cli.js");
+      await createProgram().parseAsync([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "scorecards",
+        "login-frontend",
+        "--cursor",
+        "xuvkgfq9t0ty",
+        "--limit",
+        "10",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.scorecards?identifier=login-frontend&cursor=xuvkgfq9t0ty&limit=10",
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("rejects a non-positive --limit", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "entities",
+        "scorecards",
+        "login-frontend",
+        "--limit",
+        "0",
+      ]);
+
+      expect(stderrWrites.join("")).toContain(
+        "--limit must be a positive integer",
+      );
+      expect(exitSpy).toHaveBeenCalledWith(2);
+    });
+  });
 });
