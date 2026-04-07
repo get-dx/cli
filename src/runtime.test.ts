@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { writeConfig } from "../src/config.js";
-import { maskToken } from "../src/renderers.js";
-import { buildRuntime } from "../src/runtime.js";
+import { writeConfig } from "./config.js";
+import { maskToken } from "./renderers.js";
+import { buildRuntime } from "./runtime.js";
 
 const originalEnv = { ...process.env };
 
