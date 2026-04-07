@@ -487,4 +487,145 @@ describe("catalog entities commands", () => {
       expect(exitSpy).toHaveBeenCalledWith(2);
     });
   });
+
+  describe("tasks", () => {
+    const mockTask = {
+      check: {
+        id: "ykepbp77y24r",
+        name: "Everyone is failing this check",
+        description: "This is a tough one to pass.",
+        external_url: null,
+      },
+      entity_check_issue: { id: null, url: null },
+      initiative: {
+        id: "n9uu9oeeuzg5",
+        name: "Migrate to OpenTelemetry",
+        description: "## The basics",
+        complete_by: "2025-04-09T00:00:00.000Z",
+        priority: 0,
+      },
+      owner: {
+        id: 5555173,
+        name: "Ziggy Stardust",
+        email: "ziggy.stardust@getdx.com",
+        avatar: "https://avatars.slack-edge.com/photo.jpg",
+        slack_ext_id: "U55555QMB19",
+      },
+    };
+
+    it("fetches tasks for the given entity identifier", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              tasks: [mockTask],
+              response_metadata: { next_cursor: null },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { createProgram } = await import("../../cli.js");
+      await createProgram().parseAsync([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "tasks",
+        "login-frontend",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.tasks?identifier=login-frontend",
+        expect.objectContaining({ method: "GET" }),
+      );
+      const out = writes.join("");
+      expect(out).toContain('"Migrate to OpenTelemetry"');
+      expect(out).toContain('"Everyone is failing this check"');
+    });
+
+    it("supports cursor-based pagination", async () => {
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              tasks: [],
+              response_metadata: { next_cursor: null },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { createProgram } = await import("../../cli.js");
+      await createProgram().parseAsync([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "tasks",
+        "login-frontend",
+        "--cursor",
+        "xuvkgfq9t0ty",
+        "--limit",
+        "10",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.tasks?identifier=login-frontend&cursor=xuvkgfq9t0ty&limit=10",
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("rejects a non-positive --limit", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "entities",
+        "tasks",
+        "login-frontend",
+        "--limit",
+        "0",
+      ]);
+
+      expect(stderrWrites.join("")).toContain(
+        "--limit must be a positive integer",
+      );
+      expect(exitSpy).toHaveBeenCalledWith(2);
+    });
+  });
 });
