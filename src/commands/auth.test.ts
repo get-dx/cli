@@ -58,8 +58,8 @@ describe("auth commands", () => {
         ),
       );
 
-      const { createProgram } = await import("../cli.js");
-      await createProgram().parseAsync([
+      const { run } = await import("../cli.js");
+      await run([
         "node",
         "dx",
         "--json",
@@ -116,14 +116,8 @@ describe("auth commands", () => {
         ),
       );
 
-      const { createProgram } = await import("../cli.js");
-      await createProgram().parseAsync([
-        "node",
-        "dx",
-        "--json",
-        "auth",
-        "status",
-      ]);
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "--json", "auth", "status"]);
 
       expect(fetch).toHaveBeenCalledWith(
         "https://api.example.com/auth.info",
@@ -164,8 +158,8 @@ describe("auth commands", () => {
         ),
       );
 
-      const { createProgram } = await import("../cli.js");
-      await createProgram().parseAsync(["node", "dx", "auth", "status"]);
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "auth", "status"]);
 
       const output = writes.join("");
       expect(output).toContain(
@@ -220,8 +214,8 @@ describe("auth commands", () => {
         ),
       );
 
-      const { createProgram } = await import("../cli.js");
-      await createProgram().parseAsync(["node", "dx", "auth", "status"]);
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "auth", "status"]);
 
       if (originalDescriptor) {
         Object.defineProperty(process.stdout, "isTTY", originalDescriptor);
@@ -248,14 +242,8 @@ describe("auth commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      const { createProgram } = await import("../cli.js");
-      await createProgram().parseAsync([
-        "node",
-        "dx",
-        "--json",
-        "auth",
-        "logout",
-      ]);
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "--json", "auth", "logout"]);
 
       expect(deleteToken).toHaveBeenCalledWith("https://api.example.com");
       expect(writes.join("")).toContain('"logged_out": true');

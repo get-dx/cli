@@ -6,7 +6,15 @@ import { handleError } from "./commandHelpers.js";
 
 import cliPackage from "../package.json" with { type: "json" };
 
-export function createProgram(): Command {
+export async function run(argv = process.argv): Promise<void> {
+  try {
+    await createProgram().parseAsync(argv);
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+function createProgram(): Command {
   const program = new Command();
 
   program
@@ -28,12 +36,4 @@ export function createProgram(): Command {
   program.addCommand(catalogCommand());
 
   return program;
-}
-
-export async function run(argv = process.argv): Promise<void> {
-  try {
-    await createProgram().parseAsync(argv);
-  } catch (error) {
-    handleError(error);
-  }
 }
