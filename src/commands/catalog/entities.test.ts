@@ -400,6 +400,7 @@ describe("catalog entities commands", () => {
         "catalog",
         "entities",
         "create",
+        "--identifier",
         "my-service",
         "--type",
         "service",
@@ -438,6 +439,7 @@ describe("catalog entities commands", () => {
         "catalog",
         "entities",
         "create",
+        "--identifier",
         "my-service",
         "--type",
         "service",
@@ -482,6 +484,7 @@ describe("catalog entities commands", () => {
         "catalog",
         "entities",
         "create",
+        "--identifier",
         "my-service",
         "--type",
         "service",
@@ -502,7 +505,7 @@ describe("catalog entities commands", () => {
       );
     });
 
-    it("exits non-zero when --type is missing", async () => {
+    it("exits with code 2 when --identifier is missing", async () => {
       const stderrWrites: string[] = [];
       vi.spyOn(process.stderr, "write").mockImplementation(((
         chunk: string | Uint8Array,
@@ -515,7 +518,42 @@ describe("catalog entities commands", () => {
         .mockImplementation(() => undefined as never);
 
       const { run } = await import("../../cli.js");
-      await run(["node", "dx", "catalog", "entities", "create", "my-service"]);
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "entities",
+        "create",
+        "--type",
+        "service",
+      ]);
+
+      expect(stderrWrites.join("")).toContain("--identifier is required");
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+    });
+
+    it("exits with code 2 when --type is missing", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "entities",
+        "create",
+        "--identifier",
+        "my-service",
+      ]);
 
       expect(stderrWrites.join("")).toContain("--type is required");
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
