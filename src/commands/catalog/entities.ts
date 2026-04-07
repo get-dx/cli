@@ -591,6 +591,7 @@ export function parsePropertyValue(prop: Property, rawValue: string): unknown {
     case "slack_channel":
     case "msteams_channel":
     case "select":
+    case "user":
       return rawValue;
 
     case "number": {
@@ -614,7 +615,6 @@ export function parsePropertyValue(prop: Property, rawValue: string): unknown {
 
     case "multi_select":
     case "list":
-    case "user":
       return rawValue.split(",").map((s) => s.trim());
 
     case "json":
