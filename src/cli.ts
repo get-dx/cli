@@ -2,6 +2,7 @@ import { Command, Option } from "commander";
 
 import { authCommand } from "./commands/auth.js";
 import { catalogCommand } from "./commands/catalog.js";
+import { handleError } from "./commandHelpers.js";
 
 import cliPackage from "../package.json" with { type: "json" };
 
@@ -30,5 +31,9 @@ export function createProgram(): Command {
 }
 
 export async function run(argv = process.argv): Promise<void> {
-  await createProgram().parseAsync(argv);
+  try {
+    await createProgram().parseAsync(argv);
+  } catch (error) {
+    handleError(error);
+  }
 }

@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { CliError, HttpError } from "./errors.js";
+import { CliError, EXIT_CODES, HttpError } from "./errors.js";
 import { printJson } from "./output.js";
 import type { CliContext } from "./types.js";
 
@@ -54,6 +54,17 @@ export function handleError(error: unknown, command?: Command): never {
   }
 
   process.exit(error instanceof CliError ? error.exitCode : 1);
+}
+
+export function parsePositiveIntOption(value: string, flag: string): number {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1) {
+    throw new CliError(
+      `${flag} must be a positive integer`,
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+  return n;
 }
 
 type Example = {
