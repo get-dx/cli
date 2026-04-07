@@ -149,6 +149,93 @@ describe("scorecards commands", () => {
       expect(parsed.scorecard.levels).toHaveLength(3);
     });
 
+    it("filters fields with --include", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              JSON.stringify({ ok: true, scorecard: MOCK_SCORECARD }),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "scorecards",
+        "info",
+        "qjfj1a6cmit4",
+        "--include",
+        "core",
+      ]);
+
+      const out = writes.join("");
+      const parsed = JSON.parse(out);
+      expect(parsed.scorecard).toHaveProperty("id");
+      expect(parsed.scorecard).toHaveProperty("name");
+      expect(parsed.scorecard).not.toHaveProperty("checks");
+      expect(parsed.scorecard).not.toHaveProperty("admins");
+      expect(parsed.scorecard).not.toHaveProperty("editors");
+    });
+
+    it("rejects an invalid --include section", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              JSON.stringify({ ok: true, scorecard: MOCK_SCORECARD }),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "scorecards",
+        "info",
+        "qjfj1a6cmit4",
+        "--include",
+        "levels",
+      ]);
+
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+      expect(stderrWrites.join("")).toContain('Invalid --include "levels"');
+    });
+
     it("fails when no auth token is available", async () => {
       const stderrWrites: string[] = [];
       vi.spyOn(process.stderr, "write").mockImplementation(((
@@ -300,6 +387,86 @@ describe("scorecards commands", () => {
         "https://api.example.com/scorecards.list?include_unpublished=true",
         expect.objectContaining({ method: "GET" }),
       );
+    });
+
+    it("filters fields with --include across all scorecards", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              scorecards: [MOCK_SCORECARD],
+              response_metadata: { next_cursor: null },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "scorecards",
+        "list",
+        "--include",
+        "checks",
+      ]);
+
+      const out = writes.join("");
+      const parsed = JSON.parse(out);
+      expect(parsed.scorecards[0]).toHaveProperty("checks");
+      expect(parsed.scorecards[0]).not.toHaveProperty("name");
+      expect(parsed.scorecards[0]).not.toHaveProperty("admins");
+    });
+
+    it("rejects an invalid --include section", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              scorecards: [MOCK_SCORECARD],
+              response_metadata: { next_cursor: null },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "scorecards", "list", "--include", "levels"]);
+
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+      expect(stderrWrites.join("")).toContain('Invalid --include "levels"');
     });
 
     it("rejects an invalid --limit value", async () => {

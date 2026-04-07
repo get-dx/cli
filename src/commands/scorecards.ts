@@ -6,6 +6,7 @@ import {
   parsePositiveIntOption,
   wrapAction,
 } from "../commandHelpers.js";
+import { CliError, EXIT_CODES } from "../errors.js";
 import { request } from "../http.js";
 import { renderStructuredResponse } from "../renderers.js";
 import { buildRuntime } from "../runtime.js";
@@ -22,6 +23,10 @@ export function scorecardsCommand() {
       "Retrieve details about a specific scorecard, including its defined levels and checks",
     )
     .argument("<id>", "The unique ID of the scorecard")
+    .option(
+      "--include <include>",
+      "Show only these comma-separated sections: core, owners, checks",
+    )
     .addHelpText(
       "afterAll",
       createExampleText([
@@ -33,13 +38,26 @@ export function scorecardsCommand() {
           label: "Fetch scorecard info and return as JSON",
           command: "dx scorecards info qjfj1a6cmit4 --json",
         },
+        {
+          label: "Fetch only the core fields and checks",
+          command: "dx scorecards info qjfj1a6cmit4 --include core,checks",
+        },
       ]),
     )
     .action(
-      wrapAction(async (id, _options, command) => {
+      wrapAction(async (id, options, command) => {
         const runtime = buildRuntime(getContext(command));
         const response = await getScorecard(runtime, id);
-        renderStructuredResponse(response, runtime.context.json);
+        renderStructuredResponse(
+          {
+            ...response,
+            scorecard: processScorecardIncludes(
+              response.scorecard as Record<string, unknown>,
+              options,
+            ),
+          },
+          runtime.context.json,
+        );
       }),
     );
 
@@ -53,6 +71,10 @@ export function scorecardsCommand() {
     .option(
       "--include-unpublished",
       "Include draft scorecards in addition to published ones",
+    )
+    .option(
+      "--include <include>",
+      "Show only these comma-separated sections: core, owners, checks",
     )
     .addHelpText(
       "afterAll",
@@ -73,6 +95,10 @@ export function scorecardsCommand() {
           label: "Fetch the next page using a cursor from the prior response",
           command: "dx scorecards list --cursor xuvkgfq9t0ty",
         },
+        {
+          label: "List scorecards showing only core fields",
+          command: "dx scorecards list --include core",
+        },
       ]),
     )
     .action(
@@ -83,7 +109,15 @@ export function scorecardsCommand() {
           limit: options.limit,
           include_unpublished: options.includeUnpublished,
         });
-        renderStructuredResponse(response, runtime.context.json);
+        renderStructuredResponse(
+          {
+            ...response,
+            scorecards: response.scorecards.map((sc) =>
+              processScorecardIncludes(sc as Record<string, unknown>, options),
+            ),
+          },
+          runtime.context.json,
+        );
       }),
     );
 
@@ -218,4 +252,76 @@ export async function listScorecards(
   });
 
   return response as ListScorecardsResponse;
+}
+
+// --- Include helpers ---
+
+const SCORECARD_INCLUDE_SECTIONS = ["core", "owners", "checks"] as const;
+
+type ScorecardIncludeSection = (typeof SCORECARD_INCLUDE_SECTIONS)[number];
+
+const SCORECARD_SECTION_KEYS: Record<
+  ScorecardIncludeSection,
+  readonly string[]
+> = {
+  core: [
+    "id",
+    "name",
+    "description",
+    "type",
+    "published",
+    "entity_filter_type",
+    "entity_filter_sql",
+    "entity_filter_type_ids",
+    "tags",
+    "sql_errors",
+    "levels",
+    "empty_level_label",
+    "empty_level_color",
+    "check_groups",
+  ],
+  owners: ["admins", "editors"],
+  checks: ["checks"],
+};
+
+function processScorecardIncludes(
+  scorecard: Record<string, unknown>,
+  options: { include?: string },
+): Record<string, unknown> {
+  const sections = parseScorecardIncludeSections(options.include);
+
+  if (sections.length === 0) {
+    return scorecard;
+  }
+
+  const out: Record<string, unknown> = {};
+  for (const section of sections) {
+    for (const key of SCORECARD_SECTION_KEYS[section]) {
+      if (key in scorecard) {
+        out[key] = scorecard[key];
+      }
+    }
+  }
+  return out;
+}
+
+function parseScorecardIncludeSections(
+  include?: string,
+): ScorecardIncludeSection[] {
+  if (!include) {
+    return [];
+  }
+
+  const results = include.split(",");
+  for (const result of results) {
+    if (
+      !SCORECARD_INCLUDE_SECTIONS.includes(result as ScorecardIncludeSection)
+    ) {
+      throw new CliError(
+        `Invalid --include "${result}". Expected one of: ${SCORECARD_INCLUDE_SECTIONS.join(", ")}`,
+        EXIT_CODES.ARGUMENT_ERROR,
+      );
+    }
+  }
+  return results as ScorecardIncludeSection[];
 }
