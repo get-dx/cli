@@ -26,6 +26,10 @@ make            # install + build + link globally (default target)
 
 After making changes, run `make format` to auto-format code before verifying or committing.
 
+## Conventions
+
+- Commands within a file should be defined in alphabetical order (e.g. `create`, `delete`, `info`, `list`, `update`).
+
 ## Source Layout
 
 - `src/commands/` — one file per top-level command group (e.g. `auth.ts`, `catalog.ts`); subcommands live in a same-named subdirectory (e.g. `catalog/entities.ts`)
