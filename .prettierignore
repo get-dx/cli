@@ -5,3 +5,6 @@ coverage/
 
 # Ignore caches:
 .pnpm-store/
+
+# Ignore other internal configuration:
+.codex/
