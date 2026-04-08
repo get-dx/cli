@@ -217,11 +217,15 @@ export function entitiesCommand() {
           options.property as string[],
         );
 
-        const response = await upsertEntity(runtime, options.identifier as string, {
-          type: options.type as string,
-          ...getEntityMutationOptionValues(options),
-          properties,
-        });
+        const response = await upsertEntity(
+          runtime,
+          options.identifier as string,
+          {
+            type: options.type as string,
+            ...getEntityMutationOptionValues(options),
+            properties,
+          },
+        );
 
         renderStructuredResponse(response, runtime.context.json);
       }),

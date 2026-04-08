@@ -1835,13 +1835,7 @@ describe("catalog entities commands", () => {
         .mockImplementation(() => undefined as never);
 
       const { run } = await import("../../cli.js");
-      await run([
-        "node",
-        "dx",
-        "catalog",
-        "entities",
-        "upsert",
-      ]);
+      await run(["node", "dx", "catalog", "entities", "upsert"]);
 
       expect(stderrWrites.join("")).toContain("--type is required");
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
