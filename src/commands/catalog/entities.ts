@@ -163,8 +163,11 @@ export function entitiesCommand() {
     .description(
       "Create a new entity in your software catalog, or update it if it already exists",
     )
-    .argument("<identifier>", "Entity identifier")
     .option("--type <type>", "Entity type identifier (required)")
+    .option(
+      "--identifier <identifier>",
+      "Unique identifier for the entity (required)",
+    )
     .option("--name <name>", "Display name of the entity")
     .option("--description <desc>", "Description of the entity")
     .option("--owner-team-ids <ids>", "Comma-separated owner team IDs")
@@ -181,24 +184,30 @@ export function entitiesCommand() {
         {
           label: "Create a new service entity if it does not exist",
           command:
-            "dx catalog entities upsert my-service --type service --name 'My Service'",
+            "dx catalog entities upsert --type service --identifier my-service --name 'My Service'",
         },
         {
           label: "Update owners and return JSON",
           command:
-            "dx catalog entities upsert my-service --type service --owner-team-ids MzI1NTA,MzI1NTk --json",
+            "dx catalog entities upsert --type service --identifier my-service --owner-team-ids MzI1NTA,MzI1NTk --json",
         },
         {
           label: "Set properties while preserving omitted fields",
           command:
-            'dx catalog entities upsert my-service --type service --property tier=Tier-1 --property "languages=Ruby,TypeScript"',
+            'dx catalog entities upsert --type service --identifier my-service --property tier=Tier-1 --property "languages=Ruby,TypeScript"',
         },
       ]),
     )
     .action(
-      wrapAction(async (identifier, options, command) => {
+      wrapAction(async (options, command) => {
         if (!options.type) {
           throw new CliError("--type is required", EXIT_CODES.ARGUMENT_ERROR);
+        }
+        if (!options.identifier) {
+          throw new CliError(
+            "--identifier is required",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
         }
 
         const runtime = buildRuntime(getContext(command));
@@ -208,7 +217,7 @@ export function entitiesCommand() {
           options.property as string[],
         );
 
-        const response = await upsertEntity(runtime, identifier as string, {
+        const response = await upsertEntity(runtime, options.identifier as string, {
           type: options.type as string,
           ...getEntityMutationOptionValues(options),
           properties,

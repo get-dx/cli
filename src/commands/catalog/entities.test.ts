@@ -1734,9 +1734,10 @@ describe("catalog entities commands", () => {
         "catalog",
         "entities",
         "upsert",
-        "my-service",
         "--type",
         "service",
+        "--identifier",
+        "my-service",
         "--name",
         "My Service",
       ]);
@@ -1791,9 +1792,10 @@ describe("catalog entities commands", () => {
         "catalog",
         "entities",
         "upsert",
-        "my-service",
         "--type",
         "service",
+        "--identifier",
+        "my-service",
         "--property",
         "tier=Tier-1",
         "--owner-team-ids",
@@ -1839,10 +1841,36 @@ describe("catalog entities commands", () => {
         "catalog",
         "entities",
         "upsert",
-        "my-service",
       ]);
 
       expect(stderrWrites.join("")).toContain("--type is required");
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+    });
+
+    it("exits with code 2 when --identifier is missing", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "entities",
+        "upsert",
+        "--type",
+        "service",
+      ]);
+
+      expect(stderrWrites.join("")).toContain("--identifier is required");
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
 
@@ -1880,9 +1908,10 @@ describe("catalog entities commands", () => {
         "catalog",
         "entities",
         "upsert",
-        "my-service",
         "--type",
         "service",
+        "--identifier",
+        "my-service",
         "--property",
         "unknown-prop=value",
       ]);
