@@ -150,14 +150,67 @@ export function entitiesCommand() {
         );
 
         const response = await updateEntity(runtime, identifier as string, {
-          name: options.name,
-          description: options.description,
-          owner_team_ids: options.ownerTeamIds
-            ?.split(",")
-            .map((s: string) => s.trim()),
-          owner_user_ids: options.ownerUserIds
-            ?.split(",")
-            .map((s: string) => s.trim()),
+          ...getEntityMutationOptionValues(options),
+          properties,
+        });
+
+        renderStructuredResponse(response, runtime.context.json);
+      }),
+    );
+
+  entities
+    .command("upsert")
+    .description(
+      "Create a new entity in your software catalog, or update it if it already exists",
+    )
+    .argument("<identifier>", "Entity identifier")
+    .option("--type <type>", "Entity type identifier (required)")
+    .option("--name <name>", "Display name of the entity")
+    .option("--description <desc>", "Description of the entity")
+    .option("--owner-team-ids <ids>", "Comma-separated owner team IDs")
+    .option("--owner-user-ids <ids>", "Comma-separated owner user IDs")
+    .option(
+      "--property <kv>",
+      "Set a property value as key=value. Repeat for multiple properties. Use value null to remove a property.",
+      (val: string, prev: string[]) => [...prev, val],
+      [] as string[],
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Create a new service entity if it does not exist",
+          command:
+            "dx catalog entities upsert my-service --type service --name 'My Service'",
+        },
+        {
+          label: "Update owners and return JSON",
+          command:
+            "dx catalog entities upsert my-service --type service --owner-team-ids MzI1NTA,MzI1NTk --json",
+        },
+        {
+          label: "Set properties while preserving omitted fields",
+          command:
+            'dx catalog entities upsert my-service --type service --property tier=Tier-1 --property "languages=Ruby,TypeScript"',
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (identifier, options, command) => {
+        if (!options.type) {
+          throw new CliError("--type is required", EXIT_CODES.ARGUMENT_ERROR);
+        }
+
+        const runtime = buildRuntime(getContext(command));
+        const properties = await resolvePropertiesForEntityType(
+          runtime,
+          options.type as string,
+          options.property as string[],
+        );
+
+        const response = await upsertEntity(runtime, identifier as string, {
+          type: options.type as string,
+          ...getEntityMutationOptionValues(options),
           properties,
         });
 
@@ -419,33 +472,7 @@ type CreateEntityParams = {
   properties?: Record<string, unknown>;
 };
 
-async function createEntity(
-  runtime: Runtime,
-  identifier: string,
-  params: CreateEntityParams,
-): Promise<{ ok: true; entity: Entity }> {
-  const body: Record<string, unknown> = {
-    identifier,
-    type: params.type,
-  };
-  if (params.name !== undefined) body.name = params.name;
-  if (params.description !== undefined) body.description = params.description;
-  if (params.owner_team_ids?.length)
-    body.owner_team_ids = params.owner_team_ids;
-  if (params.owner_user_ids?.length)
-    body.owner_user_ids = params.owner_user_ids;
-  if (params.properties !== undefined) body.properties = params.properties;
-
-  const response = await request(runtime.baseUrl, "/catalog.entities.create", {
-    ...requestOptions(runtime),
-    method: "POST",
-    body,
-  });
-
-  return { ok: true, entity: response.entity as Entity };
-}
-
-type UpdateEntityParams = {
+type EntityMutationOptionValues = {
   name?: string;
   description?: string;
   owner_team_ids?: string[];
@@ -453,27 +480,60 @@ type UpdateEntityParams = {
   properties?: Record<string, unknown>;
 };
 
+async function createEntity(
+  runtime: Runtime,
+  identifier: string,
+  params: CreateEntityParams,
+): Promise<{ ok: true; entity: Entity }> {
+  const response = await request(runtime.baseUrl, "/catalog.entities.create", {
+    ...requestOptions(runtime),
+    method: "POST",
+    body: buildEntityMutationBody(identifier, params),
+  });
+
+  return { ok: true, entity: response.entity as Entity };
+}
+
+type UpdateEntityParams = EntityMutationOptionValues;
+
 async function updateEntity(
   runtime: Runtime,
   identifier: string,
   params: UpdateEntityParams,
 ): Promise<{ ok: true; entity: Entity }> {
-  const body: Record<string, unknown> = { identifier };
-  if (params.name !== undefined) body.name = params.name;
-  if (params.description !== undefined) body.description = params.description;
-  if (params.owner_team_ids?.length)
-    body.owner_team_ids = params.owner_team_ids;
-  if (params.owner_user_ids?.length)
-    body.owner_user_ids = params.owner_user_ids;
-  if (params.properties !== undefined) body.properties = params.properties;
-
   const response = await request(runtime.baseUrl, "/catalog.entities.update", {
     ...requestOptions(runtime),
     method: "POST",
-    body,
+    body: buildEntityMutationBody(identifier, params),
   });
 
   return { ok: true, entity: response.entity as Entity };
+}
+
+type UpsertEntityParams = CreateEntityParams;
+
+type UpsertEntityResponse = {
+  ok: true;
+  result: string;
+  entity: Entity;
+};
+
+async function upsertEntity(
+  runtime: Runtime,
+  identifier: string,
+  params: UpsertEntityParams,
+): Promise<UpsertEntityResponse> {
+  const response = await request(runtime.baseUrl, "/catalog.entities.upsert", {
+    ...requestOptions(runtime),
+    method: "POST",
+    body: buildEntityMutationBody(identifier, params),
+  });
+
+  return {
+    ok: true,
+    result: response.result as string,
+    entity: response.entity as Entity,
+  };
 }
 
 type GetEntityScorecardsParams = {
@@ -799,6 +859,53 @@ async function resolvePropertiesForExistingEntity(
     entityResponse.entity.type,
     rawProperties,
   );
+}
+
+function getEntityMutationOptionValues(options: {
+  name?: string;
+  description?: string;
+  ownerTeamIds?: string;
+  ownerUserIds?: string;
+}): EntityMutationOptionValues {
+  return {
+    name: options.name,
+    description: options.description,
+    owner_team_ids: parseCommaSeparatedIds(options.ownerTeamIds),
+    owner_user_ids: parseCommaSeparatedIds(options.ownerUserIds),
+  };
+}
+
+function parseCommaSeparatedIds(value?: string): string[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  return parsed.length > 0 ? parsed : undefined;
+}
+
+function buildEntityMutationBody(
+  identifier: string,
+  params: CreateEntityParams | UpdateEntityParams,
+): Record<string, unknown> {
+  const body: Record<string, unknown> = { identifier };
+
+  if ("type" in params && params.type !== undefined) {
+    body.type = params.type;
+  }
+  if (params.name !== undefined) body.name = params.name;
+  if (params.description !== undefined) body.description = params.description;
+  if (params.owner_team_ids?.length)
+    body.owner_team_ids = params.owner_team_ids;
+  if (params.owner_user_ids?.length)
+    body.owner_user_ids = params.owner_user_ids;
+  if (params.properties !== undefined) body.properties = params.properties;
+
+  return body;
 }
 
 function wrapEntityTypeLookupError(
