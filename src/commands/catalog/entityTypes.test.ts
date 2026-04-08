@@ -26,6 +26,56 @@ afterEach(() => {
 });
 
 describe("catalog entityTypes commands", () => {
+  describe("delete", () => {
+    it("deletes an entity type", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              entity_type: {
+                identifier: "service",
+                name: "Service",
+              },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entityTypes",
+        "delete",
+        "service",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entityTypes.delete?identifier=service",
+        expect.objectContaining({ method: "POST" }),
+      );
+      const out = writes.join("");
+      expect(out).toContain('"identifier": "service"');
+      expect(out).toContain('"name": "Service"');
+    });
+  });
+
   describe("info", () => {
     it("fetches entity type info", async () => {
       const writes: string[] = [];

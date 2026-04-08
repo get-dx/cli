@@ -18,6 +18,32 @@ export function entityTypesCommand() {
     .description("Manage catalog entity types");
 
   entityTypes
+    .command("delete")
+    .description("Delete an entity type from your software catalog")
+    .argument("<identifier>", "Entity type identifier")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Delete the `service` entity type",
+          command: "dx catalog entityTypes delete service",
+        },
+        {
+          label: "Delete an entity type and return JSON",
+          command: "dx catalog entityTypes delete service --json",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (identifier, _options, command) => {
+        const runtime = buildRuntime(getContext(command));
+        const response = await deleteEntityType(runtime, identifier);
+
+        renderStructuredResponse(response, runtime.context.json);
+      }),
+    );
+
+  entityTypes
     .command("info")
     .argument("<identifier>", "Entity type identifier")
     .option(
@@ -142,6 +168,11 @@ type GetEntityTypeResponse = {
   entity_type: EntityType;
 };
 
+type DeleteEntityTypeResponse = {
+  ok: true;
+  entity_type: EntityType;
+};
+
 type EntityType = {
   identifier: string;
   name: string | null;
@@ -194,6 +225,23 @@ export async function getEntityType(
   });
 
   return response as GetEntityTypeResponse;
+}
+
+async function deleteEntityType(
+  runtime: Runtime,
+  identifier: string,
+): Promise<DeleteEntityTypeResponse> {
+  const response = await request(
+    runtime.baseUrl,
+    "/catalog.entityTypes.delete",
+    {
+      ...requestOptions(runtime),
+      method: "POST",
+      query: { identifier },
+    },
+  );
+
+  return response as DeleteEntityTypeResponse;
 }
 
 async function listEntityTypes(
