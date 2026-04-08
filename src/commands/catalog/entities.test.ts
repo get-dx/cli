@@ -1339,6 +1339,102 @@ describe("catalog entities commands", () => {
     });
   });
 
+  describe("delete", () => {
+    const mockEntity = {
+      identifier: "login-frontend",
+      name: "Login Frontend",
+      type: "service",
+      created_at: "2025-01-02T20:48:45.779Z",
+      updated_at: "2025-01-02T20:48:45.779Z",
+      description: "Frontend for authentication flows",
+      owner_teams: [],
+      owner_users: [],
+      properties: {},
+      aliases: {},
+    };
+
+    it("deletes an entity and outputs the result", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+            status: 200,
+          }),
+        ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "entities",
+        "delete",
+        "login-frontend",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.delete?identifier=login-frontend",
+        expect.objectContaining({
+          method: "POST",
+        }),
+      );
+      const out = writes.join("");
+      expect(out).toContain("login-frontend");
+      expect(out).toContain("Login Frontend");
+    });
+
+    it("returns machine-readable JSON with --json", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+            status: 200,
+          }),
+        ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "delete",
+        "login-frontend",
+      ]);
+
+      expect(JSON.parse(writes.join(""))).toEqual({
+        ok: true,
+        entity: mockEntity,
+      });
+    });
+
+  });
+
   describe("update", () => {
     const mockEntity = {
       identifier: "my-service",

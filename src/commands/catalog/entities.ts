@@ -166,6 +166,32 @@ export function entitiesCommand() {
     );
 
   entities
+    .command("delete")
+    .description("Delete an entity from your software catalog")
+    .argument("<identifier>", "Entity identifier")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Delete the `login-frontend` entity",
+          command: "dx catalog entities delete login-frontend",
+        },
+        {
+          label: "Delete an entity and return JSON",
+          command: "dx catalog entities delete login-frontend --json",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (identifier, _options, command) => {
+        const runtime = buildRuntime(getContext(command));
+        const response = await deleteEntity(runtime, identifier);
+
+        renderStructuredResponse(response, runtime.context.json);
+      }),
+    );
+
+  entities
     .command("info")
     .argument("<identifier>", "Entity identifier")
     .option(
@@ -471,6 +497,19 @@ async function updateEntity(
     ...requestOptions(runtime),
     method: "POST",
     body,
+  });
+
+  return { ok: true, entity: response.entity as Entity };
+}
+
+async function deleteEntity(
+  runtime: Runtime,
+  identifier: string,
+): Promise<{ ok: true; entity: Entity }> {
+  const response = await request(runtime.baseUrl, "/catalog.entities.delete", {
+    ...requestOptions(runtime),
+    method: "POST",
+    query: { identifier },
   });
 
   return { ok: true, entity: response.entity as Entity };
