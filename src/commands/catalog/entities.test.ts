@@ -1432,7 +1432,6 @@ describe("catalog entities commands", () => {
         entity: mockEntity,
       });
     });
-
   });
 
   describe("update", () => {
