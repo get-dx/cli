@@ -107,6 +107,32 @@ export function entitiesCommand() {
     );
 
   entities
+    .command("delete")
+    .description("Delete an entity from your software catalog")
+    .argument("<identifier>", "Entity identifier")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Delete the `login-frontend` entity",
+          command: "dx catalog entities delete login-frontend",
+        },
+        {
+          label: "Delete an entity and return JSON",
+          command: "dx catalog entities delete login-frontend --json",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (identifier, _options, command) => {
+        const runtime = buildRuntime(getContext(command));
+        const response = await deleteEntity(runtime, identifier);
+
+        renderStructuredResponse(response, runtime.context.json);
+      }),
+    );
+
+  entities
     .command("update")
     .description("Update an entity in your software catalog")
     .argument("<identifier>", "Entity identifier")
@@ -153,32 +179,6 @@ export function entitiesCommand() {
           ...getEntityMutationOptionValues(options),
           properties,
         });
-
-        renderStructuredResponse(response, runtime.context.json);
-      }),
-    );
-
-  entities
-    .command("delete")
-    .description("Delete an entity from your software catalog")
-    .argument("<identifier>", "Entity identifier")
-    .addHelpText(
-      "afterAll",
-      createExampleText([
-        {
-          label: "Delete the `login-frontend` entity",
-          command: "dx catalog entities delete login-frontend",
-        },
-        {
-          label: "Delete an entity and return JSON",
-          command: "dx catalog entities delete login-frontend --json",
-        },
-      ]),
-    )
-    .action(
-      wrapAction(async (identifier, _options, command) => {
-        const runtime = buildRuntime(getContext(command));
-        const response = await deleteEntity(runtime, identifier);
 
         renderStructuredResponse(response, runtime.context.json);
       }),
