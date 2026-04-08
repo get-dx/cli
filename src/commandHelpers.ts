@@ -33,7 +33,7 @@ export function handleError(error: unknown, command?: Command): never {
       printJson({
         ok: false,
         error: error.message,
-        status: error.status,
+        http_status: error.status,
         body: error.body,
       });
     } else if (error instanceof CliError) {
@@ -48,9 +48,15 @@ export function handleError(error: unknown, command?: Command): never {
       });
     }
   } else {
-    process.stderr.write(
-      `${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    if (error instanceof HttpError) {
+      process.stderr.write(
+        `The API returned an error with status code ${error.status}:\n\n${JSON.stringify(error.body, null, 2)}\n`,
+      );
+    } else {
+      process.stderr.write(
+        `${error instanceof Error ? error.message : String(error)}\n`,
+      );
+    }
   }
 
   process.exit(error instanceof CliError ? error.exitCode : 1);
