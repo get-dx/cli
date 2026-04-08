@@ -24,6 +24,8 @@ make            # install + build + link globally (default target)
 
 `make verify` runs `format-check`, `typecheck`, `lint`, and `test` — run this before committing.
 
+After making changes, run `make format` to auto-format code before verifying or committing.
+
 ## Source Layout
 
 - `src/commands/` — one file per top-level command group (e.g. `auth.ts`, `catalog.ts`); subcommands live in a same-named subdirectory (e.g. `catalog/entities.ts`)
