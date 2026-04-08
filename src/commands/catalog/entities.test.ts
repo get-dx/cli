@@ -587,7 +587,7 @@ describe("catalog entities commands", () => {
       ]);
 
       expect(stderrWrites.join("")).toContain(
-        'Unknown property "unknown-prop"',
+        "Unknown property `unknown-prop`",
       );
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
@@ -1746,7 +1746,7 @@ describe("catalog entities commands", () => {
       ]);
 
       expect(stderrWrites.join("")).toContain(
-        'Unknown property "unknown-prop"',
+        "Unknown property `unknown-prop`",
       );
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
@@ -2006,7 +2006,7 @@ describe("catalog entities commands", () => {
       ]);
 
       expect(stderrWrites.join("")).toContain(
-        'Unknown property "unknown-prop"',
+        "Unknown property `unknown-prop`",
       );
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });

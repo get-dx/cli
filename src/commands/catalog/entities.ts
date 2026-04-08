@@ -724,6 +724,7 @@ async function getEntityTasks(
 // --- Property parsing helpers ---
 
 export function parseEntityProperties(
+  entityTypeIdentifier: string,
   rawProperties: string[],
   knownProperties: Property[],
 ): Record<string, unknown> {
@@ -743,8 +744,12 @@ export function parseEntityProperties(
 
     const prop = propMap.get(key);
     if (!prop) {
+      const availableProperties = Array.from(propMap.keys())
+        .sort()
+        .map((k) => `\`${k}\``)
+        .join(", ");
       throw new CliError(
-        `Unknown property "${key}". Available properties: ${[...propMap.keys()].join(", ") || "(none)"}`,
+        `Unknown property \`${key}\` for entity type \`${entityTypeIdentifier}\`. Available properties: ${availableProperties || "(none)"}`,
         EXIT_CODES.ARGUMENT_ERROR,
       );
     }
@@ -878,6 +883,7 @@ async function resolvePropertiesForEntityType(
   }
 
   return parseEntityProperties(
+    entityTypeIdentifier,
     rawProperties,
     entityTypeResponse.entity_type.properties,
   );
