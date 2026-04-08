@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := reinstall
 
-.PHONY: reinstall install deps build link test lint typecheck verify format format-check
+.PHONY: reinstall install deps build link test lint typecheck verify format format-check dev
 
 reinstall: deps build link
 
@@ -31,3 +31,6 @@ format:
 
 format-check:
 	pnpm format:check
+
+dev:
+	watchexec --clear=reset --watch src/ make

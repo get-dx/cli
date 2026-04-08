@@ -80,31 +80,11 @@ export function entitiesCommand() {
         }
         const runtime = buildRuntime(getContext(command));
 
-        let properties: Record<string, unknown> | undefined;
-        if ((options.property as string[]).length > 0) {
-          let entityTypeResponse;
-          try {
-            entityTypeResponse = await getEntityType(
-              runtime,
-              options.type as string,
-            );
-          } catch (err) {
-            const exitCode =
-              err instanceof HttpError &&
-              err.status !== undefined &&
-              err.status < 500
-                ? EXIT_CODES.ARGUMENT_ERROR
-                : EXIT_CODES.RETRY_RECOMMENDED;
-            throw new CliError(
-              `Failed to fetch entity type "${options.type as string}" to resolve property types: ${err instanceof Error ? err.message : String(err)}`,
-              exitCode,
-            );
-          }
-          properties = parseEntityProperties(
-            options.property as string[],
-            entityTypeResponse.entity_type.properties,
-          );
-        }
+        const properties = await resolvePropertiesForEntityType(
+          runtime,
+          options.type as string,
+          options.property as string[],
+        );
 
         const response = await createEntity(
           runtime,
@@ -122,6 +102,65 @@ export function entitiesCommand() {
             properties,
           },
         );
+        renderStructuredResponse(response, runtime.context.json);
+      }),
+    );
+
+  entities
+    .command("update")
+    .description("Update an entity in your software catalog")
+    .argument("<identifier>", "Entity identifier")
+    .option("--name <name>", "Display name of the entity")
+    .option("--description <desc>", "Description of the entity")
+    .option("--owner-team-ids <ids>", "Comma-separated owner team IDs")
+    .option("--owner-user-ids <ids>", "Comma-separated owner user IDs")
+    .option(
+      "--property <kv>",
+      "Set a property value as key=value. Repeat for multiple properties. Use value null to remove a property.",
+      (val: string, prev: string[]) => [...prev, val],
+      [] as string[],
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Rename an entity",
+          command: 'dx catalog entities update my-service --name "My Service"',
+        },
+        {
+          label: "Update owners and return JSON",
+          command:
+            "dx catalog entities update my-service --owner-team-ids MzI1NTA,MzI1NTk --json",
+        },
+        {
+          label: "Update properties",
+          command:
+            'dx catalog entities update my-service --property tier=Tier-1 --property "languages=Ruby,TypeScript"',
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (identifier, options, command) => {
+        const runtime = buildRuntime(getContext(command));
+
+        const properties = await resolvePropertiesForExistingEntity(
+          runtime,
+          identifier as string,
+          options.property as string[],
+        );
+
+        const response = await updateEntity(runtime, identifier as string, {
+          name: options.name,
+          description: options.description,
+          owner_team_ids: options.ownerTeamIds
+            ?.split(",")
+            .map((s: string) => s.trim()),
+          owner_user_ids: options.ownerUserIds
+            ?.split(",")
+            .map((s: string) => s.trim()),
+          properties,
+        });
+
         renderStructuredResponse(response, runtime.context.json);
       }),
     );
@@ -406,6 +445,37 @@ async function createEntity(
   return { ok: true, entity: response.entity as Entity };
 }
 
+type UpdateEntityParams = {
+  name?: string;
+  description?: string;
+  owner_team_ids?: string[];
+  owner_user_ids?: string[];
+  properties?: Record<string, unknown>;
+};
+
+async function updateEntity(
+  runtime: Runtime,
+  identifier: string,
+  params: UpdateEntityParams,
+): Promise<{ ok: true; entity: Entity }> {
+  const body: Record<string, unknown> = { identifier };
+  if (params.name !== undefined) body.name = params.name;
+  if (params.description !== undefined) body.description = params.description;
+  if (params.owner_team_ids?.length)
+    body.owner_team_ids = params.owner_team_ids;
+  if (params.owner_user_ids?.length)
+    body.owner_user_ids = params.owner_user_ids;
+  if (params.properties !== undefined) body.properties = params.properties;
+
+  const response = await request(runtime.baseUrl, "/catalog.entities.update", {
+    ...requestOptions(runtime),
+    method: "POST",
+    body,
+  });
+
+  return { ok: true, entity: response.entity as Entity };
+}
+
 type GetEntityScorecardsParams = {
   cursor?: string;
   limit?: number;
@@ -654,15 +724,6 @@ function processIncludes(
     return response;
   }
 
-  for (const section of includeSections) {
-    if (!ENTITY_INCLUDE_SECTIONS.includes(section)) {
-      throw new CliError(
-        `Invalid --include "${section}". Expected one of: ${ENTITY_INCLUDE_SECTIONS.join(", ")}`,
-        EXIT_CODES.ARGUMENT_ERROR,
-      );
-    }
-  }
-
   const sections = uniqueSectionsInOrder(includeSections);
   const entity = redactEntityByInclude(
     response.entity as Record<string, unknown>,
@@ -686,6 +747,73 @@ function parseIncludeSections(include?: string): EntityIncludeSection[] {
     }
   }
   return results as EntityIncludeSection[];
+}
+
+async function resolvePropertiesForEntityType(
+  runtime: Runtime,
+  entityTypeIdentifier: string,
+  rawProperties: string[],
+): Promise<Record<string, unknown> | undefined> {
+  if (rawProperties.length === 0) {
+    return undefined;
+  }
+
+  let entityTypeResponse;
+  try {
+    entityTypeResponse = await getEntityType(runtime, entityTypeIdentifier);
+  } catch (err) {
+    throw wrapEntityTypeLookupError(entityTypeIdentifier, err);
+  }
+
+  return parseEntityProperties(
+    rawProperties,
+    entityTypeResponse.entity_type.properties,
+  );
+}
+
+async function resolvePropertiesForExistingEntity(
+  runtime: Runtime,
+  identifier: string,
+  rawProperties: string[],
+): Promise<Record<string, unknown> | undefined> {
+  if (rawProperties.length === 0) {
+    return undefined;
+  }
+
+  let entityResponse;
+  try {
+    entityResponse = await getEntity(runtime, identifier);
+  } catch (err) {
+    const exitCode =
+      err instanceof HttpError && err.status !== undefined && err.status < 500
+        ? EXIT_CODES.ARGUMENT_ERROR
+        : EXIT_CODES.RETRY_RECOMMENDED;
+    throw new CliError(
+      `Failed to fetch entity "${identifier}" to resolve property types: ${err instanceof Error ? err.message : String(err)}`,
+      exitCode,
+    );
+  }
+
+  return resolvePropertiesForEntityType(
+    runtime,
+    entityResponse.entity.type,
+    rawProperties,
+  );
+}
+
+function wrapEntityTypeLookupError(
+  entityTypeIdentifier: string,
+  err: unknown,
+): CliError {
+  const exitCode =
+    err instanceof HttpError && err.status !== undefined && err.status < 500
+      ? EXIT_CODES.ARGUMENT_ERROR
+      : EXIT_CODES.RETRY_RECOMMENDED;
+
+  return new CliError(
+    `Failed to fetch entity type "${entityTypeIdentifier}" to resolve property types: ${err instanceof Error ? err.message : String(err)}`,
+    exitCode,
+  );
 }
 
 function uniqueSectionsInOrder(

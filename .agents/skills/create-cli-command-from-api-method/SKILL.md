@@ -56,6 +56,7 @@ If `--help` does not show the expected description or `afterAll` examples (once 
 ### HTTP and API layer
 
 - Add a small typed (or pragmatically typed) function in `src/api.ts` that calls `request()` from `src/http.js` with the correct **method**, **path**, **query**, and **body** as in the docs **Facts** / **Example request**.
+- The API response typically has one field that is the most important, like `entity` for `GetEntityTypeResponse`. Define or reuse a named type to represent this object rather than `unknown`. If the shape is unclear, search on the [API object types](https://docs.getdx.com/webapi/object-types/) page to get more information.
 - Path shape matches the API: leading slash + method name with dots, e.g. `/catalog.entities.info`, `/catalog.entityTypes.list` (match the documented path; preserve camelCase as in the official method name when the docs show it).
 - Build the `query` object in the API helper: only set keys the caller provided; leave omitted keys out of the query object so optional parameters default on the server (e.g. do not send `limit` unless the user passed `--limit`).
 
