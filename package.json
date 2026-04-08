@@ -16,8 +16,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "dev": "watchexec --clear=reset --watch src/ --watch test/ make"
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "commander": "^14.0.1"

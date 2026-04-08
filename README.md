@@ -27,13 +27,6 @@ Deferred in this repo version:
 - `dx workflows trigger`
 - `dx studio query`
 
-## Development
+## Developing the CLI
 
-```bash
-make
-pnpm install
-pnpm build
-pnpm test
-```
-
-`make` runs the local reinstall flow: `pnpm install`, `pnpm build`, and `pnpm link --global`.
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
