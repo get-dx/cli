@@ -1,4 +1,5 @@
 import { printHuman, printJson } from "./output.js";
+import { BlockContent } from "./ui.js";
 
 export function renderAuthInfo(
   response: unknown,
@@ -52,6 +53,15 @@ export function renderStructuredResponse(
   }
 
   printHuman(response);
+}
+
+export function renderRichText(blocks: BlockContent[]): void {
+  const renderedBlocks = [];
+  for (const block of blocks) {
+    const blockContent = block.render();
+    renderedBlocks.push(blockContent);
+  }
+  process.stdout.write(renderedBlocks.join("\n"));
 }
 
 export function maskToken(token: string | null): string | null {
