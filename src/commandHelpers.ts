@@ -31,14 +31,13 @@ export function handleError(
   command?: Command,
   argv?: string[],
 ): never {
-  const context = inferContext(command, argv);
-
   if (error instanceof CommanderError && error.exitCode === 0) {
     // help or version was displayed.
     // Commander already printed the output, so just exit cleanly.
     process.exit(0);
   }
 
+  const context = inferContext(command, argv);
   if (context.json) {
     if (error instanceof HttpError) {
       printJson({
