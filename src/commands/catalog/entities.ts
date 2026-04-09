@@ -748,8 +748,10 @@ export function parseEntityProperties(
         .sort()
         .map((k) => `\`${k}\``)
         .join(", ");
+      const availablePropertiesText =
+        availableProperties.length > 0 ? availableProperties : "(none)";
       throw new CliError(
-        `Unknown property \`${key}\` for entity type \`${entityTypeIdentifier}\`. Available properties: ${availableProperties || "(none)"}`,
+        `Unknown property \`${key}\` for entity type \`${entityTypeIdentifier}\`. Available properties: ${availablePropertiesText}`,
         EXIT_CODES.ARGUMENT_ERROR,
       );
     }
