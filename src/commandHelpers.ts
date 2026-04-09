@@ -80,7 +80,8 @@ export function handleError(
     } else if (error instanceof CommanderError) {
       return EXIT_CODES.ARGUMENT_ERROR;
     } else {
-      return EXIT_CODES.RETRY_RECOMMENDED;
+      // Should be unreachable
+      return 1;
     }
   })();
 
