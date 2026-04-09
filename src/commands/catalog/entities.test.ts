@@ -895,6 +895,28 @@ describe("catalog entities commands", () => {
       expect(headers.get("X-DX-Agent-Name")).toBe("codex");
       expect(headers.get("X-DX-Agent-Session-Id")).toBe("session-123");
     });
+
+    it("exits with code 2 when the identifier is missing", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      const { run } = await import("../../cli.js");
+      await run(["node", "dx", "--json", "catalog", "entities", "info"]);
+
+      expect(JSON.parse(writes.join(""))).toMatchObject({
+        ok: false,
+        error: "identifier is required",
+      });
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+    });
   });
 
   describe("list", () => {
