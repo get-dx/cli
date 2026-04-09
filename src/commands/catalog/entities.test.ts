@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import { EXIT_CODES } from "../../errors.js";
 
 const setToken = vi.fn();
@@ -587,7 +588,7 @@ describe("catalog entities commands", () => {
       ]);
 
       expect(stderrWrites.join("")).toContain(
-        'Unknown property "unknown-prop"',
+        "Unknown property `unknown-prop`",
       );
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
@@ -895,6 +896,28 @@ describe("catalog entities commands", () => {
       expect(headers.get("X-DX-Agent-Name")).toBe("codex");
       expect(headers.get("X-DX-Agent-Session-Id")).toBe("session-123");
     });
+
+    it("exits with code 2 when the identifier is missing", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      const { run } = await import("../../cli.js");
+      await run(["node", "dx", "--json", "catalog", "entities", "info"]);
+
+      expect(JSON.parse(writes.join(""))).toMatchObject({
+        ok: false,
+        error: "missing required argument 'identifier'",
+      });
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+    });
   });
 
   describe("list", () => {
@@ -1062,7 +1085,7 @@ describe("catalog entities commands", () => {
       expect(stderrWrites.join("")).toContain(
         "--limit must be a positive integer",
       );
-      expect(exitSpy).toHaveBeenCalledWith(2);
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
   });
 
@@ -1194,7 +1217,7 @@ describe("catalog entities commands", () => {
       expect(stderrWrites.join("")).toContain(
         "--limit must be a positive integer",
       );
-      expect(exitSpy).toHaveBeenCalledWith(2);
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
   });
 
@@ -1335,7 +1358,7 @@ describe("catalog entities commands", () => {
       expect(stderrWrites.join("")).toContain(
         "--limit must be a positive integer",
       );
-      expect(exitSpy).toHaveBeenCalledWith(2);
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
   });
 
@@ -1680,7 +1703,7 @@ describe("catalog entities commands", () => {
       );
     });
 
-    it("exits with code 1 when the identifier argument is missing", async () => {
+    it("exits with code 2 when the identifier argument is missing", async () => {
       const stderrWrites: string[] = [];
       vi.spyOn(process.stderr, "write").mockImplementation(((
         chunk: string | Uint8Array,
@@ -1698,7 +1721,7 @@ describe("catalog entities commands", () => {
       expect(stderrWrites.join("")).toContain(
         "missing required argument 'identifier'",
       );
-      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
 
     it("exits with code 2 when the property identifier is unknown", async () => {
@@ -1746,7 +1769,7 @@ describe("catalog entities commands", () => {
       ]);
 
       expect(stderrWrites.join("")).toContain(
-        'Unknown property "unknown-prop"',
+        "Unknown property `unknown-prop`",
       );
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
@@ -2006,7 +2029,7 @@ describe("catalog entities commands", () => {
       ]);
 
       expect(stderrWrites.join("")).toContain(
-        'Unknown property "unknown-prop"',
+        "Unknown property `unknown-prop`",
       );
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
