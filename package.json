@@ -19,7 +19,8 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "commander": "^14.0.1"
+    "commander": "^14.0.1",
+    "picocolors": "^1.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
