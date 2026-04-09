@@ -11,7 +11,7 @@ export async function run(argv = process.argv): Promise<void> {
   try {
     await createProgram().parseAsync(argv);
   } catch (error) {
-    handleError(error);
+    handleError(error, undefined, argv);
   }
 }
 
@@ -37,5 +37,21 @@ function createProgram(): Command {
   program.addCommand(catalogCommand());
   program.addCommand(scorecardsCommand());
 
+  // exitOverride() and configureOutput() are not inherited by subcommands, so
+  // apply them to the full command tree after all subcommands are registered.
+  applyExitOverride(program);
+
   return program;
+}
+
+/**
+ * Make Commander throw CommanderError instead of calling process.exit(), and
+ * suppress its own stderr writes so we can control all error output ourselves.
+ */
+function applyExitOverride(cmd: Command): void {
+  cmd.exitOverride();
+  cmd.configureOutput({ writeErr: () => {} });
+  for (const sub of cmd.commands) {
+    applyExitOverride(sub);
+  }
 }

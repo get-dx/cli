@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, CommanderError } from "commander";
 
 import { CliError, EXIT_CODES, HttpError } from "./errors.js";
 import { printJson } from "./output.js";
@@ -20,13 +20,24 @@ export function wrapAction<T extends unknown[]>(
     try {
       await action(...args);
     } catch (error) {
-      handleError(error, args[args.length - 1] as Command | undefined);
+      const command = args[args.length - 1] as Command | undefined;
+      handleError(error, command, undefined);
     }
   };
 }
 
-export function handleError(error: unknown, command?: Command): never {
-  const context = command ? getContext(command) : { json: false };
+export function handleError(
+  error: unknown,
+  command?: Command,
+  argv?: string[],
+): never {
+  const context = inferContext(command, argv);
+
+  if (error instanceof CommanderError && error.exitCode === 0) {
+    // help or version was displayed.
+    // Commander already printed the output, so just exit cleanly.
+    process.exit(0);
+  }
 
   if (context.json) {
     if (error instanceof HttpError) {
@@ -41,6 +52,11 @@ export function handleError(error: unknown, command?: Command): never {
         ok: false,
         error: error.message,
       });
+    } else if (error instanceof CommanderError) {
+      // Strip the "error: " prefix Commander adds — it's terminal formatting,
+      // not appropriate in a JSON payload.
+      const message = error.message.replace(/^error:\s+/i, "");
+      printJson({ ok: false, error: message });
     } else {
       printJson({
         ok: false,
@@ -59,7 +75,17 @@ export function handleError(error: unknown, command?: Command): never {
     }
   }
 
-  process.exit(error instanceof CliError ? error.exitCode : 1);
+  const exitCode = (() => {
+    if (error instanceof CliError) {
+      return error.exitCode;
+    } else if (error instanceof CommanderError) {
+      return EXIT_CODES.ARGUMENT_ERROR;
+    } else {
+      return EXIT_CODES.RETRY_RECOMMENDED;
+    }
+  })();
+
+  process.exit(exitCode);
 }
 
 export function parsePositiveIntOption(value: string, flag: string): number {
@@ -90,4 +116,13 @@ export function createExampleText(examples: Example[]): string {
   }
 
   return lines.join("\n");
+}
+
+function inferContext(command?: Command, argv?: string[]): CliContext {
+  if (command) {
+    return getContext(command);
+  } else {
+    const hasJsonFlag = Boolean(argv?.find((arg) => arg === "--json"));
+    return { json: hasJsonFlag };
+  }
 }

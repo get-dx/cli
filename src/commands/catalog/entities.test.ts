@@ -913,7 +913,7 @@ describe("catalog entities commands", () => {
 
       expect(JSON.parse(writes.join(""))).toMatchObject({
         ok: false,
-        error: "identifier is required",
+        error: "missing required argument 'identifier'",
       });
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
@@ -1702,7 +1702,7 @@ describe("catalog entities commands", () => {
       );
     });
 
-    it("exits with code 1 when the identifier argument is missing", async () => {
+    it("exits with code 2 when the identifier argument is missing", async () => {
       const stderrWrites: string[] = [];
       vi.spyOn(process.stderr, "write").mockImplementation(((
         chunk: string | Uint8Array,
@@ -1720,7 +1720,7 @@ describe("catalog entities commands", () => {
       expect(stderrWrites.join("")).toContain(
         "missing required argument 'identifier'",
       );
-      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
 
     it("exits with code 2 when the property identifier is unknown", async () => {

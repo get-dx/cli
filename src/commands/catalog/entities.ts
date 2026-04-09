@@ -259,9 +259,7 @@ export function entitiesCommand() {
 
   entities
     .command("info")
-    // HACK: We need to control the error handling if the arg is missing, so we tell commander it is optional, then override the usage text
-    .argument("[identifier]", "Entity identifier")
-    .usage("[options] <identifier>")
+    .argument("<identifier>", "Entity identifier")
     .option(
       "--include <include>",
       "Show only these comma-separated sections: core, owners, properties, aliases",
@@ -286,12 +284,6 @@ export function entitiesCommand() {
     )
     .action(
       wrapAction(async (identifier, options, command) => {
-        if (!identifier) {
-          throw new CliError(
-            "identifier is required",
-            EXIT_CODES.ARGUMENT_ERROR,
-          );
-        }
         const runtime = buildRuntime(getContext(command));
         const response = await getEntity(runtime, identifier);
         const processedResponse = processIncludes(response, options);
