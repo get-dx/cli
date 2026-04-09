@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import { EXIT_CODES } from "../../errors.js";
 
 const setToken = vi.fn();
@@ -1084,7 +1085,7 @@ describe("catalog entities commands", () => {
       expect(stderrWrites.join("")).toContain(
         "--limit must be a positive integer",
       );
-      expect(exitSpy).toHaveBeenCalledWith(2);
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
   });
 
@@ -1216,7 +1217,7 @@ describe("catalog entities commands", () => {
       expect(stderrWrites.join("")).toContain(
         "--limit must be a positive integer",
       );
-      expect(exitSpy).toHaveBeenCalledWith(2);
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
   });
 
@@ -1357,7 +1358,7 @@ describe("catalog entities commands", () => {
       expect(stderrWrites.join("")).toContain(
         "--limit must be a positive integer",
       );
-      expect(exitSpy).toHaveBeenCalledWith(2);
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
   });
 

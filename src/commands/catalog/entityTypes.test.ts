@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { EXIT_CODES } from "../../errors.js";
+
 const setToken = vi.fn();
 const deleteToken = vi.fn();
 const getToken = vi.fn();
@@ -225,7 +227,7 @@ describe("catalog entityTypes commands", () => {
       ]);
 
       expect(stderrWrites.join("")).toContain('Invalid --include "owners"');
-      expect(exitSpy).toHaveBeenCalledWith(2);
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
   });
 
