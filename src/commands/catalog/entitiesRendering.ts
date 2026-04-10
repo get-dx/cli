@@ -1,5 +1,3 @@
-import dayjs from "dayjs";
-
 import { Entity } from "./entities.js";
 import { BlockContent, ListItemContainer } from "../../ui.js";
 import { renderRichText } from "../../renderers.js";
@@ -38,9 +36,11 @@ function coreContent(entity: Partial<Entity>): BlockContent[] {
         ui.dli("Identifier", [ui.p(entity.identifier!, false)]),
         ui.dli("Type", [ui.p(entity.type!)]),
         ui.dli("Description", [ui.p(entity.description!)]),
-        ui.dli("Created", [ui.p(formatTimestamp(entity.created_at!), false)]),
+        ui.dli("Created", [
+          ui.p(ui.timestampSummary(entity.created_at!), false),
+        ]),
         ui.dli("Last updated", [
-          ui.p(formatTimestamp(entity.updated_at!), false),
+          ui.p(ui.timestampSummary(entity.updated_at!), false),
         ]),
       ],
       { termWidth: 14 },
@@ -161,8 +161,4 @@ function isFileMatchingRule(value: unknown): value is FileMatchingRule {
     typeof value.status === "string" &&
     ["FOUND_MATCHES", "NO_MATCHES", "FILE_NOT_FOUND"].includes(value.status)
   );
-}
-
-function formatTimestamp(timestamp: string): string {
-  return dayjs(timestamp).format("YYYY-MM-DD HH:mm:ss Z");
 }

@@ -1,4 +1,8 @@
+import dayjs from "dayjs";
+import relativeTimePlugin from "dayjs/plugin/relativeTime.js";
 import pc from "picocolors";
+
+dayjs.extend(relativeTimePlugin);
 
 // Block-level elements
 
@@ -94,6 +98,16 @@ export function padEnd(text: string, width: number): string {
   } else {
     return text + " ".repeat(width - text.length);
   }
+}
+
+/**
+ * Prints relative time, then a dim timestamp
+ *
+ * Example: "1 day ago (2026-01-01:00:00:00Z)"
+ */
+export function timestampSummary(timestamp: string): string {
+  const ts = dayjs(timestamp);
+  return `${ts.fromNow()} ${dim(`(${timestamp})`)}`;
 }
 
 export class BlockContent {

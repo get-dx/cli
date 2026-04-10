@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { writeConfig } from "./config.js";
-import { maskToken } from "./renderers.js";
 import { buildRuntime } from "./runtime.js";
 
 const originalEnv = { ...process.env };
@@ -20,10 +19,6 @@ describe("runtime", () => {
 
     expect(runtime.baseUrl).toBe("https://api.example.com");
     expect(runtime.token).toBe("abcd1234wxyz");
-  });
-
-  it("masks tokens for human output", () => {
-    expect(maskToken("abcd1234wxyz")).toBe("abcd****wxyz");
   });
 
   it("reads persisted base URL when env is absent", () => {

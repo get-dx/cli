@@ -17,7 +17,10 @@ export function renderAuthInfo(
         ui.dli("Token", ui.code(maskedToken)),
         ui.dli("Token type", tokenTypeName(authInfo.auth.token_type)),
         ui.dli("Token name", authInfo.auth.token_name),
-        ui.dli("Token created at", authInfo.auth.created_at),
+        ui.dli(
+          "Token created at",
+          ui.timestampSummary(authInfo.auth.created_at),
+        ),
       ],
       { termWidth: 18 },
     ),
