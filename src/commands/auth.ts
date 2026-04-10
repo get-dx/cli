@@ -1,9 +1,8 @@
 import { Command } from "commander";
 
-import { printJson } from "../output.js";
 import { deleteToken, setToken } from "../secrets.js";
-import { renderStructuredResponse } from "../renderers.js";
-import { renderAuthInfo } from "./authRendering.js";
+import { renderJson } from "../renderers.js";
+import { renderAuthInfo, renderLoggedOut } from "./authRendering.js";
 import { wrapAction } from "../commandHelpers.js";
 import { getContext } from "../commandHelpers.js";
 import { persistBaseUrl, resolveBaseUrl } from "../config.js";
@@ -35,7 +34,7 @@ export function authCommand(): Command {
         persistBaseUrl(baseUrl);
         setToken(baseUrl, commandOptions.token);
         if (context.json) {
-          printJson(response);
+          renderJson(response);
           return;
         }
         renderAuthInfo(response, commandOptions.token, baseUrl);
@@ -47,12 +46,12 @@ export function authCommand(): Command {
       const context = getContext(command);
       const baseUrl = resolveBaseUrl();
       deleteToken(baseUrl);
-      if (context.json) {
-        printJson({ ok: true, base_url: baseUrl, logged_out: true });
-        return;
-      }
 
-      renderStructuredResponse({ ok: true, baseUrl, loggedOut: true }, false);
+      if (context.json) {
+        renderJson({ ok: true, base_url: baseUrl, logged_out: true });
+      } else {
+        renderLoggedOut(baseUrl);
+      }
     }),
   );
 
@@ -60,11 +59,12 @@ export function authCommand(): Command {
     wrapAction(async (_options, command) => {
       const runtime = buildRuntime(getContext(command));
       const response = await getAuthInfo(runtime);
+
       if (runtime.context.json) {
-        printJson(response);
-        return;
+        renderJson(response);
+      } else {
+        renderAuthInfo(response, runtime.token, runtime.baseUrl);
       }
-      renderAuthInfo(response, runtime.token, runtime.baseUrl);
     }),
   );
 

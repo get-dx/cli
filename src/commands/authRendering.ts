@@ -29,6 +29,12 @@ export function renderAuthInfo(
   ]);
 }
 
+export function renderLoggedOut(baseUrl: string) {
+  renderRichText([
+    ui.p(`${ui.success("✓")} Logged out of ${ui.link(baseUrl)} successfully`),
+  ]);
+}
+
 function scopesContent(scopes: string[]): ui.BlockContent[] {
   if (scopes.length === 0) {
     return [ui.p("(none)", false)];
