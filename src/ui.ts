@@ -136,3 +136,15 @@ export function indent(text: string, level: number): string {
     .map((line) => "  ".repeat(level) + line)
     .join("\n");
 }
+
+export function maskToken(token: string | null): string | null {
+  if (!token) {
+    return null;
+  }
+
+  if (token.length <= 8) {
+    return "*".repeat(token.length);
+  }
+
+  return `${token.slice(0, 4)}${"*".repeat(token.length - 8)}${token.slice(-4)}`;
+}

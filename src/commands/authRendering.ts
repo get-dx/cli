@@ -7,7 +7,7 @@ export function renderAuthInfo(
   token: string,
   baseUrl: string,
 ) {
-  const maskedToken = maskToken(token) ?? "not configured";
+  const maskedToken = ui.maskToken(token) ?? "not configured";
   renderRichText([
     ui.p(
       `${ui.success("✓")} Logged in to ${ui.link(baseUrl)} account ${ui.bold(authInfo.account.name)}`,
@@ -53,16 +53,4 @@ function tokenTypeName(tokenType: TokenType): string {
     default:
       throw new Error(`Unknown token type: ${tokenType}`);
   }
-}
-
-function maskToken(token: string | null): string | null {
-  if (!token) {
-    return null;
-  }
-
-  if (token.length <= 8) {
-    return "*".repeat(token.length);
-  }
-
-  return `${token.slice(0, 4)}${"*".repeat(token.length - 8)}${token.slice(-4)}`;
 }

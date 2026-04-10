@@ -10,6 +10,22 @@ vi.mock("../secrets.js", () => ({
   getToken,
 }));
 
+vi.mock("picocolors", () => ({
+  default: {
+    bold: (s: string) => (process.stdout.isTTY ? `\u001b[1m${s}\u001b[22m` : s),
+    dim: (s: string) => (process.stdout.isTTY ? `\u001b[2m${s}\u001b[22m` : s),
+    cyan: (s: string) =>
+      process.stdout.isTTY ? `\u001b[36m${s}\u001b[39m` : s,
+    green: (s: string) =>
+      process.stdout.isTTY ? `\u001b[32m${s}\u001b[39m` : s,
+    red: (s: string) => (process.stdout.isTTY ? `\u001b[31m${s}\u001b[39m` : s),
+    blue: (s: string) =>
+      process.stdout.isTTY ? `\u001b[34m${s}\u001b[39m` : s,
+    magenta: (s: string) =>
+      process.stdout.isTTY ? `\u001b[35m${s}\u001b[39m` : s,
+  },
+}));
+
 const originalEnv = { ...process.env };
 
 beforeEach(() => {
@@ -46,7 +62,7 @@ describe("auth commands", () => {
             JSON.stringify({
               ok: true,
               auth: {
-                token_type: "account_web_api",
+                token_type: "account_web_api_token",
                 token_name: "cli",
                 scopes: ["entities:read"],
                 created_at: "2026-03-31T12:00:00Z",
@@ -104,7 +120,7 @@ describe("auth commands", () => {
             JSON.stringify({
               ok: true,
               auth: {
-                token_type: "account_web_api",
+                token_type: "account_web_api_token",
                 token_name: "cli",
                 scopes: ["entities:read"],
                 created_at: "2026-03-31T12:00:00Z",
@@ -146,7 +162,7 @@ describe("auth commands", () => {
             JSON.stringify({
               ok: true,
               auth: {
-                token_type: "account_web_api",
+                token_type: "account_web_api_token",
                 token_name: "cli",
                 scopes: ["entities:read", "auth:read"],
                 created_at: "2026-03-31T12:00:00Z",
@@ -163,13 +179,14 @@ describe("auth commands", () => {
 
       const output = writes.join("");
       expect(output).toContain(
-        "* Logged in to https://api.example.com account DX",
+        "✓ Logged in to https://api.example.com account DX",
       );
-      expect(output).toContain("  - Token: toke**1234");
-      expect(output).toContain("  - Token type: account_web_api");
-      expect(output).toContain("  - Token name: cli");
-      expect(output).toContain("  - Token scopes: entities:read, auth:read");
-      expect(output).toContain("  - Token created at: 2026-03-31T12:00:00Z");
+      expect(output).toContain("Token:            toke**1234");
+      expect(output).toContain("Token type:       Account-level web API token");
+      expect(output).toContain("Token name:       cli");
+      expect(output).toContain("- entities:read");
+      expect(output).toContain("- auth:read");
+      expect(output).toContain("(2026-03-31T12:00:00Z)");
       expect(output).not.toContain("\u001b[");
     });
 
@@ -202,7 +219,7 @@ describe("auth commands", () => {
             JSON.stringify({
               ok: true,
               auth: {
-                token_type: "account_web_api",
+                token_type: "account_web_api_token",
                 token_name: "cli",
                 scopes: ["entities:read"],
                 created_at: "2026-03-31T12:00:00Z",

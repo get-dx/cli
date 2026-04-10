@@ -10,6 +10,7 @@ import { request } from "../http.js";
 import { buildRuntime } from "../runtime.js";
 import type { Runtime } from "../types.js";
 import cliPackage from "../../package.json" with { type: "json" };
+import { maskToken } from "../ui.js";
 
 export function authCommand(): Command {
   const auth = new Command()
@@ -34,7 +35,7 @@ export function authCommand(): Command {
         persistBaseUrl(baseUrl);
         setToken(baseUrl, commandOptions.token);
         if (context.json) {
-          renderJson(response);
+          renderJson({ ...response, base_url: baseUrl });
           return;
         }
         renderAuthInfo(response, commandOptions.token, baseUrl);
@@ -61,7 +62,11 @@ export function authCommand(): Command {
       const response = await getAuthInfo(runtime);
 
       if (runtime.context.json) {
-        renderJson(response);
+        renderJson({
+          ...response,
+          token: maskToken(runtime.token),
+          base_url: runtime.baseUrl,
+        });
       } else {
         renderAuthInfo(response, runtime.token, runtime.baseUrl);
       }
