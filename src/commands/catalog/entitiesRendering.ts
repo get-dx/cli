@@ -1,35 +1,22 @@
+import dayjs from "dayjs";
+
 import { Entity } from "./entities.js";
 import { BlockContent, ListItemContainer } from "../../ui.js";
 import { renderRichText } from "../../renderers.js";
 import * as ui from "../../ui.js";
 
 export function renderEntity(entity: Partial<Entity>) {
-  // prettier-ignore
   renderRichText([
     ui.h1("Entity Information"),
 
     ...(entity.identifier
-      ? [
-          ui.h2("Core attributes"),
-
-          ui.p(`${ui.bold("Name:")}         ${entity.name!}`, false),
-          ui.p(`${ui.bold("Identifier:")}   ${entity.identifier}`, false),
-          ui.p(`${ui.bold("Type:")}         ${entity.type!}`),
-
-          ui.p(`${ui.bold("Description:")}  ${entity.description!}`),
-
-          ui.p(`${ui.bold("Created:")}      ${entity.created_at!}`, false),
-          ui.p(`${ui.bold("Last updated:")} ${entity.updated_at!}`),
-        ]
+      ? [ui.h2("Core attributes"), ...coreContent(entity)]
       : []),
 
     ...(entity.owner_teams ? [ui.h2("Owners"), ...ownersContent(entity)] : []),
 
     ...(entity.properties
-      ? [
-          ui.h2("Properties"),
-          ...propertiesContent(entity),
-        ]
+      ? [ui.h2("Properties"), ...propertiesContent(entity)]
       : []),
 
     ...(entity.aliases
@@ -41,6 +28,24 @@ export function renderEntity(entity: Partial<Entity>) {
         ]
       : []),
   ]);
+}
+
+function coreContent(entity: Partial<Entity>): BlockContent[] {
+  return [
+    ui.dl(
+      [
+        ui.dli("Name", [ui.p(entity.name!, false)]),
+        ui.dli("Identifier", [ui.p(entity.identifier!, false)]),
+        ui.dli("Type", [ui.p(entity.type!)]),
+        ui.dli("Description", [ui.p(entity.description!)]),
+        ui.dli("Created", [ui.p(formatTimestamp(entity.created_at!), false)]),
+        ui.dli("Last updated", [
+          ui.p(formatTimestamp(entity.updated_at!), false),
+        ]),
+      ],
+      { termWidth: 14 },
+    ),
+  ];
 }
 
 function ownersContent(entity: Partial<Entity>): BlockContent[] {
@@ -156,4 +161,8 @@ function isFileMatchingRule(value: unknown): value is FileMatchingRule {
     typeof value.status === "string" &&
     ["FOUND_MATCHES", "NO_MATCHES", "FILE_NOT_FOUND"].includes(value.status)
   );
+}
+
+function formatTimestamp(timestamp: string): string {
+  return dayjs(timestamp).format("YYYY-MM-DD HH:mm:ss Z");
 }
