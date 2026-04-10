@@ -18,6 +18,7 @@ import type {
   ScorecardLevel,
   ScorecardTag,
 } from "../scorecards.js";
+import { renderEntity } from "./entitiesRendering.js";
 
 export function entitiesCommand() {
   const entities = new Command()
@@ -288,7 +289,11 @@ export function entitiesCommand() {
         const response = await getEntity(runtime, identifier);
         const processedResponse = processIncludes(response, options);
 
-        renderStructuredResponse(processedResponse, runtime.context.json);
+        if (runtime.context.json) {
+          renderStructuredResponse(processedResponse, true);
+        } else {
+          renderEntity(processedResponse.entity);
+        }
       }),
     );
 

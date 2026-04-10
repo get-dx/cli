@@ -1,8 +1,8 @@
 import { Command } from "commander";
 
-import { printJson } from "../output.js";
 import { deleteToken, setToken } from "../secrets.js";
-import { renderAuthInfo, renderStructuredResponse } from "../renderers.js";
+import { renderJson } from "../renderers.js";
+import { renderAuthInfo, renderLoggedOut } from "./authRendering.js";
 import { wrapAction } from "../commandHelpers.js";
 import { getContext } from "../commandHelpers.js";
 import { persistBaseUrl, resolveBaseUrl } from "../config.js";
@@ -10,6 +10,7 @@ import { request } from "../http.js";
 import { buildRuntime } from "../runtime.js";
 import type { Runtime } from "../types.js";
 import cliPackage from "../../package.json" with { type: "json" };
+import { maskToken } from "../ui.js";
 
 export function authCommand(): Command {
   const auth = new Command()
@@ -33,7 +34,11 @@ export function authCommand(): Command {
         const response = await getAuthInfo(runtime);
         persistBaseUrl(baseUrl);
         setToken(baseUrl, commandOptions.token);
-        renderAuthInfo(response, commandOptions.token, baseUrl, context.json);
+        if (context.json) {
+          renderJson({ ...response, base_url: baseUrl });
+          return;
+        }
+        renderAuthInfo(response, commandOptions.token, baseUrl);
       }),
     );
 
@@ -42,12 +47,12 @@ export function authCommand(): Command {
       const context = getContext(command);
       const baseUrl = resolveBaseUrl();
       deleteToken(baseUrl);
-      if (context.json) {
-        printJson({ ok: true, base_url: baseUrl, logged_out: true });
-        return;
-      }
 
-      renderStructuredResponse({ ok: true, baseUrl, loggedOut: true }, false);
+      if (context.json) {
+        renderJson({ ok: true, base_url: baseUrl, logged_out: true });
+      } else {
+        renderLoggedOut(baseUrl);
+      }
     }),
   );
 
@@ -55,12 +60,16 @@ export function authCommand(): Command {
     wrapAction(async (_options, command) => {
       const runtime = buildRuntime(getContext(command));
       const response = await getAuthInfo(runtime);
-      renderAuthInfo(
-        response,
-        runtime.token,
-        runtime.baseUrl,
-        runtime.context.json,
-      );
+
+      if (runtime.context.json) {
+        renderJson({
+          ...response,
+          token: maskToken(runtime.token),
+          base_url: runtime.baseUrl,
+        });
+      } else {
+        renderAuthInfo(response, runtime.token, runtime.baseUrl);
+      }
     }),
   );
 
@@ -76,9 +85,24 @@ function requestOptions(runtime: Runtime) {
   };
 }
 
-async function getAuthInfo(runtime: Runtime): Promise<unknown> {
-  return request(runtime.baseUrl, "/auth.info", {
+export type TokenType = "account_web_api_token";
+
+export type AuthInfoResponse = {
+  ok: true;
+  auth: {
+    token_type: TokenType;
+    token_name: string;
+    scopes: string[];
+    created_at: string;
+  };
+  account: { name: string };
+};
+
+async function getAuthInfo(runtime: Runtime): Promise<AuthInfoResponse> {
+  const response = await request(runtime.baseUrl, "/auth.info", {
     ...requestOptions(runtime),
     method: "GET",
   });
+
+  return response as AuthInfoResponse;
 }
