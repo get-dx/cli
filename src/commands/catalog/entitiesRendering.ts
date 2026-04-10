@@ -2,6 +2,53 @@ import { Entity } from "./entities.js";
 import { renderRichText } from "../../renderers.js";
 import * as ui from "../../ui.js";
 
+export function renderEntityList(
+  entities: Partial<Entity>[],
+  nextCursor: string | null,
+) {
+  const blocks = [ui.h1("Entities")];
+
+  blocks.push(
+    ui.p(`Displaying ${ui.bold(entities.length.toString())} entities.`),
+  );
+
+  if (nextCursor) {
+    blocks.push(ui.p(`Next cursor: ${ui.code(nextCursor)}`));
+  }
+
+  for (const entity of entities) {
+    if (entity.name && entity.identifier) {
+      blocks.push(ui.h2(`${entity.name} (${ui.code(entity.identifier)})`));
+    } else if (entity.identifier) {
+      blocks.push(ui.h2(ui.code(entity.identifier)));
+    } else {
+      blocks.push(ui.h2("Entity"));
+    }
+
+    if (entity.identifier) {
+      blocks.push(ui.h3("Core attributes"));
+      blocks.push(...coreContent(entity));
+    }
+
+    if (entity.owner_teams || entity.owner_users) {
+      blocks.push(ui.h3("Owners"));
+      blocks.push(...ownersContent(entity));
+    }
+
+    if (entity.properties) {
+      blocks.push(ui.h3("Properties"));
+      blocks.push(...propertiesContent(entity));
+    }
+
+    if (entity.aliases) {
+      blocks.push(ui.h3("Aliases"));
+      blocks.push(...aliasesContent(entity));
+    }
+  }
+
+  renderRichText(blocks);
+}
+
 export function renderEntity(entity: Partial<Entity>) {
   renderRichText([
     ui.h1("Entity Information"),
@@ -16,14 +63,7 @@ export function renderEntity(entity: Partial<Entity>) {
       ? [ui.h2("Properties"), ...propertiesContent(entity)]
       : null,
 
-    entity.aliases
-      ? [
-          ui.h2("Aliases"),
-          ui.json({
-            ...entity.aliases,
-          }),
-        ]
-      : null,
+    entity.aliases ? [ui.h2("Aliases"), ...aliasesContent(entity)] : null,
   ]);
 }
 
@@ -31,15 +71,15 @@ function coreContent(entity: Partial<Entity>): ui.Block[] {
   return [
     ui.dl(
       [
-        ui.dli("Name", [ui.p(entity.name!, false)]),
-        ui.dli("Identifier", [ui.p(entity.identifier!, false)]),
-        ui.dli("Type", [ui.p(entity.type!)]),
-        ui.dli("Description", [ui.p(entity.description!)]),
+        ui.dli("Name", [ui.p(entity.name ?? ui.dim("(None)"), false)]),
+        ui.dli("Identifier", [ui.p(ui.code(entity.identifier!), false)]),
+        ui.dli("Type", [ui.p(ui.code(entity.type!), false)]),
         ui.dli("Created", [
           ui.p(ui.timestampSummary(entity.created_at!), false),
         ]),
-        ui.dli("Last updated", [
-          ui.p(ui.timestampSummary(entity.updated_at!), false),
+        ui.dli("Last updated", [ui.p(ui.timestampSummary(entity.updated_at!))]),
+        ui.dli("Description", [
+          ui.p(entity.description ?? ui.dim("(None)"), false),
         ]),
       ],
       { termWidth: 14 },
@@ -50,7 +90,14 @@ function coreContent(entity: Partial<Entity>): ui.Block[] {
 function ownersContent(entity: Partial<Entity>): ui.Block[] {
   const results = [];
 
-  if (entity.owner_teams && entity.owner_teams.length > 0) {
+  const teamCount = entity.owner_teams?.length ?? 0;
+  const userCount = entity.owner_users?.length ?? 0;
+
+  if (teamCount === 0 && userCount === 0) {
+    results.push(ui.p(ui.dim("(No owners assigned)")));
+  }
+
+  if (entity.owner_teams && teamCount > 0) {
     results.push(ui.p(ui.bold("Teams:")));
     results.push(
       ui.ul([
@@ -61,7 +108,7 @@ function ownersContent(entity: Partial<Entity>): ui.Block[] {
     );
   }
 
-  if (entity.owner_users && entity.owner_users.length > 0) {
+  if (entity.owner_users && userCount > 0) {
     results.push(ui.p(ui.bold("Users:")));
     results.push(
       ui.ul([
@@ -92,6 +139,10 @@ function propertiesContent(entity: Partial<Entity>): ui.Block[] {
   }
 
   return [ui.ul(propertiesListItems)];
+}
+
+function aliasesContent(entity: Partial<Entity>): ui.Block[] {
+  return [ui.json({ ...entity.aliases })];
 }
 
 function propertyValueContent(

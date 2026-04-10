@@ -8,7 +8,7 @@ import {
 } from "../../commandHelpers.js";
 import { CliError, EXIT_CODES, HttpError } from "../../errors.js";
 import { request } from "../../http.js";
-import { renderStructuredResponse } from "../../renderers.js";
+import { renderJson, renderStructuredResponse } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import { getEntityType } from "./entityTypes.js";
@@ -18,7 +18,7 @@ import type {
   ScorecardLevel,
   ScorecardTag,
 } from "../scorecards.js";
-import { renderEntity } from "./entitiesRendering.js";
+import { renderEntity, renderEntityList } from "./entitiesRendering.js";
 
 export function entitiesCommand() {
   const entities = new Command()
@@ -349,10 +349,15 @@ export function entitiesCommand() {
             processIncludes({ ok: true, entity: entity as Entity }, options)
               .entity,
         );
-        renderStructuredResponse(
-          { ...response, entities: processedEntities },
-          runtime.context.json,
-        );
+
+        if (runtime.context.json) {
+          renderJson({ ...response, entities: processedEntities });
+        } else {
+          renderEntityList(
+            processedEntities,
+            response.response_metadata?.next_cursor ?? null,
+          );
+        }
       }),
     );
 
