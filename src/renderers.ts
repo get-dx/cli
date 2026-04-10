@@ -1,5 +1,5 @@
 import { printHuman, printJson } from "./output.js";
-import { BlockContent } from "./ui.js";
+import { Block } from "./ui.js";
 
 /**
  * @deprecated use `renderJson` and `renderRichText` instead
@@ -30,10 +30,8 @@ export function renderJson(value: Record<string, unknown>): void {
  *
  * Should be used when the `--flag` is NOT present.
  */
-export function renderRichText(
-  blocks: (BlockContent | BlockContent[] | null)[],
-): void {
-  const normalizedBlocks: BlockContent[] = blocks
+export function renderRichText(blocks: (Block | Block[] | null)[]): void {
+  const normalizedBlocks: Block[] = blocks
     .filter((block) => block !== null)
     .flatMap((block) => {
       if (Array.isArray(block)) {

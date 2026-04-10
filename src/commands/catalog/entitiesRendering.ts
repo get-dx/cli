@@ -1,5 +1,4 @@
 import { Entity } from "./entities.js";
-import { BlockContent, ListItemContainer } from "../../ui.js";
 import { renderRichText } from "../../renderers.js";
 import * as ui from "../../ui.js";
 
@@ -28,7 +27,7 @@ export function renderEntity(entity: Partial<Entity>) {
   ]);
 }
 
-function coreContent(entity: Partial<Entity>): BlockContent[] {
+function coreContent(entity: Partial<Entity>): ui.Block[] {
   return [
     ui.dl(
       [
@@ -48,7 +47,7 @@ function coreContent(entity: Partial<Entity>): BlockContent[] {
   ];
 }
 
-function ownersContent(entity: Partial<Entity>): BlockContent[] {
+function ownersContent(entity: Partial<Entity>): ui.Block[] {
   const results = [];
 
   if (entity.owner_teams && entity.owner_teams.length > 0) {
@@ -76,8 +75,8 @@ function ownersContent(entity: Partial<Entity>): BlockContent[] {
   return results;
 }
 
-function propertiesContent(entity: Partial<Entity>): BlockContent[] {
-  const propertiesListItems: ListItemContainer[] = [];
+function propertiesContent(entity: Partial<Entity>): ui.Block[] {
+  const propertiesListItems = [];
 
   for (const [identifier, value] of Object.entries(entity.properties!)) {
     const serialized = propertyValueContent(identifier, value);
@@ -98,7 +97,7 @@ function propertiesContent(entity: Partial<Entity>): BlockContent[] {
 function propertyValueContent(
   identifier: string,
   value: unknown,
-): string | BlockContent {
+): string | ui.Block {
   // Property-specific
   if (isFileMatchingRule(value)) {
     const matchText = value.match_count === 1 ? "match" : "matches";

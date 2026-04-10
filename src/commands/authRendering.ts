@@ -35,7 +35,7 @@ export function renderLoggedOut(baseUrl: string) {
   ]);
 }
 
-function scopesContent(scopes: string[]): ui.BlockContent[] {
+function scopesContent(scopes: string[]): ui.Block[] {
   if (scopes.length === 0) {
     return [ui.p("(none)", false)];
   } else {
