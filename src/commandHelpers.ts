@@ -1,7 +1,6 @@
 import { Command, CommanderError } from "commander";
 
 import { CliError, EXIT_CODES, HttpError } from "./errors.js";
-import { printJson } from "./output.js";
 import type { CliContext } from "./types.js";
 
 export function getContext(command: Command): CliContext {
@@ -86,6 +85,10 @@ export function handleError(
   })();
 
   process.exit(exitCode);
+}
+
+function printJson(value: Record<string, unknown>): void {
+  process.stdout.write(JSON.stringify(value, null, 2) + "\n");
 }
 
 export function parsePositiveIntOption(value: string, flag: string): number {

@@ -1,19 +1,10 @@
-import { printHuman, printJson } from "./output.js";
 import { Block } from "./ui.js";
 
-/**
- * @deprecated use `renderJson` and `renderRichText` instead
- */
 export function renderStructuredResponse(
-  response: unknown,
-  json: boolean,
+  _response: unknown,
+  _json: boolean,
 ): void {
-  if (json) {
-    printJson(response);
-    return;
-  }
-
-  printHuman(response);
+  throw new Error("Deprecated");
 }
 
 /**
@@ -22,7 +13,7 @@ export function renderStructuredResponse(
  * Should be used when the `--flag` is present.
  */
 export function renderJson(value: Record<string, unknown>): void {
-  printJson(value);
+  process.stdout.write(JSON.stringify(value, null, 2) + "\n");
 }
 
 /**
