@@ -55,9 +55,20 @@ export function renderStructuredResponse(
   printHuman(response);
 }
 
-export function renderRichText(blocks: BlockContent[]): void {
+export function renderRichText(
+  blocks: (BlockContent | BlockContent[] | null)[],
+): void {
+  const normalizedBlocks: BlockContent[] = blocks
+    .filter((block) => block !== null)
+    .flatMap((block) => {
+      if (Array.isArray(block)) {
+        return block;
+      }
+      return [block];
+    });
+
   const renderedBlocks = [];
-  for (const block of blocks) {
+  for (const block of normalizedBlocks) {
     const blockContent = block.render();
     renderedBlocks.push(blockContent);
   }

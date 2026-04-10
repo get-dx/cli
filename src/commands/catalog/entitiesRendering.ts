@@ -9,24 +9,24 @@ export function renderEntity(entity: Partial<Entity>) {
   renderRichText([
     ui.h1("Entity Information"),
 
-    ...(entity.identifier
+    entity.identifier
       ? [ui.h2("Core attributes"), ...coreContent(entity)]
-      : []),
+      : null,
 
-    ...(entity.owner_teams ? [ui.h2("Owners"), ...ownersContent(entity)] : []),
+    entity.owner_teams ? [ui.h2("Owners"), ...ownersContent(entity)] : null,
 
-    ...(entity.properties
+    entity.properties
       ? [ui.h2("Properties"), ...propertiesContent(entity)]
-      : []),
+      : null,
 
-    ...(entity.aliases
+    entity.aliases
       ? [
           ui.h2("Aliases"),
           ui.json({
             ...entity.aliases,
           }),
         ]
-      : []),
+      : null,
   ]);
 }
 
