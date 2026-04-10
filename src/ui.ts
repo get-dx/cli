@@ -106,6 +106,10 @@ export function success(text: string): string {
   return pc.green(text);
 }
 
+export function warning(text: string): string {
+  return pc.yellow(text);
+}
+
 export function error(text: string): string {
   return pc.red(text);
 }

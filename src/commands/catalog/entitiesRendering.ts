@@ -1,5 +1,12 @@
-import { Entity } from "./entities.js";
+import dayjs from "dayjs";
+import {
+  Entity,
+  ScorecardCheckResult,
+  ScorecardReport,
+  Task,
+} from "./entities.js";
 import { renderRichText } from "../../renderers.js";
+import { ListItemContainer } from "../../ui/blocks.js";
 import * as ui from "../../ui.js";
 
 export function renderEntityList(
@@ -49,9 +56,12 @@ export function renderEntityList(
   renderRichText(blocks);
 }
 
-export function renderEntity(entity: Partial<Entity>) {
+export function renderEntity(
+  entity: Partial<Entity>,
+  title = "Entity Information",
+) {
   renderRichText([
-    ui.h1("Entity Information"),
+    ui.h1(title),
 
     entity.identifier
       ? [ui.h2("Core attributes"), ...coreContent(entity)]
@@ -65,6 +75,178 @@ export function renderEntity(entity: Partial<Entity>) {
 
     entity.aliases ? [ui.h2("Aliases"), ...aliasesContent(entity)] : null,
   ]);
+}
+
+export function renderEntityDeleted(entity: Entity) {
+  renderRichText([
+    ui.h1(`${ui.success("✓")} Entity deleted`),
+    ui.p(`The entity ${ui.code(entity.identifier)} has been deleted.`),
+  ]);
+}
+
+export function renderEntityScorecardList(
+  scorecards: ScorecardReport[],
+  nextCursor: string | null,
+): void {
+  const blocks = [ui.h1("Scorecards")];
+
+  blocks.push(
+    ui.p(`Displaying ${ui.bold(scorecards.length.toString())} scorecards.`),
+  );
+
+  if (nextCursor) {
+    blocks.push(ui.p(`Next cursor: ${ui.code(nextCursor)}`));
+  }
+
+  for (const scorecard of scorecards) {
+    blocks.push(ui.h2(scorecard.name));
+    blocks.push(...scorecardReportContent(scorecard));
+  }
+
+  renderRichText(blocks);
+}
+
+export function renderEntityTaskList(tasks: Task[], nextCursor: string | null) {
+  const blocks = [ui.h1("Tasks")];
+
+  blocks.push(ui.p(`Displaying ${ui.bold(tasks.length.toString())} tasks.`));
+
+  if (nextCursor) {
+    blocks.push(ui.p(`Next cursor: ${ui.code(nextCursor)}`));
+  }
+
+  for (const task of tasks) {
+    blocks.push(ui.h2(task.check.name));
+    blocks.push(...taskContent(task));
+  }
+
+  renderRichText(blocks);
+}
+
+function scorecardReportContent(scorecard: ScorecardReport): ui.Block[] {
+  const blocks: ui.Block[] = [];
+
+  if (scorecard.type === "POINTS") {
+    const total = scorecard.points_meta?.points_total ?? 0;
+    const achieved = scorecard.points_meta?.points_achieved ?? 0;
+    const pct = total === 0 ? 0 : Math.round((achieved / total) * 100);
+    blocks.push(
+      ui.p(`Points: ${ui.bold(`${achieved}/${total}`)} ${ui.dim(`(${pct}%)`)}`),
+    );
+  } else {
+    const levelName =
+      scorecard.current_level?.name ??
+      scorecard.empty_level?.label ??
+      "No level";
+    blocks.push(ui.p(`Current level: ${ui.bold(levelName)}`));
+  }
+
+  if (scorecard.type === "LEVEL" && scorecard.levels) {
+    for (const level of scorecard.levels) {
+      const checksInLevel = scorecard.checks.filter(
+        (check) => check.level?.id === level.id,
+      );
+      if (checksInLevel.length === 0) continue;
+
+      blocks.push(ui.h3(level.name));
+      blocks.push(ui.ul(checksInLevel.map(scorecardCheckListItem)));
+    }
+  } else if (scorecard.type === "POINTS" && scorecard.check_groups) {
+    const sortedGroups = [...scorecard.check_groups].sort(
+      (a, b) => a.ordering - b.ordering,
+    );
+    for (const group of sortedGroups) {
+      const checksInGroup = scorecard.checks.filter(
+        (check) => check.check_group?.id === group.id,
+      );
+      if (checksInGroup.length === 0) continue;
+
+      blocks.push(ui.h3(group.name));
+      blocks.push(ui.ul(checksInGroup.map(scorecardCheckListItem)));
+    }
+  } else if (scorecard.checks.length > 0) {
+    blocks.push(ui.ul(scorecard.checks.map(scorecardCheckListItem)));
+  }
+
+  return blocks;
+}
+
+function scorecardCheckListItem(
+  check: ScorecardCheckResult,
+): ListItemContainer {
+  let statusBadge: string;
+  if (check.status === "PASS") {
+    statusBadge = ui.success("✓ Passed");
+  } else if (check.status === "WARN") {
+    statusBadge = ui.warning("⚠ Warning");
+  } else {
+    statusBadge = ui.error("✗ Not passed");
+  }
+
+  const evalTime = check.executed_at
+    ? ui.dim(`(${dayjs(check.executed_at).fromNow()})`)
+    : "";
+
+  const parts = [check.name, evalTime, statusBadge].filter(Boolean);
+  return ui.li([ui.p(parts.join("  "), false)]);
+}
+
+function taskContent(task: Task): ui.Block[] {
+  const { check, entity_check_issue, initiative, owner } = task;
+
+  return [
+    ui.h3("Check:"),
+    ui.dl(
+      [
+        ui.dli("Name", [ui.p(check.name, false)]),
+        ui.dli("ID", [ui.p(ui.code(check.id), false)]),
+        ui.dli("External URL", [
+          ui.p(
+            check.external_url ? ui.link(check.external_url) : ui.dim("(none)"),
+            false,
+          ),
+        ]),
+        ui.dli("Description", [
+          ui.p(check.description || ui.dim("(none)"), false),
+        ]),
+      ],
+      { termWidth: 14 },
+    ),
+
+    ui.h3("Initiative:"),
+    ui.dl(
+      [
+        ui.dli("Name", [ui.p(initiative.name, false)]),
+        ui.dli("Priority", [ui.p(`P${initiative.priority}`, false)]),
+        ui.dli("Owner", [
+          ui.p(`${owner.name} (${ui.code(owner.email)})`, false),
+        ]),
+        ui.dli("Due", [ui.p(dueDateText(initiative.complete_by), false)]),
+      ],
+      { termWidth: 10 },
+    ),
+
+    ui.p(ui.bold("Description:")),
+    ui.p(initiative.description || ui.dim("(none)")),
+  ];
+}
+
+function dueDateText(completeBy: string): string {
+  const now = dayjs();
+  const dueDate = dayjs(completeBy);
+  const formattedDate = new Date(completeBy).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+
+  if (dueDate.isBefore(now)) {
+    return ui.error(formattedDate);
+  } else if (dueDate.isBefore(now.add(2, "week"))) {
+    return ui.warning(formattedDate);
+  } else {
+    return formattedDate;
+  }
 }
 
 function coreContent(entity: Partial<Entity>): ui.Block[] {
