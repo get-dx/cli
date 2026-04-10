@@ -192,7 +192,7 @@ function scorecardCheckListItem(
 }
 
 function taskContent(task: Task): ui.Block[] {
-  const { check, entity_check_issue, initiative, owner } = task;
+  const { check, initiative, owner } = task;
 
   return [
     ui.h3("Check:"),

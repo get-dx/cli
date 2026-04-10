@@ -8,7 +8,7 @@ import {
 } from "../../commandHelpers.js";
 import { CliError, EXIT_CODES, HttpError } from "../../errors.js";
 import { request } from "../../http.js";
-import { renderJson, renderStructuredResponse } from "../../renderers.js";
+import { renderJson } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import { getEntityType } from "./entityTypes.js";
