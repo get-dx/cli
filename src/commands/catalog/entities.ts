@@ -200,7 +200,10 @@ export function entitiesCommand() {
         if (runtime.context.json) {
           renderJson(response);
         } else {
-          renderEntity(response.entity, `${ui.success("✓")} Entity updated`);
+          renderEntity(
+            response.entity,
+            `${ui.success(ui.GLYPHS.CHECK)} Entity updated`,
+          );
         }
       }),
     );
@@ -279,8 +282,8 @@ export function entitiesCommand() {
         } else {
           const title =
             response.result === "created_new_entity"
-              ? `${ui.success("✓")} Created new entity`
-              : `${ui.success("✓")} Updated existing entity`;
+              ? `${ui.success(ui.GLYPHS.CHECK)} Created new entity`
+              : `${ui.success(ui.GLYPHS.CHECK)} Updated existing entity`;
           renderEntity(response.entity, title);
         }
       }),

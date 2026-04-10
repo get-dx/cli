@@ -79,7 +79,7 @@ export function renderEntity(
 
 export function renderEntityDeleted(entity: Entity) {
   renderRichText([
-    ui.h1(`${ui.success("✓")} Entity deleted`),
+    ui.h1(`${ui.success(ui.GLYPHS.CHECK)} Entity deleted`),
     ui.p(`The entity ${ui.code(entity.identifier)} has been deleted.`),
   ]);
 }
@@ -176,11 +176,11 @@ function scorecardCheckListItem(
 ): ListItemContainer {
   let statusBadge: string;
   if (check.status === "PASS") {
-    statusBadge = ui.success("✓ Passed");
+    statusBadge = ui.success(`${ui.GLYPHS.CHECK} Passed`);
   } else if (check.status === "WARN") {
-    statusBadge = ui.warning("⚠ Warning");
+    statusBadge = ui.warning(`${ui.GLYPHS.WARNING} Warning`);
   } else {
-    statusBadge = ui.error("✗ Not passed");
+    statusBadge = ui.error(`${ui.GLYPHS.ERROR} Not passed`);
   }
 
   const evalTime = check.executed_at
