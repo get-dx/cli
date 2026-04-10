@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import relativeTimePlugin from "dayjs/plugin/relativeTime.js";
 import pc from "picocolors";
 
+export { GLYPHS } from "./ui/glyphs.js";
 import {
   DescriptionListBlock,
   DescriptionListItemContainer,

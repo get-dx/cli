@@ -10,7 +10,7 @@ export function renderAuthInfo(
   const maskedToken = ui.maskToken(token) ?? "not configured";
   renderRichText([
     ui.p(
-      `${ui.success("✓")} Logged in to ${ui.link(baseUrl)} account ${ui.bold(authInfo.account.name)}`,
+      `${ui.success(ui.GLYPHS.CHECK)} Logged in to ${ui.link(baseUrl)} account ${ui.bold(authInfo.account.name)}`,
     ),
     ui.dl(
       [
@@ -31,7 +31,9 @@ export function renderAuthInfo(
 
 export function renderLoggedOut(baseUrl: string) {
   renderRichText([
-    ui.p(`${ui.success("✓")} Logged out of ${ui.link(baseUrl)} successfully`),
+    ui.p(
+      `${ui.success(ui.GLYPHS.CHECK)} Logged out of ${ui.link(baseUrl)} successfully`,
+    ),
   ]);
 }
 
