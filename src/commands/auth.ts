@@ -2,7 +2,8 @@ import { Command } from "commander";
 
 import { printJson } from "../output.js";
 import { deleteToken, setToken } from "../secrets.js";
-import { renderAuthInfo, renderStructuredResponse } from "../renderers.js";
+import { renderStructuredResponse } from "../renderers.js";
+import { renderAuthInfo } from "./authRendering.js";
 import { wrapAction } from "../commandHelpers.js";
 import { getContext } from "../commandHelpers.js";
 import { persistBaseUrl, resolveBaseUrl } from "../config.js";
@@ -33,7 +34,11 @@ export function authCommand(): Command {
         const response = await getAuthInfo(runtime);
         persistBaseUrl(baseUrl);
         setToken(baseUrl, commandOptions.token);
-        renderAuthInfo(response, commandOptions.token, baseUrl, context.json);
+        if (context.json) {
+          printJson(response);
+          return;
+        }
+        renderAuthInfo(response, commandOptions.token, baseUrl);
       }),
     );
 
@@ -55,12 +60,11 @@ export function authCommand(): Command {
     wrapAction(async (_options, command) => {
       const runtime = buildRuntime(getContext(command));
       const response = await getAuthInfo(runtime);
-      renderAuthInfo(
-        response,
-        runtime.token,
-        runtime.baseUrl,
-        runtime.context.json,
-      );
+      if (runtime.context.json) {
+        printJson(response);
+        return;
+      }
+      renderAuthInfo(response, runtime.token, runtime.baseUrl);
     }),
   );
 
@@ -76,9 +80,24 @@ function requestOptions(runtime: Runtime) {
   };
 }
 
-async function getAuthInfo(runtime: Runtime): Promise<unknown> {
-  return request(runtime.baseUrl, "/auth.info", {
+export type TokenType = "account_web_api_token";
+
+export type AuthInfoResponse = {
+  ok: true;
+  auth: {
+    token_type: TokenType;
+    token_name: string;
+    scopes: string[];
+    created_at: string;
+  };
+  account: { name: string };
+};
+
+async function getAuthInfo(runtime: Runtime): Promise<AuthInfoResponse> {
+  const response = await request(runtime.baseUrl, "/auth.info", {
     ...requestOptions(runtime),
     method: "GET",
   });
+
+  return response as AuthInfoResponse;
 }

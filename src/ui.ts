@@ -22,8 +22,16 @@ export function ul(items: ListItemContainer[]): UnorderedListBlock {
   return new UnorderedListBlock(items);
 }
 
-export function li(items: BlockContent[]): ListItemContainer {
-  return new ListItemContainer(items);
+/**
+ * Create a list item. Supports both simple text and multi-block content.
+ */
+export function li(items: string | BlockContent[]): ListItemContainer {
+  if (typeof items === "string") {
+    const wrapper = p(items, false);
+    return new ListItemContainer([wrapper]);
+  } else {
+    return new ListItemContainer(items);
+  }
 }
 
 export function dl(
@@ -34,13 +42,20 @@ export function dl(
 }
 
 /**
- * Combination of `<dt>` and `<dd>` elements.
+ * Create an item for a description list: a combination of `<dt>` and `<dd>` elements.
+ *
+ * Supports both simple text and multi-block content.
  */
 export function dli(
   term: string,
-  detailItems: BlockContent[],
+  detailItems: string | BlockContent[],
 ): DescriptionListItemContainer {
-  return new DescriptionListItemContainer(term, detailItems);
+  if (typeof detailItems === "string") {
+    const wrapper = p(detailItems, false);
+    return new DescriptionListItemContainer(term, [wrapper]);
+  } else {
+    return new DescriptionListItemContainer(term, detailItems);
+  }
 }
 
 export function json(value: Record<string, unknown>): JsonBlock {
@@ -63,6 +78,14 @@ export function code(text: string): string {
 
 export function link(url: string): string {
   return pc.magenta(url);
+}
+
+export function success(text: string): string {
+  return pc.green(text);
+}
+
+export function error(text: string): string {
+  return pc.red(text);
 }
 
 export function padEnd(text: string, width: number): string {
