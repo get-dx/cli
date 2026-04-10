@@ -8,7 +8,7 @@ import {
 } from "../../commandHelpers.js";
 import { CliError, EXIT_CODES, HttpError } from "../../errors.js";
 import { request } from "../../http.js";
-import { renderStructuredResponse } from "../../renderers.js";
+import { renderJson } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import { getEntityType } from "./entityTypes.js";
@@ -18,7 +18,14 @@ import type {
   ScorecardLevel,
   ScorecardTag,
 } from "../scorecards.js";
-import { renderEntity } from "./entitiesRendering.js";
+import {
+  renderEntity,
+  renderEntityDeleted,
+  renderEntityList,
+  renderEntityScorecardList,
+  renderEntityTaskList,
+} from "./entitiesRendering.js";
+import * as ui from "../../ui.js";
 
 export function entitiesCommand() {
   const entities = new Command()
@@ -103,7 +110,12 @@ export function entitiesCommand() {
             properties,
           },
         );
-        renderStructuredResponse(response, runtime.context.json);
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderEntity(response.entity);
+        }
       }),
     );
 
@@ -129,7 +141,11 @@ export function entitiesCommand() {
         const runtime = buildRuntime(getContext(command));
         const response = await deleteEntity(runtime, identifier);
 
-        renderStructuredResponse(response, runtime.context.json);
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderEntityDeleted(response.entity);
+        }
       }),
     );
 
@@ -181,7 +197,11 @@ export function entitiesCommand() {
           properties,
         });
 
-        renderStructuredResponse(response, runtime.context.json);
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderEntity(response.entity, `${ui.success("✓")} Entity updated`);
+        }
       }),
     );
 
@@ -254,7 +274,15 @@ export function entitiesCommand() {
           },
         );
 
-        renderStructuredResponse(response, runtime.context.json);
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          const title =
+            response.result === "created_new_entity"
+              ? `${ui.success("✓")} Created new entity`
+              : `${ui.success("✓")} Updated existing entity`;
+          renderEntity(response.entity, title);
+        }
       }),
     );
 
@@ -290,7 +318,7 @@ export function entitiesCommand() {
         const processedResponse = processIncludes(response, options);
 
         if (runtime.context.json) {
-          renderStructuredResponse(processedResponse, true);
+          renderJson(processedResponse);
         } else {
           renderEntity(processedResponse.entity);
         }
@@ -349,10 +377,15 @@ export function entitiesCommand() {
             processIncludes({ ok: true, entity: entity as Entity }, options)
               .entity,
         );
-        renderStructuredResponse(
-          { ...response, entities: processedEntities },
-          runtime.context.json,
-        );
+
+        if (runtime.context.json) {
+          renderJson({ ...response, entities: processedEntities });
+        } else {
+          renderEntityList(
+            processedEntities,
+            response.response_metadata?.next_cursor ?? null,
+          );
+        }
       }),
     );
 
@@ -389,7 +422,15 @@ export function entitiesCommand() {
           cursor: options.cursor,
           limit: options.limit,
         });
-        renderStructuredResponse(response, runtime.context.json);
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderEntityTaskList(
+            response.tasks,
+            response.response_metadata?.next_cursor ?? null,
+          );
+        }
       }),
     );
 
@@ -426,7 +467,15 @@ export function entitiesCommand() {
           cursor: options.cursor,
           limit: options.limit,
         });
-        renderStructuredResponse(response, runtime.context.json);
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderEntityScorecardList(
+            response.scorecards,
+            response.response_metadata?.next_cursor ?? null,
+          );
+        }
       }),
     );
 
@@ -571,7 +620,7 @@ type UpsertEntityParams = CreateEntityParams;
 
 type UpsertEntityResponse = {
   ok: true;
-  result: string;
+  result: "created_new_entity" | "updated_existing_entity";
   entity: Entity;
 };
 
@@ -586,11 +635,7 @@ async function upsertEntity(
     body: buildEntityMutationBody(identifier, params),
   });
 
-  return {
-    ok: true,
-    result: response.result as string,
-    entity: response.entity as Entity,
-  };
+  return response as UpsertEntityResponse;
 }
 
 type GetEntityScorecardsParams = {
@@ -613,6 +658,7 @@ export type ScorecardCheckResult = {
   published?: boolean;
   metadata?: Record<string, unknown>;
   level?: { id: string; name: string };
+  check_group?: { id: string; name: string } | null;
   output?: { value: unknown; type: string } | null;
   message?: string | null;
   related_properties?: string[] | null;
@@ -630,8 +676,11 @@ export type ScorecardReport = {
   current_level?: ScorecardLevel | null;
   empty_level?: ScorecardEmptyLevel;
   // Points-based scorecard fields
-  points_meta?: Record<string, unknown>;
   check_groups?: ScorecardCheckGroup[];
+  points_meta?: {
+    points_total: number;
+    points_achieved: number;
+  };
 };
 
 type GetEntityScorecardsResponse = {

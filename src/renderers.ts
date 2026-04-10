@@ -1,4 +1,5 @@
-import { printHuman, printJson } from "./output.js";
+import util from "node:util";
+
 import { Block } from "./ui.js";
 
 /**
@@ -9,11 +10,14 @@ export function renderStructuredResponse(
   json: boolean,
 ): void {
   if (json) {
-    printJson(response);
+    renderJson(response as Record<string, unknown>);
     return;
   }
 
-  printHuman(response);
+  process.stdout.write(
+    util.inspect(response, { depth: null, colors: process.stdout.isTTY }) +
+      "\n",
+  );
 }
 
 /**
@@ -22,7 +26,7 @@ export function renderStructuredResponse(
  * Should be used when the `--flag` is present.
  */
 export function renderJson(value: Record<string, unknown>): void {
-  printJson(value);
+  process.stdout.write(JSON.stringify(value, null, 2) + "\n");
 }
 
 /**

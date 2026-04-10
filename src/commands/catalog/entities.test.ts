@@ -1414,8 +1414,9 @@ describe("catalog entities commands", () => {
         }),
       );
       const out = writes.join("");
+      expect(out).toContain("Entity deleted");
       expect(out).toContain("login-frontend");
-      expect(out).toContain("Login Frontend");
+      expect(out).toContain("has been deleted");
     });
 
     it("returns machine-readable JSON with --json", async () => {
