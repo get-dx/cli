@@ -202,7 +202,7 @@ export type EntityType = {
 
 export type Property = {
   identifier: string;
-  name: string | null;
+  name: string;
   description: string;
   type: PropertyType;
   ordering: number;

@@ -78,8 +78,8 @@ function coreContent(entityType: Partial<EntityType>): ui.Block[] {
   return [
     ui.dl(
       [
-        ui.dli("Identifier", [ui.p(ui.code(entityType.identifier!), false)]),
         ui.dli("Name", [ui.p(entityType.name ?? ui.dim("(None)"), false)]),
+        ui.dli("Identifier", [ui.p(ui.code(entityType.identifier!), false)]),
         ui.dli("Description", [
           ui.p(entityType.description || ui.dim("(None)"), false),
         ]),
@@ -113,9 +113,9 @@ function propertyListItem(property: Property) {
   if (property.is_required) badges.push(ui.bold("[required]"));
 
   const header = [
-    ui.bold(property.name ?? property.identifier),
-    `(${ui.code(property.identifier)})`,
-    `— ${ui.code(property.type)}`,
+    ui.bold(property.name),
+    `(${ui.code(property.identifier)}):`,
+    ui.code(property.type),
     ...badges,
   ].join(" ");
 
@@ -160,10 +160,11 @@ function propertyDefinitionLines(property: Property): ui.Block[] {
 
     if (sql) {
       const firstLine = sql.split("\n")[0];
+      const isLong = firstLine.length > 80 || sql.includes("\n");
       const truncated =
-        firstLine.length > 80 ? firstLine.slice(0, 80) + "…" : firstLine;
-      const suffix = sql.includes("\n") ? ui.dim(" …") : "";
-      lines.push(ui.p(`SQL: ${ui.code(truncated + suffix)}`, false));
+        firstLine.length > 80 ? firstLine.slice(0, 80) : firstLine;
+      const display = isLong ? truncated + ui.dim(" …") : truncated;
+      lines.push(ui.p(`SQL: ${ui.code(display)}`, false));
     }
 
     return lines;
@@ -174,10 +175,9 @@ function propertyDefinitionLines(property: Property): ui.Block[] {
     const ruleType = definition.rule_type as string | undefined;
     const matchExpression = definition.match_expression as string | undefined;
     return [
-      ui.p(
-        `File: ${ui.code(filePath ?? "(none)")}  Rule: ${ui.code(ruleType ?? "(none)")}  Pattern: ${ui.code(matchExpression ?? "(none)")}`,
-        false,
-      ),
+      ui.p(`Rule type: ${ui.code(ruleType ?? "(none)")}`, false),
+      ui.p(`File path: ${ui.code(filePath ?? "(none)")}`, false),
+      ui.p(`Expression: ${ui.code(matchExpression ?? "(none)")}`, false),
     ];
   }
 
