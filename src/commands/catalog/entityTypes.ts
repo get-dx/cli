@@ -8,11 +8,12 @@ import {
 } from "../../commandHelpers.js";
 import { CliError, EXIT_CODES } from "../../errors.js";
 import { request } from "../../http.js";
-import { renderJson, renderStructuredResponse } from "../../renderers.js";
+import { renderJson } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import {
   renderEntityType,
+  renderEntityTypeDeleted,
   renderEntityTypeList,
 } from "./entityTypesRendering.js";
 
@@ -43,7 +44,11 @@ export function entityTypesCommand() {
         const runtime = buildRuntime(getContext(command));
         const response = await deleteEntityType(runtime, identifier);
 
-        renderStructuredResponse(response, runtime.context.json);
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderEntityTypeDeleted(response.entity_type);
+        }
       }),
     );
 
@@ -85,7 +90,7 @@ export function entityTypesCommand() {
         if (runtime.context.json) {
           renderJson(processedEntityType);
         } else {
-          renderEntityType(response.entity_type);
+          renderEntityType(processedEntityType as Partial<EntityType>);
         }
       }),
     );

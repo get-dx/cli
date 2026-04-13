@@ -67,6 +67,13 @@ export function renderEntityType(
   ]);
 }
 
+export function renderEntityTypeDeleted(entityType: EntityType) {
+  renderRichText([
+    ui.h1(`${ui.success("✓")} Entity type deleted`),
+    ui.p(`The entity type ${ui.code(entityType.identifier)} has been deleted.`),
+  ]);
+}
+
 function coreContent(entityType: Partial<EntityType>): ui.Block[] {
   return [
     ui.dl(
