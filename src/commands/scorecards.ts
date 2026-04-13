@@ -250,6 +250,8 @@ export type Scorecard = {
   editors: ScorecardUser[];
   admins: ScorecardUser[];
   sql_errors: unknown[];
+  max_entity_points?: number;
+  evaluation_frequency_hours?: number;
   checks: ScorecardCheckDefinition[];
   // LEVEL-type scorecard fields
   levels?: ScorecardLevel[];
@@ -307,14 +309,49 @@ export type ScorecardCheckDefinition = {
   check_group?: { id: string; name: string };
 };
 
+export type UpdateScorecardPayload = {
+  id: string;
+  name?: string;
+  description?: string;
+  type?: "LEVEL" | "POINTS";
+  published?: boolean;
+  entity_filter_type?: string;
+  entity_filter_sql?: string | null;
+  entity_filter_type_ids?: string[];
+  tags?: ScorecardTag[];
+  editors?: ScorecardUser[];
+  admins?: ScorecardUser[];
+  checks?: ScorecardCheckDefinitionPayload[];
+  // LEVEL-type scorecard fields
+  levels?: ScorecardLevelPayload[];
+  empty_level_label?: string;
+  empty_level_color?: string;
+  // POINTS-type scorecard fields
+  check_groups?: ScorecardCheckGroupPayload[];
+};
+
+type ScorecardLevelPayload = ScorecardLevel & {
+  key: string;
+};
+
+type ScorecardCheckGroupPayload = ScorecardCheckGroup & {
+  key: string;
+};
+
+type ScorecardCheckDefinitionPayload = Omit<
+  ScorecardCheckDefinition,
+  "type" | "check_group"
+> & {
+  scorecard_level_key?: string;
+  scorecard_check_group_key?: string;
+};
+
 // --- API ---
 
 type GetScorecardResponse = {
   ok: true;
   scorecard: Scorecard;
 };
-
-type UpdateScorecardPayload = Record<string, unknown> & { id: string };
 
 type UpdateScorecardResponse = {
   ok: true;
@@ -388,18 +425,76 @@ export async function updateScorecard(
 
 // --- YAML helpers ---
 
-const SCORECARD_READONLY_KEYS: ReadonlyArray<keyof Scorecard> = [
+/**
+ * These keys are ignored when initializing a file to update
+ */
+const SCORECARD_IGNORED_KEYS: ReadonlyArray<keyof Scorecard> = [
+  // Deprecated fields
+  "evaluation_frequency_hours",
+  "entity_filter_type_ids",
+  // Reporting on state
   "sql_errors",
-  "editors",
-  "admins",
+  "max_entity_points",
 ];
+
+const SCORECARD_TRANSFORM_KEYS: Partial<
+  Record<keyof Scorecard, (value: unknown) => unknown>
+> = {
+  admins: (value) => (value as ScorecardUser[]).map((admin) => admin.id),
+  editors: (value) => (value as ScorecardUser[]).map((editor) => editor.id),
+  tags: (value) =>
+    (value as ScorecardTag[]).map((tag) => ({ value: tag.value })),
+  levels: (value) => {
+    if (!Array.isArray(value)) {
+      return value;
+    } else {
+      return value.map((level) => {
+        return {
+          ...level,
+          key: toSnakeCase(level.name),
+        };
+      });
+    }
+  },
+  check_groups: (value) => {
+    if (!Array.isArray(value)) {
+      return value;
+    } else {
+      return value.map((checkGroup) => {
+        return {
+          ...checkGroup,
+          key: toSnakeCase(checkGroup.name),
+        };
+      });
+    }
+  },
+  checks: (value) => {
+    return (value as ScorecardCheckDefinition[]).map((check) => {
+      const { level, check_group, ...rest } = check;
+      const payload: ScorecardCheckDefinitionPayload = rest;
+      if (level) {
+        payload.scorecard_level_key = toSnakeCase(level.name);
+      } else if (check_group) {
+        payload.scorecard_check_group_key = toSnakeCase(check_group.name);
+      }
+      return payload;
+    });
+  },
+};
 
 function scorecardToYaml(scorecard: Scorecard): string {
   const obj: Partial<Scorecard> = { ...scorecard };
-  for (const key of SCORECARD_READONLY_KEYS) {
+  for (const key of SCORECARD_IGNORED_KEYS) {
     delete obj[key];
   }
-  return stringifyYaml(obj);
+  const objLoose = obj as Record<string, unknown>;
+  for (const key of Object.keys(SCORECARD_TRANSFORM_KEYS)) {
+    const transformFn = SCORECARD_TRANSFORM_KEYS[key as keyof Scorecard];
+    if (transformFn) {
+      objLoose[key] = transformFn(objLoose[key]);
+    }
+  }
+  return stringifyYaml(obj, { blockQuote: "literal" });
 }
 
 function readYamlFile(filePath: string): unknown {
@@ -451,6 +546,20 @@ function buildUpdatePayload(id: string, raw: unknown): UpdateScorecardPayload {
     );
   }
   return { ...(raw as Record<string, unknown>), id };
+}
+
+function toSnakeCase(str: string): string {
+  return (
+    str
+      // First, handle camelCase/PascalCase transitions
+      .replace(/([a-z])([A-Z])/g, "$1_$2")
+      // Then convert to lowercase
+      .toLowerCase()
+      // Replace sequences of non-alphanumeric characters with single underscore
+      .replace(/[^a-z0-9]+/g, "_")
+      // Remove leading and trailing underscores
+      .replace(/^_+|_+$/g, "")
+  );
 }
 
 // --- Include helpers ---
