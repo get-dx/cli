@@ -57,7 +57,7 @@ export function scorecardsCommand() {
             response.scorecard,
             includeSections,
           );
-          renderJson(processedScorecard);
+          renderJson({ ok: true, scorecard: processedScorecard });
         } else {
           renderScorecard(response.scorecard, includeSections);
         }

@@ -24,9 +24,7 @@ export function renderScorecardList(
   }
 
   for (const scorecard of scorecards) {
-    blocks.push(
-      ui.h2(`${scorecard.name} (${ui.code(scorecard.id)})`),
-    );
+    blocks.push(ui.h2(`${scorecard.name} (${ui.code(scorecard.id)})`));
 
     if (shouldIncludeAll || includeSections.includes("core")) {
       blocks.push(ui.h3("Basic details"));
