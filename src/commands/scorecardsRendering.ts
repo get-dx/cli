@@ -12,9 +12,48 @@ export function renderScorecardList(
   nextCursor: string | null,
   includeSections: ScorecardIncludeSection[] | null,
 ) {
-  const blocks = [ui.h1("TODO: implement")];
+  const shouldIncludeAll = includeSections === null;
+  const blocks = [ui.h1("Scorecards")];
 
-  // TODO: implement
+  blocks.push(
+    ui.p(`Displaying ${ui.bold(scorecards.length.toString())} scorecards.`),
+  );
+
+  if (nextCursor) {
+    blocks.push(ui.p(`Next cursor: ${ui.code(nextCursor)}`));
+  }
+
+  for (const scorecard of scorecards) {
+    blocks.push(
+      ui.h2(`${scorecard.name} (${ui.code(scorecard.id)})`),
+    );
+
+    if (shouldIncludeAll || includeSections.includes("core")) {
+      blocks.push(ui.h3("Basic details"));
+      blocks.push(...basicDetailsContent(scorecard));
+
+      blocks.push(ui.h3("Entity filter"));
+      blocks.push(...entityFilterContent(scorecard));
+
+      if (scorecard.type === "LEVEL") {
+        blocks.push(ui.h3("Levels"));
+        blocks.push(...levelsContent(scorecard));
+      } else {
+        blocks.push(ui.h3("Check groups"));
+        blocks.push(...checkGroupsContent(scorecard.check_groups!));
+      }
+    }
+
+    if (shouldIncludeAll || includeSections.includes("owners")) {
+      blocks.push(ui.h3("Owners"));
+      blocks.push(...ownersContent(scorecard));
+    }
+
+    if (shouldIncludeAll || includeSections.includes("checks")) {
+      blocks.push(ui.h3("Checks"));
+      blocks.push(...checksContent(scorecard));
+    }
+  }
 
   renderRichText(blocks);
 }
