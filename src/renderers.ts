@@ -1,24 +1,4 @@
-import util from "node:util";
-
 import { Block } from "./ui.js";
-
-/**
- * @deprecated use `renderJson` and `renderRichText` instead
- */
-export function renderStructuredResponse(
-  response: unknown,
-  json: boolean,
-): void {
-  if (json) {
-    renderJson(response as Record<string, unknown>);
-    return;
-  }
-
-  process.stdout.write(
-    util.inspect(response, { depth: null, colors: process.stdout.isTTY }) +
-      "\n",
-  );
-}
 
 /**
  * Render an object in plain JSON formatting.

@@ -33,7 +33,9 @@ After making changes, run `make format` to auto-format code before verifying or 
 ## Source Layout
 
 - `src/commands/` — one file per top-level command group (e.g. `auth.ts`, `catalog.ts`); subcommands live in a same-named subdirectory (e.g. `catalog/entities.ts`)
-- `src/commandHelpers.ts`, `src/http.ts`, `src/renderers.ts` — shared utilities used by all commands
+- `src/commandHelpers.ts`, `src/http.ts` — shared utilities used by all commands
+- `src/ui.ts` + `src/ui/` — rich text building blocks (headings, paragraphs, lists, description lists, inline styles); use these to build output for `renderRichText`
+- `src/renderers.ts` — terminal output: `renderRichText(blocks)` for human-readable output, `renderJson(value)` for `--json` mode
 - `src/runtime.ts`, `src/config.ts`, `src/secrets.ts` — auth and environment resolution
 - `src/types.ts`, `src/errors.ts` — shared types and error handling
 
