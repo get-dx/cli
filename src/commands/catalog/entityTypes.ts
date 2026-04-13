@@ -8,9 +8,10 @@ import {
 } from "../../commandHelpers.js";
 import { CliError, EXIT_CODES } from "../../errors.js";
 import { request } from "../../http.js";
-import { renderStructuredResponse } from "../../renderers.js";
+import { renderJson, renderStructuredResponse } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
+import { renderEntityType } from "./entityTypesRendering.js";
 
 export function entityTypesCommand() {
   const entityTypes = new Command()
@@ -77,10 +78,12 @@ export function entityTypesCommand() {
           response.entity_type as Record<string, unknown>,
           options,
         );
-        renderStructuredResponse(
-          { ...response, entity_type: processedEntityType },
-          runtime.context.json,
-        );
+
+        if (runtime.context.json) {
+          renderJson(processedEntityType);
+        } else {
+          renderEntityType(response.entity_type);
+        }
       }),
     );
 
@@ -173,7 +176,7 @@ type DeleteEntityTypeResponse = {
   entity_type: EntityType;
 };
 
-type EntityType = {
+export type EntityType = {
   identifier: string;
   name: string | null;
   description: string;
@@ -194,6 +197,8 @@ export type Property = {
   created_at: string;
   updated_at: string;
   definition: Record<string, unknown>;
+  is_required: boolean;
+  visibility: "visible" | "hidden";
 };
 
 export type PropertyType =
