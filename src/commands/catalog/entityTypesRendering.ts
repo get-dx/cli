@@ -2,6 +2,50 @@ import type { EntityType, Property } from "./entityTypes.js";
 import { renderRichText } from "../../renderers.js";
 import * as ui from "../../ui.js";
 
+export function renderEntityTypeList(
+  entityTypes: Partial<EntityType>[],
+  nextCursor: string | null,
+) {
+  const blocks = [ui.h1("Entity Types")];
+
+  blocks.push(
+    ui.p(`Displaying ${ui.bold(entityTypes.length.toString())} entity types.`),
+  );
+
+  if (nextCursor) {
+    blocks.push(ui.p(`Next cursor: ${ui.code(nextCursor)}`));
+  }
+
+  for (const entityType of entityTypes) {
+    if (entityType.name && entityType.identifier) {
+      blocks.push(
+        ui.h2(`${entityType.name} (${ui.code(entityType.identifier)})`),
+      );
+    } else if (entityType.identifier) {
+      blocks.push(ui.h2(ui.code(entityType.identifier)));
+    } else {
+      blocks.push(ui.h2("Entity Type"));
+    }
+
+    if (entityType.identifier) {
+      blocks.push(ui.h3("Core attributes"));
+      blocks.push(...coreContent(entityType));
+    }
+
+    if (entityType.properties) {
+      blocks.push(ui.h3("Properties"));
+      blocks.push(...propertiesContent(entityType.properties));
+    }
+
+    if (entityType.aliases) {
+      blocks.push(ui.h3("Aliases"));
+      blocks.push(...aliasesContent(entityType.aliases));
+    }
+  }
+
+  renderRichText(blocks);
+}
+
 export function renderEntityType(
   entityType: Partial<EntityType>,
   title = "Entity Type Information",

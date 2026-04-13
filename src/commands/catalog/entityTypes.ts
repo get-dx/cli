@@ -11,7 +11,10 @@ import { request } from "../../http.js";
 import { renderJson, renderStructuredResponse } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
-import { renderEntityType } from "./entityTypesRendering.js";
+import {
+  renderEntityType,
+  renderEntityTypeList,
+} from "./entityTypesRendering.js";
 
 export function entityTypesCommand() {
   const entityTypes = new Command()
@@ -134,10 +137,14 @@ export function entityTypesCommand() {
             options,
           ),
         );
-        renderStructuredResponse(
-          { ...response, entity_types: processedEntityTypes },
-          runtime.context.json,
-        );
+        if (runtime.context.json) {
+          renderJson({ ...response, entity_types: processedEntityTypes });
+        } else {
+          renderEntityTypeList(
+            processedEntityTypes,
+            response.response_metadata?.next_cursor ?? null,
+          );
+        }
       }),
     );
 
