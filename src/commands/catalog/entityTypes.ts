@@ -8,9 +8,14 @@ import {
 } from "../../commandHelpers.js";
 import { CliError, EXIT_CODES } from "../../errors.js";
 import { request } from "../../http.js";
-import { renderStructuredResponse } from "../../renderers.js";
+import { renderJson } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
+import {
+  renderEntityType,
+  renderEntityTypeDeleted,
+  renderEntityTypeList,
+} from "./entityTypesRendering.js";
 
 export function entityTypesCommand() {
   const entityTypes = new Command()
@@ -39,7 +44,11 @@ export function entityTypesCommand() {
         const runtime = buildRuntime(getContext(command));
         const response = await deleteEntityType(runtime, identifier);
 
-        renderStructuredResponse(response, runtime.context.json);
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderEntityTypeDeleted(response.entity_type);
+        }
       }),
     );
 
@@ -77,10 +86,12 @@ export function entityTypesCommand() {
           response.entity_type as Record<string, unknown>,
           options,
         );
-        renderStructuredResponse(
-          { ...response, entity_type: processedEntityType },
-          runtime.context.json,
-        );
+
+        if (runtime.context.json) {
+          renderJson(processedEntityType);
+        } else {
+          renderEntityType(processedEntityType as Partial<EntityType>);
+        }
       }),
     );
 
@@ -131,10 +142,14 @@ export function entityTypesCommand() {
             options,
           ),
         );
-        renderStructuredResponse(
-          { ...response, entity_types: processedEntityTypes },
-          runtime.context.json,
-        );
+        if (runtime.context.json) {
+          renderJson({ ...response, entity_types: processedEntityTypes });
+        } else {
+          renderEntityTypeList(
+            processedEntityTypes,
+            response.response_metadata?.next_cursor ?? null,
+          );
+        }
       }),
     );
 
@@ -173,7 +188,7 @@ type DeleteEntityTypeResponse = {
   entity_type: EntityType;
 };
 
-type EntityType = {
+export type EntityType = {
   identifier: string;
   name: string | null;
   description: string;
@@ -187,13 +202,15 @@ type EntityType = {
 
 export type Property = {
   identifier: string;
-  name: string | null;
+  name: string;
   description: string;
   type: PropertyType;
   ordering: number;
   created_at: string;
   updated_at: string;
   definition: Record<string, unknown>;
+  is_required: boolean;
+  visibility: "visible" | "hidden";
 };
 
 export type PropertyType =
