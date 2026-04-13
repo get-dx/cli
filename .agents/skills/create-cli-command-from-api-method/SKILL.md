@@ -55,7 +55,7 @@ If `--help` does not show the expected description or `afterAll` examples (once 
 
 ### HTTP and API layer
 
-- Add a small typed (or pragmatically typed) function in `src/api.ts` that calls `request()` from `src/http.js` with the correct **method**, **path**, **query**, and **body** as in the docs **Facts** / **Example request**.
+- Add a small typed (or pragmatically typed) function in `src/api.ts` that calls `request()` from `src/http.ts` with the correct **method**, **path**, **query**, and **body** as in the docs **Facts** / **Example request**.
 - The API response typically has one field that is the most important, like `entity` for `GetEntityTypeResponse`. Define or reuse a named type to represent this object rather than `unknown`. If the shape is unclear, search on the [API object types](https://docs.getdx.com/webapi/object-types/) page to get more information.
 - Path shape matches the API: leading slash + method name with dots, e.g. `/catalog.entities.info`, `/catalog.entityTypes.list` (match the documented path; preserve camelCase as in the official method name when the docs show it).
 - Build the `query` object in the API helper: only set keys the caller provided; leave omitted keys out of the query object so optional parameters default on the server (e.g. do not send `limit` unless the user passed `--limit`).
@@ -63,12 +63,14 @@ If `--help` does not show the expected description or `afterAll` examples (once 
 ### Action handler
 
 - Use **`buildRuntime`** and **`getContext(command)`** from existing commands (see `src/commands/catalog/entities.ts`).
-- Wrap the async action with **`wrapAction`** from `src/commandHelpers.js` so errors are handled consistently.
-- Render success with **`renderStructuredResponse`** from `src/renderers.js` (or a dedicated renderer if the existing pattern does).
+- Wrap the async action with **`wrapAction`** from `src/commandHelpers.ts` so errors are handled consistently.
+- **Rendering:** branch on the `--json` flag:
+  - `--json` present → call **`renderJson(response)`** from `src/renderers.ts`.
+  - `--json` absent → build an array of `Block` objects using helpers from **`src/ui.ts`**, then pass the array to **`renderRichText(blocks)`** from `src/renderers.ts`.
 
 ### Examples in help
 
-- Add **2–3** examples via **`.addHelpText("afterAll", createExampleText([...]))`** from `src/commandHelpers.js`, following **`catalog entities`** commands in `src/commands/catalog/entities.ts` (`label` + full `dx ...` command line including `--json` where useful). For list/pagination methods, include an example that shows **`--cursor`** (or the doc’s pagination param) using a placeholder value from the docs example response if available.
+- Add **2–3** examples via **`.addHelpText("afterAll", createExampleText([...]))`** from `src/commandHelpers.ts`, following **`catalog entities`** commands in `src/commands/catalog/entities.ts` (`label` + full `dx ...` command line including `--json` where useful). For list/pagination methods, include an example that shows **`--cursor`** (or the doc’s pagination param) using a placeholder value from the docs example response if available.
 
 ### Types and validation
 
@@ -91,6 +93,6 @@ Run `pnpm test` after adding tests to confirm they pass.
 - [ ] Method name casing correct (title/API, not only URL slug); HTTP path matches **Facts** table.
 - [ ] Parent subcommands exist and are wired in `src/commands/<top>.ts`.
 - [ ] Build succeeds and `dx … --help` shows description and examples (`make`, or `pnpm build` / `tsc` + `node dist/index.js` if `make` fails on link/install).
-- [ ] API call matches docs; action uses `wrapAction` and `renderStructuredResponse` (or equivalent).
+- [ ] API call matches docs; action uses `wrapAction`, `renderJson` (for `--json`), and `renderRichText` with `ui.ts` blocks (for human output).
 - [ ] Required resource key is a positional argument when appropriate; other params are options; snake_case query params map correctly from Commander options.
 - [ ] Co-located test file exists with happy path, `--json`, validation error, and missing-auth cases; `pnpm test` passes.

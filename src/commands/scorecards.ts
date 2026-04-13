@@ -8,9 +8,10 @@ import {
 } from "../commandHelpers.js";
 import { CliError, EXIT_CODES } from "../errors.js";
 import { request } from "../http.js";
-import { renderStructuredResponse } from "../renderers.js";
+import { renderJson } from "../renderers.js";
 import { buildRuntime } from "../runtime.js";
 import type { Runtime } from "../types.js";
+import { renderScorecard, renderScorecardList } from "./scorecardsRendering.js";
 
 export function scorecardsCommand() {
   const scorecards = new Command()
@@ -46,18 +47,20 @@ export function scorecardsCommand() {
     )
     .action(
       wrapAction(async (id, options, command) => {
+        const includeSections = parseScorecardIncludeSections(options.include);
+
         const runtime = buildRuntime(getContext(command));
         const response = await getScorecard(runtime, id);
-        renderStructuredResponse(
-          {
-            ...response,
-            scorecard: processScorecardIncludes(
-              response.scorecard as Record<string, unknown>,
-              options,
-            ),
-          },
-          runtime.context.json,
-        );
+
+        if (runtime.context.json) {
+          const processedScorecard = processScorecardIncludes(
+            response.scorecard,
+            includeSections,
+          );
+          renderJson({ ok: true, scorecard: processedScorecard });
+        } else {
+          renderScorecard(response.scorecard, includeSections);
+        }
       }),
     );
 
@@ -103,21 +106,27 @@ export function scorecardsCommand() {
     )
     .action(
       wrapAction(async (options, command) => {
+        const includeSections = parseScorecardIncludeSections(options.include);
+
         const runtime = buildRuntime(getContext(command));
         const response = await listScorecards(runtime, {
           cursor: options.cursor,
           limit: options.limit,
           include_unpublished: options.includeUnpublished,
         });
-        renderStructuredResponse(
-          {
-            ...response,
-            scorecards: response.scorecards.map((sc) =>
-              processScorecardIncludes(sc as Record<string, unknown>, options),
-            ),
-          },
-          runtime.context.json,
-        );
+
+        if (runtime.context.json) {
+          const processedScorecards = response.scorecards.map((sc) =>
+            processScorecardIncludes(sc, includeSections),
+          );
+          renderJson({ ...response, scorecards: processedScorecards });
+        } else {
+          renderScorecardList(
+            response.scorecards,
+            response.response_metadata?.next_cursor ?? null,
+            includeSections,
+          );
+        }
       }),
     );
 
@@ -187,6 +196,7 @@ export type ScorecardCheckDefinition = {
   output_custom_options: Record<string, unknown> | null;
   output_aggregation: string | null;
   external_url: string | null;
+  estimated_dev_days: number | null;
   published: boolean;
   // LEVEL-type scorecards
   level?: { id: string; name: string };
@@ -258,11 +268,12 @@ export async function listScorecards(
 
 const SCORECARD_INCLUDE_SECTIONS = ["core", "owners", "checks"] as const;
 
-type ScorecardIncludeSection = (typeof SCORECARD_INCLUDE_SECTIONS)[number];
+export type ScorecardIncludeSection =
+  (typeof SCORECARD_INCLUDE_SECTIONS)[number];
 
 const SCORECARD_SECTION_KEYS: Record<
   ScorecardIncludeSection,
-  readonly string[]
+  readonly (keyof Scorecard)[]
 > = {
   core: [
     "id",
@@ -284,21 +295,27 @@ const SCORECARD_SECTION_KEYS: Record<
   checks: ["checks"],
 };
 
-function processScorecardIncludes(
-  scorecard: Record<string, unknown>,
-  options: { include?: string },
-): Record<string, unknown> {
-  const sections = parseScorecardIncludeSections(options.include);
+function assignScorecardKey<K extends keyof Scorecard>(
+  out: Partial<Scorecard>,
+  src: Scorecard,
+  key: K,
+): void {
+  out[key] = src[key];
+}
 
-  if (sections.length === 0) {
+function processScorecardIncludes(
+  scorecard: Scorecard,
+  includeSections: ScorecardIncludeSection[] | null,
+): Partial<Scorecard> {
+  if (includeSections === null) {
     return scorecard;
   }
 
-  const out: Record<string, unknown> = {};
-  for (const section of sections) {
+  const out: Partial<Scorecard> = {};
+  for (const section of includeSections) {
     for (const key of SCORECARD_SECTION_KEYS[section]) {
       if (key in scorecard) {
-        out[key] = scorecard[key];
+        assignScorecardKey(out, scorecard, key);
       }
     }
   }
@@ -307,9 +324,9 @@ function processScorecardIncludes(
 
 function parseScorecardIncludeSections(
   include?: string,
-): ScorecardIncludeSection[] {
+): ScorecardIncludeSection[] | null {
   if (!include) {
-    return [];
+    return null;
   }
 
   const results = include.split(",");
