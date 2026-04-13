@@ -1,4 +1,7 @@
+import fs from "fs";
+
 import { Command } from "commander";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 import {
   createExampleText,
@@ -8,9 +11,10 @@ import {
 } from "../commandHelpers.js";
 import { CliError, EXIT_CODES } from "../errors.js";
 import { request } from "../http.js";
-import { renderJson } from "../renderers.js";
+import { renderJson, renderRichText } from "../renderers.js";
 import { buildRuntime } from "../runtime.js";
 import type { Runtime } from "../types.js";
+import * as ui from "../ui.js";
 import { renderScorecard, renderScorecardList } from "./scorecardsRendering.js";
 
 export function scorecardsCommand() {
@@ -130,6 +134,104 @@ export function scorecardsCommand() {
       }),
     );
 
+  scorecards
+    .command("update")
+    .description("Update an existing scorecard from a YAML file or stdin")
+    .argument("<id>", "The unique ID of the scorecard")
+    .option(
+      "--init-file <path>",
+      "Fetch the scorecard's current state and write it as YAML to this path",
+    )
+    .option(
+      "--from-file <path>",
+      "Read a YAML file and update the scorecard with its contents",
+    )
+    .option(
+      "--from-stdin",
+      "Read YAML from stdin and update the scorecard with its contents",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Initialize a YAML file from the scorecard's current state",
+          command:
+            "dx scorecards update qjfj1a6cmit4 --init-file ./my-scorecard.yaml",
+        },
+        {
+          label: "Update a scorecard from a YAML file",
+          command:
+            "dx scorecards update qjfj1a6cmit4 --from-file ./my-scorecard.yaml",
+        },
+        {
+          label: "Update a scorecard from stdin",
+          command: "dx scorecards update qjfj1a6cmit4 --from-stdin",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (id, options, command) => {
+        const modeCount = [
+          options.initFile,
+          options.fromFile,
+          options.fromStdin,
+        ].filter(Boolean).length;
+        if (modeCount === 0) {
+          throw new CliError(
+            "One of --init-file, --from-file, or --from-stdin is required",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+        if (modeCount > 1) {
+          throw new CliError(
+            "--init-file, --from-file, and --from-stdin are mutually exclusive",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+
+        const runtime = buildRuntime(getContext(command));
+
+        if (options.initFile) {
+          const { scorecard } = await getScorecard(runtime, id);
+          const yaml = scorecardToYaml(scorecard);
+          fs.writeFileSync(options.initFile as string, yaml, "utf8");
+          if (runtime.context.json) {
+            renderJson({ ok: true, path: options.initFile as string });
+          } else {
+            renderRichText([
+              ui.p(
+                `${ui.success(ui.GLYPHS.CHECK)} Scorecard written to ${ui.code(options.initFile as string)}.`,
+              ),
+              ui.p(
+                `Edit the file, then run: ${ui.code(`dx scorecards update ${id} --from-file ${options.initFile as string}`)}`,
+              ),
+            ]);
+          }
+          return;
+        }
+
+        let raw: unknown;
+        if (options.fromFile) {
+          raw = readYamlFile(options.fromFile as string);
+        } else {
+          raw = await readYamlStdin();
+        }
+
+        const payload = buildUpdatePayload(id, raw);
+        const response = await updateScorecard(runtime, payload);
+
+        if (runtime.context.json) {
+          renderJson({ ok: true, scorecard: response.scorecard });
+        } else {
+          renderScorecard(
+            response.scorecard,
+            null,
+            `${ui.success(ui.GLYPHS.CHECK)} Scorecard updated`,
+          );
+        }
+      }),
+    );
+
   return scorecards;
 }
 
@@ -212,6 +314,13 @@ type GetScorecardResponse = {
   scorecard: Scorecard;
 };
 
+type UpdateScorecardPayload = Record<string, unknown> & { id: string };
+
+type UpdateScorecardResponse = {
+  ok: true;
+  scorecard: Scorecard;
+};
+
 function requestOptions(runtime: Runtime) {
   return {
     token: runtime.token,
@@ -262,6 +371,86 @@ export async function listScorecards(
   });
 
   return response as ListScorecardsResponse;
+}
+
+export async function updateScorecard(
+  runtime: Runtime,
+  payload: UpdateScorecardPayload,
+): Promise<UpdateScorecardResponse> {
+  const response = await request(runtime.baseUrl, "/scorecards.update", {
+    ...requestOptions(runtime),
+    method: "POST",
+    body: payload,
+  });
+
+  return response as unknown as UpdateScorecardResponse;
+}
+
+// --- YAML helpers ---
+
+const SCORECARD_READONLY_KEYS: ReadonlyArray<keyof Scorecard> = [
+  "sql_errors",
+  "editors",
+  "admins",
+];
+
+function scorecardToYaml(scorecard: Scorecard): string {
+  const obj: Partial<Scorecard> = { ...scorecard };
+  for (const key of SCORECARD_READONLY_KEYS) {
+    delete obj[key];
+  }
+  return stringifyYaml(obj);
+}
+
+function readYamlFile(filePath: string): unknown {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, "utf8");
+  } catch (err) {
+    throw new CliError(
+      `Could not read file "${filePath}": ${(err as Error).message}`,
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+  return parseYaml(content);
+}
+
+async function readYamlStdin(): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk));
+    process.stdin.on("end", () => {
+      const content = Buffer.concat(chunks).toString("utf8");
+      try {
+        resolve(parseYaml(content));
+      } catch (err) {
+        reject(
+          new CliError(
+            `Failed to parse YAML from stdin: ${(err as Error).message}`,
+            EXIT_CODES.ARGUMENT_ERROR,
+          ),
+        );
+      }
+    });
+    process.stdin.on("error", (err) => {
+      reject(
+        new CliError(
+          `Failed to read from stdin: ${err.message}`,
+          EXIT_CODES.ARGUMENT_ERROR,
+        ),
+      );
+    });
+  });
+}
+
+function buildUpdatePayload(id: string, raw: unknown): UpdateScorecardPayload {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new CliError(
+      "YAML content must be an object",
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+  return { ...(raw as Record<string, unknown>), id };
 }
 
 // --- Include helpers ---

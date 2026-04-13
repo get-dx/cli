@@ -59,10 +59,11 @@ export function renderScorecardList(
 export function renderScorecard(
   scorecard: Scorecard,
   includeSections: ScorecardIncludeSection[] | null,
+  title = "Scorecard Information",
 ) {
   const shouldIncludeAll = includeSections === null;
 
-  const blocks = [ui.h1("Scorecard Information")];
+  const blocks = [ui.h1(title)];
 
   if (shouldIncludeAll || includeSections.includes("core")) {
     blocks.push(ui.h2("Basic details"));
