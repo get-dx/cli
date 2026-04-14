@@ -487,6 +487,8 @@ const SCORECARD_BLANK_TEMPLATE_YAML = fs.readFileSync(
  * These keys are ignored when initializing a file to update
  */
 const SCORECARD_IGNORED_KEYS: ReadonlyArray<keyof Scorecard> = [
+  // Read-only: managed through other parts of the app, not the scorecards API
+  "admins",
   // Deprecated fields
   "evaluation_frequency_hours",
   "entity_filter_type_ids",
@@ -498,7 +500,6 @@ const SCORECARD_IGNORED_KEYS: ReadonlyArray<keyof Scorecard> = [
 const SCORECARD_TRANSFORM_KEYS: Partial<
   Record<keyof Scorecard, (value: unknown) => unknown>
 > = {
-  admins: (value) => (value as ScorecardUser[]).map((admin) => admin.id),
   editors: (value) => (value as ScorecardUser[]).map((editor) => editor.id),
   tags: (value) =>
     (value as ScorecardTag[]).map((tag) => ({ value: tag.value })),

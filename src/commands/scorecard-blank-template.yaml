@@ -18,9 +18,8 @@ entity_filter_type_identifiers:
 # SQL filter expression (when entity_filter_type is "sql")
 entity_filter_sql: ""
 
-# User IDs of editors and admins
+# User IDs of editors
 editors: []
-admins: []
 
 # Tags to apply to the scorecard
 tags: []
