@@ -14,20 +14,16 @@ import { parseRetryAfterMs, request } from "../../http.js";
 import { renderJson } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
+import * as ui from "../../ui.js";
 import { renderCsvSaved, renderQueryResultsTable } from "./queryRendering.js";
 
+const ANSI_ESCAPE_REGEX = /\u001B\[[0-9;]*m/g;
 const DEFAULT_RETRY_AFTER_MS = 1000;
 const PENDING_QUERY_RUN_STATUSES = new Set<StudioQueryRunStatus>([
   "queued",
+  "started",
   "running",
 ]);
-const QUERY_STATUS_MESSAGES: Record<
-  Extract<StudioQueryRunStatus, "queued" | "running">,
-  string
-> = {
-  queued: "Query queued",
-  running: "Query running",
-};
 
 export function queryCommand() {
   return new Command()
@@ -89,6 +85,7 @@ export function queryCommand() {
 
 type StudioQueryRunStatus =
   | "queued"
+  | "started"
   | "running"
   | "succeeded"
   | "failed"
@@ -128,7 +125,8 @@ async function executeAndWaitForQuery(
   sql: string,
 ): Promise<StudioQueryRun> {
   const progress = new QueryProgressReporter();
-  progress.start("Submitting query");
+  renderRunningQuery(sql);
+  progress.start(ui.bold("Submitting query"));
 
   try {
     const executeResponse = await executeStudioQuery(runtime, sql);
@@ -137,17 +135,17 @@ async function executeAndWaitForQuery(
 
     while (true) {
       if (queryRun.status === "succeeded") {
-        progress.stop("Query completed.");
+        progress.stop(`${ui.success(ui.GLYPHS.CHECK)} Query completed.`);
         return queryRun;
       }
 
       if (queryRun.status === "failed") {
-        progress.stop("Query failed.");
+        progress.stop(`${ui.error(ui.GLYPHS.ERROR)} Query failed.`);
         throw buildFailedQueryError(queryRun.error);
       }
 
       if (queryRun.status === "expired") {
-        progress.stop("Query expired.");
+        progress.stop(`${ui.warning(ui.GLYPHS.WARNING)} Query expired.`);
         throw new CliError(
           `Query results expired on ${queryRun.expires_at}.`,
           EXIT_CODES.RETRY_RECOMMENDED,
@@ -155,13 +153,11 @@ async function executeAndWaitForQuery(
       }
 
       if (!PENDING_QUERY_RUN_STATUSES.has(queryRun.status)) {
-        progress.stop("Query failed.");
+        progress.stop(`${ui.error(ui.GLYPHS.ERROR)} Query failed.`);
         throw new CliError(`Unexpected query status: ${queryRun.status}`, 1);
       }
 
-      progress.update(
-        `${QUERY_STATUS_MESSAGES[queryRun.status]} (${queryRun.id})`,
-      );
+      progress.update(renderPendingQueryStatus(queryRun.id));
       await waitForRetryAfter(retryAfterMs);
 
       try {
@@ -170,11 +166,13 @@ async function executeAndWaitForQuery(
         retryAfterMs = infoResponse.retryAfterMs;
       } catch (error) {
         if (error instanceof HttpError && error.status === 429) {
-          progress.update(`Polling too quickly; retrying (${queryRun.id})`);
+          progress.update(
+            `${ui.warning(ui.GLYPHS.WARNING)} Polling too quickly; retrying ${ui.dim(`(${queryRun.id})`)}`,
+          );
           await waitForRetryAfter(null);
           continue;
         }
-        progress.stop("Query failed.");
+        progress.stop(`${ui.error(ui.GLYPHS.ERROR)} Query failed.`);
         throw error;
       }
     }
@@ -182,6 +180,14 @@ async function executeAndWaitForQuery(
     progress.stop();
     throw error;
   }
+}
+
+function renderRunningQuery(sql: string): void {
+  process.stderr.write(`${ui.bold("Running:")} ${ui.code(sql)}\n`);
+}
+
+function renderPendingQueryStatus(queryRunId: string): string {
+  return `${ui.bold("Query running")} ${ui.dim(`(${queryRunId})`)}`;
 }
 
 async function executeStudioQuery(
@@ -440,7 +446,18 @@ async function waitForRetryAfter(retryAfterMs: number | null): Promise<void> {
 
 class QueryProgressReporter {
   private readonly enabled = Boolean(process.stderr.isTTY);
-  private readonly frames = ["-", "\\", "|", "/"];
+  private readonly frames = [
+    "⠋",
+    "⠙",
+    "⠹",
+    "⠸",
+    "⠼",
+    "⠴",
+    "⠦",
+    "⠧",
+    "⠇",
+    "⠏",
+  ].map((frame) => ui.dim(frame));
   private timer?: ReturnType<typeof setInterval>;
   private frameIndex = 0;
   private currentMessage = "";
@@ -497,9 +514,15 @@ class QueryProgressReporter {
   }
 
   private padLine(text: string): string {
-    const padded = text.padEnd(this.lastLineLength);
-    this.lastLineLength = Math.max(this.lastLineLength, text.length);
+    const visibleLength = this.visibleLength(text);
+    const padded =
+      text + " ".repeat(Math.max(0, this.lastLineLength - visibleLength));
+    this.lastLineLength = Math.max(this.lastLineLength, visibleLength);
     return padded;
+  }
+
+  private visibleLength(text: string): number {
+    return text.replace(ANSI_ESCAPE_REGEX, "").length;
   }
 }
 
