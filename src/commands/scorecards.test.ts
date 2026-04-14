@@ -175,14 +175,14 @@ describe("scorecards commands", () => {
           ),
       );
 
+      // Import before mocking readFileSync — the initial module load reads the
+      // blank template from disk via fs.readFileSync; mocking it beforehand would
+      // intercept Node's own CJS loader and cause a SyntaxError.
+      const { run } = await import("../cli.js");
       vi.spyOn(fs, "readFileSync").mockImplementation(() =>
-        JSON.stringify({
-          ...MOCK_SCORECARD_PAYLOAD,
-          name: "New Scorecard",
-        }),
+        JSON.stringify({ ...MOCK_SCORECARD_PAYLOAD, name: "New Scorecard" }),
       );
 
-      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -224,12 +224,12 @@ describe("scorecards commands", () => {
           ),
       );
 
-      // File includes an id — it should be stripped before sending to scorecards.create
+      const { run } = await import("../cli.js");
+      // File includes an id — it should be stripped before posting to scorecards.create
       vi.spyOn(fs, "readFileSync").mockImplementation(
         () => "id: qjfj1a6cmit4\nname: New Scorecard\n",
       );
 
-      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -272,11 +272,11 @@ describe("scorecards commands", () => {
           ),
       );
 
+      const { run } = await import("../cli.js");
       vi.spyOn(fs, "readFileSync").mockImplementation(
         () => "name: New Scorecard\n",
       );
 
-      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -319,11 +319,11 @@ describe("scorecards commands", () => {
           ),
       );
 
+      const { run } = await import("../cli.js");
       vi.spyOn(fs, "readFileSync").mockImplementation(
         () => "name: Bad Scorecard\n",
       );
 
-      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -454,11 +454,11 @@ describe("scorecards commands", () => {
       process.env.DX_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
+      const { run } = await import("../cli.js");
       vi.spyOn(fs, "readFileSync").mockImplementation(
         () => "- item1\n- item2\n",
       );
 
-      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
