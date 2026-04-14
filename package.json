@@ -11,7 +11,7 @@
     "node": "20.x"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && cp src/commands/scorecard-blank-template.yaml dist/commands/",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -21,7 +21,8 @@
   "dependencies": {
     "commander": "^14.0.1",
     "dayjs": "^1.11.20",
-    "picocolors": "^1.1.1"
+    "picocolors": "^1.1.1",
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
