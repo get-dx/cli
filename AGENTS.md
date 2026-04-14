@@ -43,7 +43,7 @@ After making changes, run `make format` to auto-format code before verifying or 
 
 Tests use **Vitest**. Run with `pnpm test`. Test files live alongside source files as `*.test.ts`.
 
-**Important:** Always call `await import("../cli.js")` *before* setting up `vi.spyOn(fs, "readFileSync")` mocks. Some command modules (e.g. `scorecards.ts`) read asset files via `fs.readFileSync` at module load time. If the mock is installed first, it also intercepts Node's internal CJS module loader reading its own dependency files, causing a `SyntaxError: Unexpected token ':'` that breaks every test in the file.
+**Important:** Always call `await import("../cli.js")` _before_ setting up `vi.spyOn(fs, "readFileSync")` mocks. Some command modules (e.g. `scorecards.ts`) read asset files via `fs.readFileSync` at module load time. If the mock is installed first, it also intercepts Node's internal CJS module loader reading its own dependency files, causing a `SyntaxError: Unexpected token ':'` that breaks every test in the file.
 
 ## Authentication
 
