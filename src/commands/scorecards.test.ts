@@ -564,8 +564,8 @@ describe("scorecards commands", () => {
     });
   });
 
-  describe("update", () => {
-    it("--init-file fetches the scorecard and writes YAML to the given path", async () => {
+  describe("init", () => {
+    it("--id fetches the scorecard and writes YAML to the given path", async () => {
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
         chunk: string | Uint8Array,
@@ -598,10 +598,10 @@ describe("scorecards commands", () => {
         "node",
         "dx",
         "scorecards",
-        "update",
-        "qjfj1a6cmit4",
-        "--init-file",
+        "init",
         "./my-scorecard.yaml",
+        "--id",
+        "qjfj1a6cmit4",
       ]);
 
       expect(fetch).toHaveBeenCalledWith(
@@ -617,7 +617,7 @@ describe("scorecards commands", () => {
       expect(out).toContain("./my-scorecard.yaml");
     });
 
-    it("--init-file omits ignored keys from the YAML", async () => {
+    it("--id omits ignored keys from the written YAML", async () => {
       vi.spyOn(process.stdout, "write").mockImplementation(
         (() => true) as typeof process.stdout.write,
       );
@@ -646,10 +646,10 @@ describe("scorecards commands", () => {
         "node",
         "dx",
         "scorecards",
-        "update",
-        "qjfj1a6cmit4",
-        "--init-file",
+        "init",
         "./my-scorecard.yaml",
+        "--id",
+        "qjfj1a6cmit4",
       ]);
 
       const yaml = writeFileSyncSpy.mock.calls[0]?.[1] as string;
@@ -657,7 +657,7 @@ describe("scorecards commands", () => {
       expect(yaml).not.toContain("entity_filter_type_ids");
     });
 
-    it("--init-file returns JSON with --json flag", async () => {
+    it("--id returns JSON with --json flag", async () => {
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
         chunk: string | Uint8Array,
@@ -689,17 +689,82 @@ describe("scorecards commands", () => {
         "dx",
         "--json",
         "scorecards",
-        "update",
+        "init",
+        "./my-scorecard.yaml",
+        "--id",
         "qjfj1a6cmit4",
-        "--init-file",
+      ]);
+
+      const parsed = JSON.parse(writes.join(""));
+      expect(parsed.ok).toBe(true);
+      expect(parsed.id).toBe("qjfj1a6cmit4");
+      expect(parsed.path).toBe("./my-scorecard.yaml");
+    });
+
+    it("without --id writes a placeholder file without fetching", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const fetchSpy = vi.fn();
+      vi.stubGlobal("fetch", fetchSpy);
+
+      const writeFileSyncSpy = vi
+        .spyOn(fs, "writeFileSync")
+        .mockImplementation(() => undefined);
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "scorecards", "init", "./my-scorecard.yaml"]);
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(writeFileSyncSpy).toHaveBeenCalledWith(
+        "./my-scorecard.yaml",
+        expect.stringContaining("scorecard_level_key"),
+        "utf8",
+      );
+      const out = writes.join("");
+      expect(out).toContain("./my-scorecard.yaml");
+    });
+
+    it("without --id returns JSON with --json flag", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "scorecards",
+        "init",
         "./my-scorecard.yaml",
       ]);
 
       const parsed = JSON.parse(writes.join(""));
       expect(parsed.ok).toBe(true);
       expect(parsed.path).toBe("./my-scorecard.yaml");
+      expect(parsed).not.toHaveProperty("id");
     });
+  });
 
+  describe("update", () => {
     it("--from-file posts YAML content to the API and renders the updated scorecard", async () => {
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
@@ -954,7 +1019,7 @@ describe("scorecards commands", () => {
       expect(out).toContain("Scorecard updated");
     });
 
-    it("requires at least one of --init-file, --from-file, or --from-stdin", async () => {
+    it("requires at least one of --from-file or --from-stdin", async () => {
       const stderrWrites: string[] = [];
       vi.spyOn(process.stderr, "write").mockImplementation(((
         chunk: string | Uint8Array,
@@ -973,7 +1038,7 @@ describe("scorecards commands", () => {
       await run(["node", "dx", "scorecards", "update", "qjfj1a6cmit4"]);
 
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
-      expect(stderrWrites.join("")).toContain("--init-file");
+      expect(stderrWrites.join("")).toContain("--from-file");
     });
 
     it("rejects when multiple mode flags are provided", async () => {

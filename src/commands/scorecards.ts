@@ -9,7 +9,7 @@ import {
   parsePositiveIntOption,
   wrapAction,
 } from "../commandHelpers.js";
-import { CliError, EXIT_CODES } from "../errors.js";
+import { CliError, EXIT_CODES, HttpError } from "../errors.js";
 import { request } from "../http.js";
 import { renderJson, renderRichText } from "../renderers.js";
 import { buildRuntime } from "../runtime.js";
@@ -64,6 +64,82 @@ export function scorecardsCommand() {
           renderJson({ ok: true, scorecard: processedScorecard });
         } else {
           renderScorecard(response.scorecard, includeSections);
+        }
+      }),
+    );
+
+  scorecards
+    .command("init")
+    .description(
+      "Write a scorecard YAML file, either from an existing scorecard or as a blank template",
+    )
+    .argument("<path>", "File path to write the YAML to")
+    .option(
+      "--id <id>",
+      "Fetch an existing scorecard and use it as the template",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Write a blank scorecard template",
+          command: "dx scorecards init ./my-scorecard.yaml",
+        },
+        {
+          label: "Initialize from an existing scorecard",
+          command: "dx scorecards init ./my-scorecard.yaml --id qjfj1a6cmit4",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (path, options, command) => {
+        const runtime = buildRuntime(getContext(command));
+
+        if (options.id) {
+          const id = options.id as string;
+          let scorecardResponse;
+          try {
+            scorecardResponse = await getScorecard(runtime, id);
+          } catch (err) {
+            const exitCode =
+              err instanceof HttpError &&
+              err.status !== undefined &&
+              err.status < 500
+                ? EXIT_CODES.ARGUMENT_ERROR
+                : EXIT_CODES.RETRY_RECOMMENDED;
+            throw new CliError(
+              `Failed to fetch scorecard "${id}": ${err instanceof Error ? err.message : String(err)}`,
+              exitCode,
+            );
+          }
+          const yaml = scorecardToYaml(scorecardResponse.scorecard);
+          fs.writeFileSync(path, yaml, "utf8");
+          if (runtime.context.json) {
+            renderJson({ ok: true, id, path });
+          } else {
+            renderRichText([
+              ui.p(
+                `${ui.success(ui.GLYPHS.CHECK)} Scorecard written to ${ui.code(path)}.`,
+              ),
+              ui.p(
+                `Edit the file, then run: ${ui.code(`dx scorecards update ${id} --from-file ${path}`)}`,
+              ),
+            ]);
+          }
+        } else {
+          fs.writeFileSync(path, SCORECARD_PLACEHOLDER_YAML, "utf8");
+          if (runtime.context.json) {
+            renderJson({ ok: true, path });
+          } else {
+            renderRichText([
+              ui.p(
+                `${ui.success(ui.GLYPHS.CHECK)} Placeholder written to ${ui.code(path)}.`,
+              ),
+              ui.p(
+                `Edit the file, then run: ${ui.code(`dx scorecards create --from-file ${path}`)}`,
+              ),
+            ]);
+          }
         }
       }),
     );
@@ -136,12 +212,10 @@ export function scorecardsCommand() {
 
   scorecards
     .command("update")
-    .description("Update an existing scorecard from a YAML file or stdin")
-    .argument("<id>", "The unique ID of the scorecard")
-    .option(
-      "--init-file <path>",
-      "Fetch the scorecard's current state and write it as YAML to this path",
+    .description(
+      "Update an existing scorecard from a YAML file or stdin. The `init` command can be used to initialize the scorecard file.",
     )
+    .argument("<id>", "The unique ID of the scorecard")
     .option(
       "--from-file <path>",
       "Read a YAML file and update the scorecard with its contents",
@@ -154,9 +228,8 @@ export function scorecardsCommand() {
       "afterAll",
       createExampleText([
         {
-          label: "Initialize a YAML file from the scorecard's current state",
-          command:
-            "dx scorecards update qjfj1a6cmit4 --init-file ./my-scorecard.yaml",
+          label: "Initialize a file first",
+          command: "dx scorecards init ./my-scorecard.yaml --id qjfj1a6cmit4",
         },
         {
           label: "Update a scorecard from a YAML file",
@@ -172,44 +245,23 @@ export function scorecardsCommand() {
     )
     .action(
       wrapAction(async (id, options, command) => {
-        const modeCount = [
-          options.initFile,
-          options.fromFile,
-          options.fromStdin,
-        ].filter(Boolean).length;
+        const modeCount = [options.fromFile, options.fromStdin].filter(
+          Boolean,
+        ).length;
         if (modeCount === 0) {
           throw new CliError(
-            "One of --init-file, --from-file, or --from-stdin is required",
+            "One of --from-file or --from-stdin is required",
             EXIT_CODES.ARGUMENT_ERROR,
           );
         }
         if (modeCount > 1) {
           throw new CliError(
-            "--init-file, --from-file, and --from-stdin are mutually exclusive",
+            "--from-file and --from-stdin are mutually exclusive",
             EXIT_CODES.ARGUMENT_ERROR,
           );
         }
 
         const runtime = buildRuntime(getContext(command));
-
-        if (options.initFile) {
-          const { scorecard } = await getScorecard(runtime, id);
-          const yaml = scorecardToYaml(scorecard);
-          fs.writeFileSync(options.initFile as string, yaml, "utf8");
-          if (runtime.context.json) {
-            renderJson({ ok: true, path: options.initFile as string });
-          } else {
-            renderRichText([
-              ui.p(
-                `${ui.success(ui.GLYPHS.CHECK)} Scorecard written to ${ui.code(options.initFile as string)}.`,
-              ),
-              ui.p(
-                `Edit the file, then run: ${ui.code(`dx scorecards update ${id} --from-file ${options.initFile as string}`)}`,
-              ),
-            ]);
-          }
-          return;
-        }
 
         let raw: unknown;
         if (options.fromFile) {
@@ -425,6 +477,79 @@ export async function updateScorecard(
 }
 
 // --- YAML helpers ---
+
+const SCORECARD_PLACEHOLDER_YAML = `\
+# Scorecard configuration
+# Edit this file, then run: dx scorecards update <id> --from-file <path>
+
+id: ""
+name: ""
+description: ""
+published: false
+
+# type: "LEVEL" (levels-based) or "POINTS" (points-based)
+type: LEVEL
+
+# Filter which entities this scorecard assesses.
+# entity_filter_type: "entity_types" or "sql"
+entity_filter_type: entity_types
+# List of entity type identifiers to include (when entity_filter_type is "entity_types")
+entity_filter_type_identifiers: []
+# SQL filter expression (when entity_filter_type is "sql")
+entity_filter_sql: ""
+
+# User IDs of editors and admins
+editors: []
+admins: []
+
+# Tags to apply to the scorecard
+tags: []
+
+# --- LEVEL-type fields (remove if using POINTS type) ---
+empty_level_label: ""
+empty_level_color: ""
+levels:
+  - key: bronze
+    name: Bronze
+    color: "#cd7f32"
+    rank: 1
+  - key: silver
+    name: Silver
+    color: "#c0c0c0"
+    rank: 2
+  - key: gold
+    name: Gold
+    color: "#ffd700"
+    rank: 3
+
+# --- POINTS-type fields (remove if using LEVEL type) ---
+# check_groups:
+#   - key: reliability
+#     name: Reliability
+
+# Checks apply to both LEVEL and POINTS scorecards
+checks:
+  - name: ""
+    description: ""
+    sql: "SELECT 'PASS' AS status"
+    ordering: 0
+    published: false
+    estimated_dev_days: null
+    external_url: ""
+    # Entity filter: restrict which entities this check runs against
+    filter_sql: ""
+    filter_message: ""
+    # Output settings: capture a value from the check query
+    output_enabled: false
+    output_type: null
+    output_custom_options: null
+    output_aggregation: null
+    # For LEVEL type: reference a level key from the levels list above
+    scorecard_level_key: bronze
+    # For POINTS type: reference a check group key and assign points
+    # scorecard_check_group_key: reliability
+    # points: 10
+`;
 
 /**
  * These keys are ignored when initializing a file to update
