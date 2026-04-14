@@ -23,6 +23,79 @@ export function scorecardsCommand() {
     .description("Manage scorecards");
 
   scorecards
+    .command("create")
+    .description(
+      "Create a new scorecard from a YAML file or stdin. The `init` command can be used to generate a starting template.",
+    )
+    .option(
+      "--from-file <path>",
+      "Read a YAML file and create a scorecard from its contents",
+    )
+    .option(
+      "--from-stdin",
+      "Read YAML from stdin and create a scorecard from its contents",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Generate a blank template first",
+          command: "dx scorecards init ./my-scorecard.yaml",
+        },
+        {
+          label: "Create a scorecard from a YAML file",
+          command: "dx scorecards create --from-file ./my-scorecard.yaml",
+        },
+        {
+          label: "Create a scorecard from stdin",
+          command:
+            "cat ./my-scorecard.yaml | dx scorecards create --from-stdin",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (options, command) => {
+        const modeCount = [options.fromFile, options.fromStdin].filter(
+          Boolean,
+        ).length;
+        if (modeCount === 0) {
+          throw new CliError(
+            "One of --from-file or --from-stdin is required",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+        if (modeCount > 1) {
+          throw new CliError(
+            "--from-file and --from-stdin are mutually exclusive",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+
+        const runtime = buildRuntime(getContext(command));
+
+        let raw: unknown;
+        if (options.fromFile) {
+          raw = readYamlFile(options.fromFile as string);
+        } else {
+          raw = await readYamlStdin();
+        }
+
+        const payload = buildCreatePayload(raw);
+        const response = await createScorecard(runtime, payload);
+
+        if (runtime.context.json) {
+          renderJson({ ok: true, scorecard: response.scorecard });
+        } else {
+          renderScorecard(
+            response.scorecard,
+            null,
+            `${ui.success(ui.GLYPHS.CHECK)} Scorecard created`,
+          );
+        }
+      }),
+    );
+
+  scorecards
     .command("info")
     .description(
       "Retrieve details about a specific scorecard, including its defined levels and checks",
@@ -362,6 +435,25 @@ export type ScorecardCheckDefinition = {
   check_group?: { id: string; name: string };
 };
 
+export type CreateScorecardPayload = {
+  name: string;
+  type: "LEVEL" | "POINTS";
+  entity_filter_type: string;
+  description?: string;
+  published?: boolean;
+  entity_filter_type_identifiers?: string[];
+  entity_filter_sql?: string;
+  tags?: ScorecardTag[];
+  editors?: ScorecardUser[];
+  checks?: ScorecardCheckDefinitionPayload[];
+  // LEVEL-type scorecard fields
+  empty_level_label?: string;
+  empty_level_color?: string;
+  levels?: ScorecardLevelPayload[];
+  // POINTS-type scorecard fields
+  check_groups?: ScorecardCheckGroupPayload[];
+};
+
 export type UpdateScorecardPayload = {
   id: string;
   name?: string;
@@ -406,6 +498,11 @@ type GetScorecardResponse = {
   scorecard: Scorecard;
 };
 
+type CreateScorecardResponse = {
+  ok: true;
+  scorecard: Scorecard;
+};
+
 type UpdateScorecardResponse = {
   ok: true;
   scorecard: Scorecard;
@@ -418,6 +515,30 @@ function requestOptions(runtime: Runtime) {
     agentSessionId: runtime.context.agentSessionId,
     userAgent: `dx-cli/${runtime.version}`,
   };
+}
+
+export async function createScorecard(
+  runtime: Runtime,
+  payload: CreateScorecardPayload,
+): Promise<CreateScorecardResponse> {
+  const response = await request(runtime.baseUrl, "/scorecards.create", {
+    ...requestOptions(runtime),
+    method: "POST",
+    body: payload,
+  });
+
+  return response as CreateScorecardResponse;
+}
+
+function buildCreatePayload(raw: unknown): CreateScorecardPayload {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new CliError(
+      "YAML content must be an object",
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+  const { id: _id, ...rest } = raw as Record<string, unknown>;
+  return rest as CreateScorecardPayload;
 }
 
 export async function getScorecard(
