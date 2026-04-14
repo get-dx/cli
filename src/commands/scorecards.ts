@@ -165,7 +165,8 @@ export function scorecardsCommand() {
         },
         {
           label: "Update a scorecard from stdin",
-          command: "dx scorecards update qjfj1a6cmit4 --from-stdin",
+          command:
+            "cat ./my-scorecard.yaml | dx scorecards update qjfj1a6cmit4 --from-stdin",
         },
       ]),
     )
