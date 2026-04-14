@@ -127,13 +127,13 @@ export function scorecardsCommand() {
             ]);
           }
         } else {
-          fs.writeFileSync(path, SCORECARD_PLACEHOLDER_YAML, "utf8");
+          fs.writeFileSync(path, SCORECARD_BLANK_TEMPLATE_YAML, "utf8");
           if (runtime.context.json) {
             renderJson({ ok: true, path });
           } else {
             renderRichText([
               ui.p(
-                `${ui.success(ui.GLYPHS.CHECK)} Placeholder written to ${ui.code(path)}.`,
+                `${ui.success(ui.GLYPHS.CHECK)} Blank template written to ${ui.code(path)}.`,
               ),
               ui.p(
                 `Edit the file, then run: ${ui.code(`dx scorecards create --from-file ${path}`)}`,
@@ -478,78 +478,10 @@ export async function updateScorecard(
 
 // --- YAML helpers ---
 
-const SCORECARD_PLACEHOLDER_YAML = `\
-# Scorecard configuration
-# Edit this file, then run: dx scorecards update <id> --from-file <path>
-
-id: ""
-name: ""
-description: ""
-published: false
-
-# type: "LEVEL" (levels-based) or "POINTS" (points-based)
-type: LEVEL
-
-# Filter which entities this scorecard assesses.
-# entity_filter_type: "entity_types" or "sql"
-entity_filter_type: entity_types
-# List of entity type identifiers to include (when entity_filter_type is "entity_types")
-entity_filter_type_identifiers: []
-# SQL filter expression (when entity_filter_type is "sql")
-entity_filter_sql: ""
-
-# User IDs of editors and admins
-editors: []
-admins: []
-
-# Tags to apply to the scorecard
-tags: []
-
-# --- LEVEL-type fields (remove if using POINTS type) ---
-empty_level_label: ""
-empty_level_color: ""
-levels:
-  - key: bronze
-    name: Bronze
-    color: "#cd7f32"
-    rank: 1
-  - key: silver
-    name: Silver
-    color: "#c0c0c0"
-    rank: 2
-  - key: gold
-    name: Gold
-    color: "#ffd700"
-    rank: 3
-
-# --- POINTS-type fields (remove if using LEVEL type) ---
-# check_groups:
-#   - key: reliability
-#     name: Reliability
-
-# Checks apply to both LEVEL and POINTS scorecards
-checks:
-  - name: ""
-    description: ""
-    sql: "SELECT 'PASS' AS status"
-    ordering: 0
-    published: false
-    estimated_dev_days: null
-    external_url: ""
-    # Entity filter: restrict which entities this check runs against
-    filter_sql: ""
-    filter_message: ""
-    # Output settings: capture a value from the check query
-    output_enabled: false
-    output_type: null
-    output_custom_options: null
-    output_aggregation: null
-    # For LEVEL type: reference a level key from the levels list above
-    scorecard_level_key: bronze
-    # For POINTS type: reference a check group key and assign points
-    # scorecard_check_group_key: reliability
-    # points: 10
-`;
+const SCORECARD_BLANK_TEMPLATE_YAML = fs.readFileSync(
+  new URL("./scorecard-blank-template.yaml", import.meta.url),
+  "utf8",
+);
 
 /**
  * These keys are ignored when initializing a file to update
