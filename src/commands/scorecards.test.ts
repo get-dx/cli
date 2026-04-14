@@ -1,6 +1,10 @@
+import { EventEmitter } from "events";
+import fs from "fs";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EXIT_CODES } from "../errors.js";
+import { Scorecard, UpdateScorecardPayload } from "./scorecards.js";
 
 const setToken = vi.fn();
 const deleteToken = vi.fn();
@@ -27,7 +31,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const MOCK_SCORECARD = {
+const MOCK_SCORECARD: Scorecard = {
   id: "qjfj1a6cmit4",
   name: "My custom scorecard",
   description: "",
@@ -59,6 +63,7 @@ const MOCK_SCORECARD = {
     {
       id: "y3ynphtim81c",
       ordering: 0,
+      estimated_dev_days: null,
       name: "Has Owner",
       description: "Important for entities to have an owner",
       sql: "SELECT 'PASS' AS status",
@@ -71,6 +76,73 @@ const MOCK_SCORECARD = {
       external_url: null,
       published: true,
       level: { id: "vic57y3o55r4", name: "Bronze" },
+    },
+  ],
+};
+
+// Matches the shape of UpdateScorecardPayload: levels have a `key`, checks use
+// `scorecard_level_key` instead of `level`, and read-only response fields are absent.
+const MOCK_SCORECARD_PAYLOAD: UpdateScorecardPayload = {
+  id: "qjfj1a6cmit4",
+  name: "My custom scorecard",
+  description: "",
+  type: "LEVEL",
+  published: true,
+  entity_filter_type: "entity_types",
+  entity_filter_sql: null,
+  tags: [{ value: "production", color: "#38bdf8" }],
+  editors: [
+    {
+      id: 2468,
+      email: "liszt@example.com",
+      name: "Franz Liszt",
+      avatar: "https://avatars.slack-edge.com/2024-07-05/1234567890.jpg",
+      created_at: "2024-06-28T04:03:53.245Z",
+    },
+  ],
+  admins: [],
+  levels: [
+    {
+      id: "vic57y3o55r4",
+      name: "Bronze",
+      rank: 1,
+      color: "#fdba74",
+      key: "bronze",
+    },
+    {
+      id: "nqbw5y1fogur",
+      name: "Silver",
+      rank: 2,
+      color: "#9ca3af",
+      key: "silver",
+    },
+    {
+      id: "mfq00xe2z3vm",
+      name: "Gold",
+      rank: 3,
+      color: "#fbbf24",
+      key: "gold",
+    },
+  ],
+  empty_level_label: "None",
+  empty_level_color: "#e5e7eb",
+  checks: [
+    {
+      id: "y3ynphtim81c",
+      ordering: 0,
+      estimated_dev_days: null,
+      name: "Has Owner",
+      description: "Important for entities to have an owner",
+      sql: "SELECT 'PASS' AS status",
+      filter_sql: null,
+      filter_message: null,
+      output_enabled: false,
+      output_type: null,
+      output_custom_options: null,
+      output_aggregation: null,
+      external_url: null,
+      published: true,
+      scorecard_level_key: "bronze",
     },
   ],
 };
@@ -489,6 +561,484 @@ describe("scorecards commands", () => {
 
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
       expect(stderrWrites.join("")).toContain("--limit");
+    });
+  });
+
+  describe("update", () => {
+    it("--init-file fetches the scorecard and writes YAML to the given path", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              JSON.stringify({ ok: true, scorecard: MOCK_SCORECARD }),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      const writeFileSyncSpy = vi
+        .spyOn(fs, "writeFileSync")
+        .mockImplementation(() => undefined);
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "scorecards",
+        "update",
+        "qjfj1a6cmit4",
+        "--init-file",
+        "./my-scorecard.yaml",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/scorecards.info?id=qjfj1a6cmit4",
+        expect.objectContaining({ method: "GET" }),
+      );
+      expect(writeFileSyncSpy).toHaveBeenCalledWith(
+        "./my-scorecard.yaml",
+        expect.stringContaining("My custom scorecard"),
+        "utf8",
+      );
+      const out = writes.join("");
+      expect(out).toContain("./my-scorecard.yaml");
+    });
+
+    it("--init-file omits ignored keys from the YAML", async () => {
+      vi.spyOn(process.stdout, "write").mockImplementation(
+        (() => true) as typeof process.stdout.write,
+      );
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              JSON.stringify({ ok: true, scorecard: MOCK_SCORECARD }),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      const writeFileSyncSpy = vi
+        .spyOn(fs, "writeFileSync")
+        .mockImplementation(() => undefined);
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "scorecards",
+        "update",
+        "qjfj1a6cmit4",
+        "--init-file",
+        "./my-scorecard.yaml",
+      ]);
+
+      const yaml = writeFileSyncSpy.mock.calls[0]?.[1] as string;
+      expect(yaml).not.toContain("sql_errors");
+      expect(yaml).not.toContain("entity_filter_type_ids");
+    });
+
+    it("--init-file returns JSON with --json flag", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              JSON.stringify({ ok: true, scorecard: MOCK_SCORECARD }),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      vi.spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "scorecards",
+        "update",
+        "qjfj1a6cmit4",
+        "--init-file",
+        "./my-scorecard.yaml",
+      ]);
+
+      const parsed = JSON.parse(writes.join(""));
+      expect(parsed.ok).toBe(true);
+      expect(parsed.path).toBe("./my-scorecard.yaml");
+    });
+
+    it("--from-file posts YAML content to the API and renders the updated scorecard", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const updatedScorecard = { ...MOCK_SCORECARD, name: "Updated Scorecard" };
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              JSON.stringify({ ok: true, scorecard: updatedScorecard }),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      // JSON is valid YAML — use the payload mock so the full shape is exercised
+      vi.spyOn(fs, "readFileSync").mockImplementation(() =>
+        JSON.stringify({
+          ...MOCK_SCORECARD_PAYLOAD,
+          name: "Updated Scorecard",
+        }),
+      );
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "scorecards",
+        "update",
+        "qjfj1a6cmit4",
+        "--from-file",
+        "./my-scorecard.yaml",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/scorecards.update",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining('"name":"Updated Scorecard"'),
+        }),
+      );
+      const out = writes.join("");
+      expect(out).toContain("Updated Scorecard");
+      expect(out).toContain("Scorecard updated");
+    });
+
+    it("--from-file always sends the id from the CLI argument", async () => {
+      vi.spyOn(process.stdout, "write").mockImplementation(
+        (() => true) as typeof process.stdout.write,
+      );
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              JSON.stringify({ ok: true, scorecard: MOCK_SCORECARD }),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      // YAML omits the id — it should still be sent from the CLI argument
+      vi.spyOn(fs, "readFileSync").mockImplementation(
+        () => "name: Updated Scorecard\n",
+      );
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "scorecards",
+        "update",
+        "qjfj1a6cmit4",
+        "--from-file",
+        "./my-scorecard.yaml",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/scorecards.update",
+        expect.objectContaining({
+          body: expect.stringContaining('"id":"qjfj1a6cmit4"'),
+        }),
+      );
+    });
+
+    it("--from-file returns JSON with --json flag", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const updatedScorecard = { ...MOCK_SCORECARD, name: "Updated Scorecard" };
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              JSON.stringify({ ok: true, scorecard: updatedScorecard }),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      vi.spyOn(fs, "readFileSync").mockImplementation(
+        () => "id: qjfj1a6cmit4\nname: Updated Scorecard\n",
+      );
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "scorecards",
+        "update",
+        "qjfj1a6cmit4",
+        "--from-file",
+        "./my-scorecard.yaml",
+      ]);
+
+      const parsed = JSON.parse(writes.join(""));
+      expect(parsed.ok).toBe(true);
+      expect(parsed.scorecard.name).toBe("Updated Scorecard");
+    });
+
+    it("--from-file surfaces an API error", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              JSON.stringify({ ok: false, error: "invalid_payload" }),
+              { status: 422 },
+            ),
+          ),
+      );
+
+      vi.spyOn(fs, "readFileSync").mockImplementation(
+        () => "id: qjfj1a6cmit4\nname: Bad Scorecard\n",
+      );
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "scorecards",
+        "update",
+        "qjfj1a6cmit4",
+        "--from-file",
+        "./my-scorecard.yaml",
+      ]);
+
+      expect(exitSpy).toHaveBeenCalled();
+      expect(stderrWrites.join("")).toContain("422");
+    });
+
+    it("--from-stdin posts YAML from stdin to the API", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const updatedScorecard = { ...MOCK_SCORECARD, name: "Stdin Scorecard" };
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              JSON.stringify({ ok: true, scorecard: updatedScorecard }),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      const mockStdin = new EventEmitter();
+      vi.spyOn(process, "stdin", "get").mockReturnValue(
+        mockStdin as unknown as typeof process.stdin,
+      );
+      setImmediate(() => {
+        mockStdin.emit(
+          "data",
+          Buffer.from("id: qjfj1a6cmit4\nname: Stdin Scorecard\n"),
+        );
+        mockStdin.emit("end");
+      });
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "scorecards",
+        "update",
+        "qjfj1a6cmit4",
+        "--from-stdin",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/scorecards.update",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining('"name":"Stdin Scorecard"'),
+        }),
+      );
+      const out = writes.join("");
+      expect(out).toContain("Stdin Scorecard");
+      expect(out).toContain("Scorecard updated");
+    });
+
+    it("requires at least one of --init-file, --from-file, or --from-stdin", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "scorecards", "update", "qjfj1a6cmit4"]);
+
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+      expect(stderrWrites.join("")).toContain("--init-file");
+    });
+
+    it("rejects when multiple mode flags are provided", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "scorecards",
+        "update",
+        "qjfj1a6cmit4",
+        "--from-stdin",
+        "--from-file",
+        "./my-scorecard.yaml",
+      ]);
+
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+      expect(stderrWrites.join("")).toContain("mutually exclusive");
+    });
+
+    it("rejects non-object YAML from --from-file", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.spyOn(fs, "readFileSync").mockImplementation(
+        () => "- item1\n- item2\n",
+      );
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "scorecards",
+        "update",
+        "qjfj1a6cmit4",
+        "--from-file",
+        "./my-scorecard.yaml",
+      ]);
+
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+      expect(stderrWrites.join("")).toContain("YAML content must be an object");
     });
   });
 });
