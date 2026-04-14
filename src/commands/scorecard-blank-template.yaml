@@ -13,7 +13,8 @@ type: LEVEL
 # entity_filter_type: "entity_types" or "sql"
 entity_filter_type: entity_types
 # List of entity type identifiers to include (when entity_filter_type is "entity_types")
-entity_filter_type_identifiers: []
+entity_filter_type_identifiers:
+  - service
 # SQL filter expression (when entity_filter_type is "sql")
 entity_filter_sql: ""
 
@@ -50,7 +51,8 @@ levels:
 checks:
   - name: ""
     description: ""
-    sql: "SELECT 'PASS' AS status"
+    sql: |-
+      select 'PASS' as status
     ordering: 0
     published: false
     estimated_dev_days: null
