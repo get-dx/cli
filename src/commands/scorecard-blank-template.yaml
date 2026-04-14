@@ -1,7 +1,17 @@
 # Scorecard configuration
-# Edit this file, then run: dx scorecards update <id> --from-file <path>
+#
+# Edit this file, then run:
+#
+# ```
+# dx scorecards create --from-file <path>
+# ```
+#
+# After the scorecard is created, make updates by running:
+#
+# ```
+# dx scorecards update --id <id> --from-file <path>
+# ```
 
-id: ""
 name: ""
 description: ""
 published: false
@@ -25,26 +35,27 @@ editors: []
 tags: []
 
 # --- LEVEL-type fields (remove if using POINTS type) ---
-empty_level_label: ""
-empty_level_color: ""
+empty_level_label: "Incomplete"
+empty_level_color: "#cbd5e1"
 levels:
   - key: bronze
     name: Bronze
-    color: "#cd7f32"
+    color: "#fb923c"
     rank: 1
   - key: silver
     name: Silver
-    color: "#c0c0c0"
+    color: "#9ca3af"
     rank: 2
   - key: gold
     name: Gold
-    color: "#ffd700"
+    color: "#fbbf24"
     rank: 3
 
 # --- POINTS-type fields (remove if using LEVEL type) ---
 # check_groups:
 #   - key: reliability
 #     name: Reliability
+#     ordering: 0
 
 # Checks apply to both LEVEL and POINTS scorecards
 checks:
