@@ -169,15 +169,6 @@ type ListEntityTypesResponse = {
   response_metadata?: { next_cursor?: string | null };
 };
 
-function requestOptions(runtime: Runtime) {
-  return {
-    token: runtime.token,
-    agent: runtime.context.agent,
-    agentSessionId: runtime.context.agentSessionId,
-    userAgent: `dx-cli/${runtime.version}`,
-  };
-}
-
 type GetEntityTypeResponse = {
   ok: true;
   entity_type: EntityType;
@@ -236,10 +227,9 @@ export async function getEntityType(
   identifier: string,
 ): Promise<GetEntityTypeResponse> {
   const response = await request<GetEntityTypeResponse>(
-    runtime.baseUrl,
+    runtime,
     "/catalog.entityTypes.info",
     {
-      ...requestOptions(runtime),
       method: "GET",
       query: { identifier },
     },
@@ -253,10 +243,9 @@ async function deleteEntityType(
   identifier: string,
 ): Promise<DeleteEntityTypeResponse> {
   const response = await request<DeleteEntityTypeResponse>(
-    runtime.baseUrl,
+    runtime,
     "/catalog.entityTypes.delete",
     {
-      ...requestOptions(runtime),
       method: "POST",
       query: { identifier },
     },
@@ -274,10 +263,9 @@ async function listEntityTypes(
   if (params.limit !== undefined) query.limit = params.limit;
 
   const response = await request<ListEntityTypesResponse>(
-    runtime.baseUrl,
+    runtime,
     "/catalog.entityTypes.list",
     {
-      ...requestOptions(runtime),
       method: "GET",
       query,
     },

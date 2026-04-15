@@ -209,10 +209,9 @@ async function executeStudioQuery(
   sql: string,
 ): Promise<{ body: ExecuteStudioQueryResponse; retryAfterMs?: number }> {
   return request<ExecuteStudioQueryResponse>(
-    runtime.baseUrl,
+    runtime,
     "/studio.queryRuns.execute",
     {
-      ...requestOptions(runtime),
       method: "POST",
       body: { sql },
     },
@@ -224,10 +223,9 @@ async function getStudioQueryRun(
   id: string,
 ): Promise<{ body: ExecuteStudioQueryResponse; retryAfterMs?: number }> {
   return request<ExecuteStudioQueryResponse>(
-    runtime.baseUrl,
+    runtime,
     "/studio.queryRuns.info",
     {
-      ...requestOptions(runtime),
       method: "GET",
       query: { id },
     },
@@ -239,10 +237,9 @@ async function getStudioQueryResults(
   id: string,
 ): Promise<GetStudioQueryResultsResponse> {
   const response = await request<GetStudioQueryResultsResponse>(
-    runtime.baseUrl,
+    runtime,
     "/studio.queryRuns.results",
     {
-      ...requestOptions(runtime),
       method: "GET",
       query: { id },
     },
@@ -285,15 +282,6 @@ async function downloadStudioQueryResultsCsv(
 
   await ensureOkResponse(response);
   await writeResponseBodyToFile(response, filename);
-}
-
-function requestOptions(runtime: Runtime) {
-  return {
-    token: runtime.token,
-    agent: runtime.context.agent,
-    agentSessionId: runtime.context.agentSessionId,
-    userAgent: `dx-cli/${runtime.version}`,
-  };
 }
 
 function buildHeaders(runtime: Runtime, accept: string): Headers {

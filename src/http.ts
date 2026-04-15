@@ -1,5 +1,5 @@
 import { HttpError } from "./errors.js";
-import type { RequestOptions } from "./types.js";
+import type { RequestOptions, Runtime } from "./types.js";
 
 export type RequestResponse<T extends Record<string, unknown>> = {
   body: T;
@@ -7,30 +7,28 @@ export type RequestResponse<T extends Record<string, unknown>> = {
 };
 
 export async function request<T extends Record<string, unknown>>(
-  baseUrl: string,
+  runtime: Runtime,
   route: string,
   options: RequestOptions = {},
 ): Promise<RequestResponse<T>> {
   const method = options.method || "GET";
   const headers = new Headers({
     Accept: "application/json",
-    "User-Agent": options.userAgent || "dx-cli/dev",
+    "User-Agent": `dx-cli/${runtime.version}`,
   });
 
-  if (options.token) {
-    headers.set("Authorization", `Bearer ${options.token}`);
-  }
+  headers.set("Authorization", `Bearer ${runtime.token}`);
 
   if (options.body !== undefined) {
     headers.set("Content-Type", "application/json");
   }
 
-  if (options.agent) {
-    headers.set("X-DX-Agent-Name", options.agent);
+  if (runtime.context.agent) {
+    headers.set("X-DX-Agent-Name", runtime.context.agent);
   }
 
-  if (options.agentSessionId) {
-    headers.set("X-DX-Agent-Session-Id", options.agentSessionId);
+  if (runtime.context.agentSessionId) {
+    headers.set("X-DX-Agent-Session-Id", runtime.context.agentSessionId);
   }
 
   const query = new URLSearchParams();
@@ -40,7 +38,7 @@ export async function request<T extends Record<string, unknown>>(
     }
   });
 
-  const url = `${baseUrl}${route}${query.size > 0 ? `?${query.toString()}` : ""}`;
+  const url = `${runtime.baseUrl}${route}${query.size > 0 ? `?${query.toString()}` : ""}`;
 
   let response: Response;
   try {

@@ -513,15 +513,6 @@ export type Entity = {
   aliases: Record<string, unknown[]>;
 };
 
-function requestOptions(runtime: Runtime) {
-  return {
-    token: runtime.token,
-    agent: runtime.context.agent,
-    agentSessionId: runtime.context.agentSessionId,
-    userAgent: `dx-cli/${runtime.version}`,
-  };
-}
-
 type GetEntityResponse = {
   ok: true;
   entity: Entity;
@@ -532,10 +523,9 @@ async function getEntity(
   identifier: string,
 ): Promise<GetEntityResponse> {
   const response = await request<GetEntityResponse>(
-    runtime.baseUrl,
+    runtime,
     "/catalog.entities.info",
     {
-      ...requestOptions(runtime),
       method: "GET",
       query: { identifier },
     },
@@ -555,10 +545,9 @@ async function listEntities(
   if (params.search_term !== undefined) query.search_term = params.search_term;
 
   const response = await request<ListEntitiesResponse>(
-    runtime.baseUrl,
+    runtime,
     "/catalog.entities.list",
     {
-      ...requestOptions(runtime),
       method: "GET",
       query,
     },
@@ -590,10 +579,9 @@ async function createEntity(
   params: CreateEntityParams,
 ): Promise<{ ok: true; entity: Entity }> {
   const response = await request<{ ok: true; entity: Entity }>(
-    runtime.baseUrl,
+    runtime,
     "/catalog.entities.create",
     {
-      ...requestOptions(runtime),
       method: "POST",
       body: buildEntityMutationBody(identifier, params),
     },
@@ -610,10 +598,9 @@ async function updateEntity(
   params: UpdateEntityParams,
 ): Promise<{ ok: true; entity: Entity }> {
   const response = await request<{ ok: true; entity: Entity }>(
-    runtime.baseUrl,
+    runtime,
     "/catalog.entities.update",
     {
-      ...requestOptions(runtime),
       method: "POST",
       body: buildEntityMutationBody(identifier, params),
     },
@@ -627,10 +614,9 @@ async function deleteEntity(
   identifier: string,
 ): Promise<{ ok: true; entity: Entity }> {
   const response = await request<{ ok: true; entity: Entity }>(
-    runtime.baseUrl,
+    runtime,
     "/catalog.entities.delete",
     {
-      ...requestOptions(runtime),
       method: "POST",
       query: { identifier },
     },
@@ -653,10 +639,9 @@ async function upsertEntity(
   params: UpsertEntityParams,
 ): Promise<UpsertEntityResponse> {
   const response = await request<UpsertEntityResponse>(
-    runtime.baseUrl,
+    runtime,
     "/catalog.entities.upsert",
     {
-      ...requestOptions(runtime),
       method: "POST",
       body: buildEntityMutationBody(identifier, params),
     },
@@ -726,10 +711,9 @@ async function getEntityScorecards(
   if (params.limit !== undefined) query.limit = params.limit;
 
   const response = await request<GetEntityScorecardsResponse>(
-    runtime.baseUrl,
+    runtime,
     "/catalog.entities.scorecards",
     {
-      ...requestOptions(runtime),
       method: "GET",
       query,
     },
@@ -794,10 +778,9 @@ async function getEntityTasks(
   if (params.limit !== undefined) query.limit = params.limit;
 
   const response = await request<GetEntityTasksResponse>(
-    runtime.baseUrl,
+    runtime,
     "/catalog.entities.tasks",
     {
-      ...requestOptions(runtime),
       method: "GET",
       query,
     },

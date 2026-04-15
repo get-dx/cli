@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { parseRetryAfterMs, request } from "./http.js";
+import type { Runtime } from "./types.js";
+
+const runtime: Runtime = {
+  baseUrl: "https://api.example.com",
+  token: "token-123",
+  context: { json: false },
+  version: "0.1.0",
+};
 
 describe("parseRetryAfterMs", () => {
   it("parses integer seconds", () => {
@@ -40,9 +48,7 @@ describe("request", () => {
     );
 
     await expect(
-      request<{ ok: true; value: number }>("https://api.example.com", "/test", {
-        method: "GET",
-      }),
+      request<{ ok: true; value: number }>(runtime, "/test", { method: "GET" }),
     ).resolves.toEqual({
       body: { ok: true, value: 1 },
       retryAfterMs: 2000,
@@ -60,9 +66,7 @@ describe("request", () => {
     );
 
     await expect(
-      request<{ ok: true; value: number }>("https://api.example.com", "/test", {
-        method: "GET",
-      }),
+      request<{ ok: true; value: number }>(runtime, "/test", { method: "GET" }),
     ).resolves.toEqual({
       body: { ok: true, value: 1 },
     });

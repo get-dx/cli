@@ -76,15 +76,6 @@ export function authCommand(): Command {
   return auth;
 }
 
-function requestOptions(runtime: Runtime) {
-  return {
-    token: runtime.token,
-    agent: runtime.context.agent,
-    agentSessionId: runtime.context.agentSessionId,
-    userAgent: `dx-cli/${runtime.version}`,
-  };
-}
-
 export type TokenType = "account_web_api_token";
 
 export type AuthInfoResponse = {
@@ -99,14 +90,9 @@ export type AuthInfoResponse = {
 };
 
 async function getAuthInfo(runtime: Runtime): Promise<AuthInfoResponse> {
-  const response = await request<AuthInfoResponse>(
-    runtime.baseUrl,
-    "/auth.info",
-    {
-      ...requestOptions(runtime),
-      method: "GET",
-    },
-  );
+  const response = await request<AuthInfoResponse>(runtime, "/auth.info", {
+    method: "GET",
+  });
 
   return response.body;
 }
