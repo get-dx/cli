@@ -473,6 +473,105 @@ describe("scorecards commands", () => {
     });
   });
 
+  describe("delete", () => {
+    it("sends DELETE request and renders success message", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(JSON.stringify({ ok: true }), { status: 200 }),
+          ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "scorecards", "delete", "pht2wuldvjcb"]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/scorecards.delete?id=pht2wuldvjcb",
+        expect.objectContaining({ method: "POST" }),
+      );
+      expect(writes.join("")).toContain("Scorecard deleted");
+    });
+
+    it("returns JSON with --json flag", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(JSON.stringify({ ok: true }), { status: 200 }),
+          ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "scorecards",
+        "delete",
+        "pht2wuldvjcb",
+      ]);
+
+      const parsed = JSON.parse(writes.join(""));
+      expect(parsed.ok).toBe(true);
+    });
+
+    it("surfaces an API error", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ ok: false, error: "not_found" }), {
+            status: 422,
+          }),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "scorecards", "delete", "pht2wuldvjcb"]);
+
+      expect(exitSpy).toHaveBeenCalled();
+      expect(stderrWrites.join("")).toContain("422");
+    });
+  });
+
   describe("info", () => {
     it("fetches scorecard info by id", async () => {
       const writes: string[] = [];

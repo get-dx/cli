@@ -96,6 +96,38 @@ export function scorecardsCommand() {
     );
 
   scorecards
+    .command("delete")
+    .description("Delete a scorecard")
+    .argument("<id>", "The unique ID of the scorecard")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Delete a scorecard",
+          command: "dx scorecards delete pht2wuldvjcb",
+        },
+        {
+          label: "Delete a scorecard and return JSON",
+          command: "dx scorecards delete pht2wuldvjcb --json",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (id, _options, command) => {
+        const runtime = buildRuntime(getContext(command));
+        await deleteScorecard(runtime, id);
+
+        if (runtime.context.json) {
+          renderJson({ ok: true });
+        } else {
+          renderRichText([
+            ui.p(`${ui.success(ui.GLYPHS.CHECK)} Scorecard deleted`),
+          ]);
+        }
+      }),
+    );
+
+  scorecards
     .command("info")
     .description(
       "Retrieve details about a specific scorecard, including its defined levels and checks",
@@ -492,6 +524,26 @@ type ScorecardCheckDefinitionPayload = Omit<
 };
 
 // --- API ---
+
+type DeleteScorecardResponse = {
+  ok: true;
+};
+
+export async function deleteScorecard(
+  runtime: Runtime,
+  id: string,
+): Promise<DeleteScorecardResponse> {
+  const response = await request<DeleteScorecardResponse>(
+    runtime,
+    "/scorecards.delete",
+    {
+      method: "POST",
+      query: { id },
+    },
+  );
+
+  return response.body;
+}
 
 type GetScorecardResponse = {
   ok: true;
