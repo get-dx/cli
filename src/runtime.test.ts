@@ -15,7 +15,9 @@ describe("runtime", () => {
     process.env.DX_BASE_URL = "https://api.example.com/";
     process.env.DX_API_TOKEN = "abcd1234wxyz";
 
-    const runtime = buildRuntime({ json: true });
+    const runtime = buildRuntime({
+      json: true,
+    });
 
     expect(runtime.baseUrl).toBe("https://api.example.com");
     expect(runtime.token).toBe("abcd1234wxyz");
@@ -27,7 +29,9 @@ describe("runtime", () => {
     writeConfig({ baseUrl: "https://api.persisted.example.com" });
     process.env.DX_API_TOKEN = "persisted-token";
 
-    const runtime = buildRuntime({ json: false });
+    const runtime = buildRuntime({
+      json: false,
+    });
 
     expect(runtime.baseUrl).toBe("https://api.persisted.example.com");
     expect(runtime.token).toBe("persisted-token");

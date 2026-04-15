@@ -4,11 +4,15 @@ import { authCommand } from "./commands/auth.js";
 import { catalogCommand } from "./commands/catalog.js";
 import { scorecardsCommand } from "./commands/scorecards.js";
 import { handleError } from "./commandHelpers.js";
+import { initializeLogger } from "./logger.js";
 
 import cliPackage from "../package.json" with { type: "json" };
 
 export async function run(argv = process.argv): Promise<void> {
   try {
+    initializeLogger({
+      json: argv.includes("--json") || !process.stderr.isTTY,
+    });
     await createProgram().parseAsync(argv);
   } catch (error) {
     handleError(error, undefined, argv);
