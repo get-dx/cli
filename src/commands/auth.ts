@@ -99,10 +99,14 @@ export type AuthInfoResponse = {
 };
 
 async function getAuthInfo(runtime: Runtime): Promise<AuthInfoResponse> {
-  const response = await request(runtime.baseUrl, "/auth.info", {
-    ...requestOptions(runtime),
-    method: "GET",
-  });
+  const response = await request<AuthInfoResponse>(
+    runtime.baseUrl,
+    "/auth.info",
+    {
+      ...requestOptions(runtime),
+      method: "GET",
+    },
+  );
 
-  return response as AuthInfoResponse;
+  return response.body;
 }

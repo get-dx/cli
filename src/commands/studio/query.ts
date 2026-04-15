@@ -10,7 +10,7 @@ import {
   wrapAction,
 } from "../../commandHelpers.js";
 import { CliError, EXIT_CODES, HttpError } from "../../errors.js";
-import { parseRetryAfterMs, request } from "../../http.js";
+import { request } from "../../http.js";
 import { renderJson } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
@@ -135,7 +135,7 @@ async function executeQuery(
     renderRunningQuery(sql);
     progress.start(ui.bold("Submitting query"));
     const executeResponse = await executeStudioQuery(runtime, sql);
-    const queryRun = executeResponse.query_run;
+    const queryRun = executeResponse.body.query_run;
     await waitForRetryAfter(executeResponse.retryAfterMs);
     return queryRun;
   } catch (error) {
@@ -150,10 +150,10 @@ async function waitForQuery(
   queryRunId: string,
 ): Promise<StudioQueryRun> {
   while (true) {
-    let retryAfterMs = null;
+    let retryAfterMs: number | undefined;
     try {
       const infoResponse = await getStudioQueryRun(runtime, queryRunId);
-      const queryRun = infoResponse.query_run;
+      const queryRun = infoResponse.body.query_run;
 
       retryAfterMs = infoResponse.retryAfterMs;
       if (queryRun.status === "succeeded") {
@@ -207,36 +207,48 @@ function renderPendingQueryStatus(queryRunId: string): string {
 async function executeStudioQuery(
   runtime: Runtime,
   sql: string,
-): Promise<ExecuteStudioQueryResponse & { retryAfterMs: number | null }> {
-  return requestJsonWithHeaders<ExecuteStudioQueryResponse>(runtime, {
-    route: "/studio.queryRuns.execute",
-    method: "POST",
-    body: { sql },
-  });
+): Promise<{ body: ExecuteStudioQueryResponse; retryAfterMs?: number }> {
+  return request<ExecuteStudioQueryResponse>(
+    runtime.baseUrl,
+    "/studio.queryRuns.execute",
+    {
+      ...requestOptions(runtime),
+      method: "POST",
+      body: { sql },
+    },
+  );
 }
 
 async function getStudioQueryRun(
   runtime: Runtime,
   id: string,
-): Promise<ExecuteStudioQueryResponse & { retryAfterMs: number | null }> {
-  return requestJsonWithHeaders<ExecuteStudioQueryResponse>(runtime, {
-    route: "/studio.queryRuns.info",
-    method: "GET",
-    query: { id },
-  });
+): Promise<{ body: ExecuteStudioQueryResponse; retryAfterMs?: number }> {
+  return request<ExecuteStudioQueryResponse>(
+    runtime.baseUrl,
+    "/studio.queryRuns.info",
+    {
+      ...requestOptions(runtime),
+      method: "GET",
+      query: { id },
+    },
+  );
 }
 
 async function getStudioQueryResults(
   runtime: Runtime,
   id: string,
 ): Promise<GetStudioQueryResultsResponse> {
-  const response = await request(runtime.baseUrl, "/studio.queryRuns.results", {
-    ...requestOptions(runtime),
-    method: "GET",
-    query: { id },
-  });
+  const response = await request<GetStudioQueryResultsResponse>(
+    runtime.baseUrl,
+    "/studio.queryRuns.results",
+    {
+      ...requestOptions(runtime),
+      method: "GET",
+      query: { id },
+    },
+  );
 
-  return response as GetStudioQueryResultsResponse;
+  return response.body;
 }
 
 async function downloadStudioQueryResultsCsv(
@@ -310,47 +322,6 @@ function buildDownloadHeaders(runtime: Runtime, accept: string): Headers {
   });
 }
 
-async function requestJsonWithHeaders<T extends Record<string, unknown>>(
-  runtime: Runtime,
-  options: {
-    route: string;
-    method: "GET" | "POST";
-    query?: Record<string, string | number | boolean | undefined>;
-    body?: unknown;
-  },
-): Promise<T & { retryAfterMs: number | null }> {
-  const headers = buildHeaders(runtime, "application/json");
-  if (options.body !== undefined) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  const response = await fetchResponse(
-    buildApiUrl(runtime, options.route, options.query),
-    {
-      method: options.method,
-      headers,
-      body:
-        options.body !== undefined ? JSON.stringify(options.body) : undefined,
-    },
-  );
-  const responseBodyText = await response.text();
-
-  if (!response.ok) {
-    const body = parseResponseText(responseBodyText);
-    const message =
-      extractErrorMessage(body) ||
-      `Request failed with status ${response.status}`;
-
-    throw new HttpError(message, response.status, body);
-  }
-
-  const body = parseJsonResponse<T>(responseBodyText);
-  return {
-    ...body,
-    retryAfterMs: parseRetryAfterMs(response.headers),
-  };
-}
-
 async function fetchWithApiHeaders(
   runtime: Runtime,
   url: string,
@@ -420,21 +391,6 @@ function extractErrorMessage(body: unknown): string | null {
   return null;
 }
 
-function buildApiUrl(
-  runtime: Runtime,
-  route: string,
-  query?: Record<string, string | number | boolean | undefined>,
-): string {
-  const queryString = new URLSearchParams();
-  Object.entries(query || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      queryString.set(key, String(value));
-    }
-  });
-
-  return `${runtime.baseUrl}${route}${queryString.size > 0 ? `?${queryString.toString()}` : ""}`;
-}
-
 function parseResponseText(text: string): unknown {
   try {
     return JSON.parse(text) as unknown;
@@ -443,15 +399,7 @@ function parseResponseText(text: string): unknown {
   }
 }
 
-function parseJsonResponse<T>(text: string): T {
-  try {
-    return JSON.parse(text) as T;
-  } catch (error) {
-    throw new HttpError(`Invalid JSON response: ${(error as Error).message}`);
-  }
-}
-
-async function waitForRetryAfter(retryAfterMs: number | null): Promise<void> {
+async function waitForRetryAfter(retryAfterMs?: number): Promise<void> {
   const delayMs = retryAfterMs ?? DEFAULT_RETRY_AFTER_MS;
   await new Promise<void>((resolve) => {
     setTimeout(resolve, delayMs);

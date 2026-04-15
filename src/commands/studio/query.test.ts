@@ -178,13 +178,10 @@ describe("studio query command", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ ok: true, query_run: queuedQueryRun }),
-          {
-            status: 202,
-            headers: { "Retry-After": "2" },
-          },
-        ),
+        new Response(JSON.stringify({ ok: true, query_run: queuedQueryRun }), {
+          status: 202,
+          headers: { "Retry-After": "2" },
+        }),
       )
       .mockResolvedValueOnce(
         new Response(
@@ -199,10 +196,12 @@ describe("studio query command", () => {
     vi.stubGlobal("fetch", fetchMock);
     const setTimeoutSpy = vi
       .spyOn(globalThis, "setTimeout")
-      .mockImplementation((((callback: TimerHandler) => {
-        callback();
+      .mockImplementation(((callback: TimerHandler) => {
+        if (typeof callback === "function") {
+          callback();
+        }
         return 0;
-      }) as typeof globalThis.setTimeout));
+      }) as typeof globalThis.setTimeout);
 
     const { run } = await import("../../cli.js");
     await run(["node", "dx", "--json", "studio", "query", "SELECT 1"]);

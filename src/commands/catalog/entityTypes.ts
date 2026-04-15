@@ -235,20 +235,24 @@ export async function getEntityType(
   runtime: Runtime,
   identifier: string,
 ): Promise<GetEntityTypeResponse> {
-  const response = await request(runtime.baseUrl, "/catalog.entityTypes.info", {
-    ...requestOptions(runtime),
-    method: "GET",
-    query: { identifier },
-  });
+  const response = await request<GetEntityTypeResponse>(
+    runtime.baseUrl,
+    "/catalog.entityTypes.info",
+    {
+      ...requestOptions(runtime),
+      method: "GET",
+      query: { identifier },
+    },
+  );
 
-  return response as GetEntityTypeResponse;
+  return response.body;
 }
 
 async function deleteEntityType(
   runtime: Runtime,
   identifier: string,
 ): Promise<DeleteEntityTypeResponse> {
-  const response = await request(
+  const response = await request<DeleteEntityTypeResponse>(
     runtime.baseUrl,
     "/catalog.entityTypes.delete",
     {
@@ -258,7 +262,7 @@ async function deleteEntityType(
     },
   );
 
-  return response as DeleteEntityTypeResponse;
+  return response.body;
 }
 
 async function listEntityTypes(
@@ -269,13 +273,17 @@ async function listEntityTypes(
   if (params.cursor !== undefined) query.cursor = params.cursor;
   if (params.limit !== undefined) query.limit = params.limit;
 
-  const response = await request(runtime.baseUrl, "/catalog.entityTypes.list", {
-    ...requestOptions(runtime),
-    method: "GET",
-    query,
-  });
+  const response = await request<ListEntityTypesResponse>(
+    runtime.baseUrl,
+    "/catalog.entityTypes.list",
+    {
+      ...requestOptions(runtime),
+      method: "GET",
+      query,
+    },
+  );
 
-  return response as ListEntityTypesResponse;
+  return response.body;
 }
 
 // --- Include helpers ---
