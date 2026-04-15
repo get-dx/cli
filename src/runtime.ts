@@ -2,8 +2,14 @@ import { resolveBaseUrl } from "./config.js";
 import { CliError } from "./errors.js";
 import { getToken } from "./secrets.js";
 import type { CliContext, Runtime } from "./types.js";
+import { createLogger } from "./logger.js";
+import type { Logger } from "./logger.js";
 
 import cliPackage from "../package.json" with { type: "json" };
+
+export function buildLogger(context: CliContext): Logger {
+  return createLogger({ json: context.json || !process.stderr.isTTY });
+}
 
 export function buildRuntime(context: CliContext): Runtime {
   const baseUrl = resolveBaseUrl();
@@ -20,5 +26,6 @@ export function buildRuntime(context: CliContext): Runtime {
     token,
     context,
     version: cliPackage.version,
+    logger: buildLogger(context),
   };
 }

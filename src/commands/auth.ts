@@ -7,7 +7,7 @@ import { wrapAction } from "../commandHelpers.js";
 import { getContext } from "../commandHelpers.js";
 import { persistBaseUrl, resolveBaseUrl } from "../config.js";
 import { request } from "../http.js";
-import { buildRuntime } from "../runtime.js";
+import { buildLogger, buildRuntime } from "../runtime.js";
 import type { Runtime } from "../types.js";
 import cliPackage from "../../package.json" with { type: "json" };
 import { maskToken } from "../ui.js";
@@ -29,6 +29,7 @@ export function authCommand(): Command {
           token: commandOptions.token,
           context,
           version: cliPackage.version,
+          logger: buildLogger(context),
         };
 
         const response = await getAuthInfo(runtime);

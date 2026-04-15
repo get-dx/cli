@@ -245,6 +245,162 @@ describe("auth commands", () => {
       expect(output).toContain("✓");
       expect(output).toContain("Logged in to");
     });
+
+    it("emits JSON logs to stderr when --json is present", async () => {
+      const stdoutWrites: string[] = [];
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stdoutWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+
+      const originalDescriptor = Object.getOwnPropertyDescriptor(
+        process.stderr,
+        "isTTY",
+      );
+      Object.defineProperty(process.stderr, "isTTY", {
+        configurable: true,
+        value: true,
+      });
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_LOG_LEVEL = "debug";
+      getToken.mockReturnValue("token-1234");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              auth: {
+                token_type: "account_web_api_token",
+                token_name: "cli",
+                scopes: ["entities:read"],
+                created_at: "2026-03-31T12:00:00Z",
+              },
+              account: { name: "DX" },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "--json", "auth", "status"]);
+
+      if (originalDescriptor) {
+        Object.defineProperty(process.stderr, "isTTY", originalDescriptor);
+      } else {
+        delete (process.stderr as { isTTY?: boolean }).isTTY;
+      }
+
+      expect(JSON.parse(stdoutWrites.join("")).ok).toBe(true);
+      expect(stderrWrites).toHaveLength(2);
+      expect(JSON.parse(stderrWrites[0]).message).toBe("Sending HTTP request");
+      expect(JSON.parse(stderrWrites[1]).message).toBe(
+        "Received HTTP response",
+      );
+    });
+
+    it("emits JSON logs to stderr when stderr is not a tty", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+
+      const originalDescriptor = Object.getOwnPropertyDescriptor(
+        process.stderr,
+        "isTTY",
+      );
+      Object.defineProperty(process.stderr, "isTTY", {
+        configurable: true,
+        value: false,
+      });
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_LOG_LEVEL = "debug";
+      getToken.mockReturnValue("token-1234");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              auth: {
+                token_type: "account_web_api_token",
+                token_name: "cli",
+                scopes: ["entities:read"],
+                created_at: "2026-03-31T12:00:00Z",
+              },
+              account: { name: "DX" },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "auth", "status"]);
+
+      if (originalDescriptor) {
+        Object.defineProperty(process.stderr, "isTTY", originalDescriptor);
+      } else {
+        delete (process.stderr as { isTTY?: boolean }).isTTY;
+      }
+
+      expect(stderrWrites).toHaveLength(2);
+      expect(JSON.parse(stderrWrites[0]).message).toBe("Sending HTTP request");
+    });
+
+    it("does not emit logs when DX_LOG_LEVEL is unset", async () => {
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-1234");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              auth: {
+                token_type: "account_web_api_token",
+                token_name: "cli",
+                scopes: ["entities:read"],
+                created_at: "2026-03-31T12:00:00Z",
+              },
+              account: { name: "DX" },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "auth", "status"]);
+
+      expect(stderrWrites).toEqual([]);
+    });
   });
 
   describe("logout", () => {
