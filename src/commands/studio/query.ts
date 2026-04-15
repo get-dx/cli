@@ -64,7 +64,10 @@ export function queryCommand() {
         }
 
         const runtime = buildRuntime(context);
-        const queryRun = await executeAndWaitForQuery(runtime, sql);
+        const progress = new QueryProgressReporter();
+
+        const queryRun = await executeQuery(runtime, progress, sql);
+        await waitForQuery(runtime, progress, queryRun.id);
 
         if (options.output) {
           await downloadStudioQueryResultsCsv(
@@ -123,20 +126,36 @@ type GetStudioQueryResultsResponse = {
   };
 };
 
-async function executeAndWaitForQuery(
+async function executeQuery(
   runtime: Runtime,
+  progress: QueryProgressReporter,
   sql: string,
 ): Promise<StudioQueryRun> {
-  const progress = new QueryProgressReporter();
-  renderRunningQuery(sql);
-  progress.start(ui.bold("Submitting query"));
-
   try {
+    renderRunningQuery(sql);
+    progress.start(ui.bold("Submitting query"));
     const executeResponse = await executeStudioQuery(runtime, sql);
-    let queryRun = executeResponse.query_run;
-    let retryAfterMs = executeResponse.retryAfterMs;
+    const queryRun = executeResponse.query_run;
+    await waitForRetryAfter(executeResponse.retryAfterMs);
+    return queryRun;
+  } catch (error) {
+    progress.stop();
+    throw error;
+  }
+}
 
-    while (true) {
+async function waitForQuery(
+  runtime: Runtime,
+  progress: QueryProgressReporter,
+  queryRunId: string,
+): Promise<StudioQueryRun> {
+  while (true) {
+    let retryAfterMs = null;
+    try {
+      const infoResponse = await getStudioQueryRun(runtime, queryRunId);
+      const queryRun = infoResponse.query_run;
+
+      retryAfterMs = infoResponse.retryAfterMs;
       if (queryRun.status === "succeeded") {
         progress.stop(`${ui.success(ui.GLYPHS.CHECK)} Query completed.`);
         return queryRun;
@@ -161,27 +180,19 @@ async function executeAndWaitForQuery(
       }
 
       progress.update(renderPendingQueryStatus(queryRun.id));
-      await waitForRetryAfter(retryAfterMs);
 
-      try {
-        const infoResponse = await getStudioQueryRun(runtime, queryRun.id);
-        queryRun = infoResponse.query_run;
-        retryAfterMs = infoResponse.retryAfterMs;
-      } catch (error) {
-        if (error instanceof HttpError && error.status === 429) {
-          progress.update(
-            `${ui.warning(ui.GLYPHS.WARNING)} Polling too quickly; retrying ${ui.dim(`(${queryRun.id})`)}`,
-          );
-          await waitForRetryAfter(null);
-          continue;
-        }
-        progress.stop(`${ui.error(ui.GLYPHS.ERROR)} Query failed.`);
-        throw error;
+      await waitForRetryAfter(retryAfterMs);
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 429) {
+        progress.update(
+          `${ui.warning(ui.GLYPHS.WARNING)} Polling too quickly; retrying ${ui.dim(`(${queryRunId})`)}`,
+        );
+        await waitForRetryAfter(retryAfterMs);
+        continue;
       }
+      progress.stop(`${ui.error(ui.GLYPHS.ERROR)} Query failed.`);
+      throw error;
     }
-  } catch (error) {
-    progress.stop();
-    throw error;
   }
 }
 

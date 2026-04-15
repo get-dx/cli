@@ -147,6 +147,15 @@ describe("studio query command", () => {
         .fn()
         .mockResolvedValueOnce(
           new Response(
+            JSON.stringify({ ok: true, query_run: queuedQueryRun }),
+            {
+              status: 202,
+              headers: { "Retry-After": "0" },
+            },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
             JSON.stringify({ ok: true, query_run: succeededQueryRun }),
             { status: 200 },
           ),
@@ -163,57 +172,43 @@ describe("studio query command", () => {
   });
 
   it("uses Retry-After to pace polling", async () => {
-    vi.useFakeTimers();
+    process.env.DX_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
 
-    try {
-      process.env.DX_BASE_URL = "https://api.example.com";
-      getToken.mockReturnValue("token-123");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ ok: true, query_run: queuedQueryRun }),
+          {
+            status: 202,
+            headers: { "Retry-After": "2" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ ok: true, query_run: succeededQueryRun }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(resultsResponse), { status: 200 }),
+      );
 
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({ ok: true, query_run: queuedQueryRun }),
-            {
-              status: 202,
-              headers: { "Retry-After": "2" },
-            },
-          ),
-        )
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({ ok: true, query_run: succeededQueryRun }),
-            { status: 200 },
-          ),
-        )
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(resultsResponse), { status: 200 }),
-        );
+    vi.stubGlobal("fetch", fetchMock);
+    const setTimeoutSpy = vi
+      .spyOn(globalThis, "setTimeout")
+      .mockImplementation((((callback: TimerHandler) => {
+        callback();
+        return 0;
+      }) as typeof globalThis.setTimeout));
 
-      vi.stubGlobal("fetch", fetchMock);
-      const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+    const { run } = await import("../../cli.js");
+    await run(["node", "dx", "--json", "studio", "query", "SELECT 1"]);
 
-      const { run } = await import("../../cli.js");
-      const runPromise = run([
-        "node",
-        "dx",
-        "--json",
-        "studio",
-        "query",
-        "SELECT 1",
-      ]);
-
-      await vi.advanceTimersByTimeAsync(1999);
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-
-      await vi.advanceTimersByTimeAsync(1);
-      await runPromise;
-
-      expect(fetchMock).toHaveBeenCalledTimes(3);
-      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
   });
 
   it("downloads CSV results to disk with --output", async () => {
@@ -227,6 +222,15 @@ describe("studio query command", () => {
       "fetch",
       vi
         .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ ok: true, query_run: queuedQueryRun }),
+            {
+              status: 202,
+              headers: { "Retry-After": "0" },
+            },
+          ),
+        )
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify({ ok: true, query_run: succeededQueryRun }),
@@ -309,23 +313,34 @@ describe("studio query command", () => {
 
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            ok: true,
-            query_run: {
-              ...succeededQueryRun,
-              status: "failed",
-              finished_at: "2026-04-13T20:10:06Z",
-              error: {
-                code: "sql_error",
-                message: "Query timeout.",
-              },
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ ok: true, query_run: queuedQueryRun }),
+            {
+              status: 202,
+              headers: { "Retry-After": "0" },
             },
-          }),
-          { status: 200 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              query_run: {
+                ...succeededQueryRun,
+                status: "failed",
+                finished_at: "2026-04-13T20:10:06Z",
+                error: {
+                  code: "sql_error",
+                  message: "Query timeout.",
+                },
+              },
+            }),
+            { status: 200 },
+          ),
         ),
-      ),
     );
 
     const { run } = await import("../../cli.js");

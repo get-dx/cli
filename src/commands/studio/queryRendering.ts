@@ -1,4 +1,4 @@
-import { stripVTControlCharacters } from "node:util";
+import { clearLine, cursorTo } from "node:readline";
 
 import { renderRichText } from "../../renderers.js";
 import * as ui from "../../ui.js";
@@ -33,7 +33,6 @@ export class QueryProgressReporter {
   private timer?: ReturnType<typeof setInterval>;
   private frameIndex = 0;
   private currentMessage = "";
-  private lastLineLength = 0;
 
   start(message: string): void {
     if (!this.enabled) {
@@ -66,35 +65,24 @@ export class QueryProgressReporter {
     }
 
     if (finalMessage) {
-      process.stderr.write(`\r${this.padLine(finalMessage)}\n`);
-      this.lastLineLength = 0;
+      this.clearCurrentLine();
+      process.stderr.write(`${finalMessage}\n`);
       return;
     }
 
-    if (this.lastLineLength > 0) {
-      process.stderr.write(`\r${" ".repeat(this.lastLineLength)}\r`);
-      this.lastLineLength = 0;
-    }
+    this.clearCurrentLine();
   }
 
   private render(): void {
     const frame = this.frames[this.frameIndex % this.frames.length];
     this.frameIndex += 1;
-    process.stderr.write(
-      `\r${this.padLine(`${frame} ${this.currentMessage}`)}`,
-    );
+    this.clearCurrentLine();
+    process.stderr.write(`${frame} ${this.currentMessage}`);
   }
 
-  private padLine(text: string): string {
-    const visibleLength = this.visibleLength(text);
-    const padded =
-      text + " ".repeat(Math.max(0, this.lastLineLength - visibleLength));
-    this.lastLineLength = Math.max(this.lastLineLength, visibleLength);
-    return padded;
-  }
-
-  private visibleLength(text: string): number {
-    return stripVTControlCharacters(text).length;
+  private clearCurrentLine(): void {
+    clearLine(process.stderr, 0);
+    cursorTo(process.stderr, 0);
   }
 }
 
