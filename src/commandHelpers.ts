@@ -125,7 +125,10 @@ function inferContext(command?: Command, argv?: string[]): CliContext {
   if (command) {
     return getContext(command);
   } else {
-    const hasJsonFlag = Boolean(argv?.find((arg) => arg === "--json"));
-    return { json: hasJsonFlag };
+    const rawArgv = argv && argv.length > 0 ? argv : process.argv;
+    const hasJsonFlag = Boolean(rawArgv.find((arg) => arg === "--json"));
+    return {
+      json: hasJsonFlag,
+    };
   }
 }

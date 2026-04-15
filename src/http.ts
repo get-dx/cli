@@ -39,43 +39,55 @@ export async function request<T extends Record<string, unknown>>(
   });
 
   const url = `${runtime.baseUrl}${route}${query.size > 0 ? `?${query.toString()}` : ""}`;
+  const requestBody =
+    options.body !== undefined ? JSON.stringify(options.body) : undefined;
+
+  runtime.logger.debug("Sending HTTP request", {
+    body: options.body ?? null,
+    headers: redactHeaders(headers),
+    method,
+    url,
+  });
 
   let response: Response;
   try {
     response = await fetch(url, {
       method,
       headers,
-      body:
-        options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      body: requestBody,
     });
   } catch (error) {
     throw new HttpError(`Request failed: ${(error as Error).message}`);
   }
 
   const responseBodyText = await response.text();
+  const parsedResponseBody = parseResponseBody(responseBodyText);
+
+  runtime.logger.debug("Received HTTP response", {
+    body: parsedResponseBody,
+    headers: headersToObject(response.headers),
+    method,
+    status: response.status,
+    url,
+  });
 
   if (!response.ok) {
-    let responseBodyJson: unknown;
-    try {
-      responseBodyJson = JSON.parse(responseBodyText);
-    } catch {
-      responseBodyJson = responseBodyText;
-    }
-
     const message =
-      extractErrorMessage(responseBodyJson) ||
+      extractErrorMessage(parsedResponseBody) ||
       `Request failed with status ${response.status}`;
-    throw new HttpError(message, response.status, responseBodyJson);
+    throw new HttpError(message, response.status, parsedResponseBody);
   }
 
-  try {
-    const body = JSON.parse(responseBodyText) as T;
-    const retryAfterMs = parseRetryAfterMs(response.headers);
-
-    return retryAfterMs === undefined ? { body } : { body, retryAfterMs };
-  } catch (error) {
-    throw new HttpError(`Invalid JSON response: ${(error as Error).message}`);
+  if (
+    typeof parsedResponseBody === "string" &&
+    parsedResponseBody === responseBodyText
+  ) {
+    throw new HttpError("Invalid JSON response: Unexpected token");
   }
+
+  const retryAfterMs = parseRetryAfterMs(response.headers);
+  const body = parsedResponseBody as T;
+  return retryAfterMs === undefined ? { body } : { body, retryAfterMs };
 }
 
 export function parseRetryAfterMs(headers: Headers): number | undefined {
@@ -121,4 +133,35 @@ function extractErrorMessage(body: unknown): string | null {
   }
 
   return null;
+}
+
+function parseResponseBody(bodyText: string): unknown {
+  try {
+    return JSON.parse(bodyText);
+  } catch {
+    return bodyText;
+  }
+}
+
+function redactHeaders(headers: Headers): Record<string, string> {
+  const result: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    result[key] =
+      key.toLowerCase() === "authorization"
+        ? redactAuthorization(value)
+        : value;
+  });
+  return result;
+}
+
+function redactAuthorization(value: string): string {
+  return value.replace(/^Bearer\s+.+$/i, "Bearer [REDACTED]");
+}
+
+function headersToObject(headers: Headers): Record<string, string> {
+  const result: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    result[key] = value;
+  });
+  return result;
 }
