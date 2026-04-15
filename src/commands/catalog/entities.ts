@@ -513,15 +513,6 @@ export type Entity = {
   aliases: Record<string, unknown[]>;
 };
 
-function requestOptions(runtime: Runtime) {
-  return {
-    token: runtime.token,
-    agent: runtime.context.agent,
-    agentSessionId: runtime.context.agentSessionId,
-    userAgent: `dx-cli/${runtime.version}`,
-  };
-}
-
 type GetEntityResponse = {
   ok: true;
   entity: Entity;
@@ -531,13 +522,16 @@ async function getEntity(
   runtime: Runtime,
   identifier: string,
 ): Promise<GetEntityResponse> {
-  const response = await request(runtime.baseUrl, "/catalog.entities.info", {
-    ...requestOptions(runtime),
-    method: "GET",
-    query: { identifier },
-  });
+  const response = await request<GetEntityResponse>(
+    runtime,
+    "/catalog.entities.info",
+    {
+      method: "GET",
+      query: { identifier },
+    },
+  );
 
-  return response as GetEntityResponse;
+  return response.body;
 }
 
 async function listEntities(
@@ -550,13 +544,16 @@ async function listEntities(
   if (params.type !== undefined) query.type = params.type;
   if (params.search_term !== undefined) query.search_term = params.search_term;
 
-  const response = await request(runtime.baseUrl, "/catalog.entities.list", {
-    ...requestOptions(runtime),
-    method: "GET",
-    query,
-  });
+  const response = await request<ListEntitiesResponse>(
+    runtime,
+    "/catalog.entities.list",
+    {
+      method: "GET",
+      query,
+    },
+  );
 
-  return response as ListEntitiesResponse;
+  return response.body;
 }
 
 type CreateEntityParams = {
@@ -581,13 +578,16 @@ async function createEntity(
   identifier: string,
   params: CreateEntityParams,
 ): Promise<{ ok: true; entity: Entity }> {
-  const response = await request(runtime.baseUrl, "/catalog.entities.create", {
-    ...requestOptions(runtime),
-    method: "POST",
-    body: buildEntityMutationBody(identifier, params),
-  });
+  const response = await request<{ ok: true; entity: Entity }>(
+    runtime,
+    "/catalog.entities.create",
+    {
+      method: "POST",
+      body: buildEntityMutationBody(identifier, params),
+    },
+  );
 
-  return { ok: true, entity: response.entity as Entity };
+  return response.body;
 }
 
 type UpdateEntityParams = EntityMutationOptionValues;
@@ -597,26 +597,32 @@ async function updateEntity(
   identifier: string,
   params: UpdateEntityParams,
 ): Promise<{ ok: true; entity: Entity }> {
-  const response = await request(runtime.baseUrl, "/catalog.entities.update", {
-    ...requestOptions(runtime),
-    method: "POST",
-    body: buildEntityMutationBody(identifier, params),
-  });
+  const response = await request<{ ok: true; entity: Entity }>(
+    runtime,
+    "/catalog.entities.update",
+    {
+      method: "POST",
+      body: buildEntityMutationBody(identifier, params),
+    },
+  );
 
-  return { ok: true, entity: response.entity as Entity };
+  return response.body;
 }
 
 async function deleteEntity(
   runtime: Runtime,
   identifier: string,
 ): Promise<{ ok: true; entity: Entity }> {
-  const response = await request(runtime.baseUrl, "/catalog.entities.delete", {
-    ...requestOptions(runtime),
-    method: "POST",
-    query: { identifier },
-  });
+  const response = await request<{ ok: true; entity: Entity }>(
+    runtime,
+    "/catalog.entities.delete",
+    {
+      method: "POST",
+      query: { identifier },
+    },
+  );
 
-  return { ok: true, entity: response.entity as Entity };
+  return response.body;
 }
 
 type UpsertEntityParams = CreateEntityParams;
@@ -632,13 +638,16 @@ async function upsertEntity(
   identifier: string,
   params: UpsertEntityParams,
 ): Promise<UpsertEntityResponse> {
-  const response = await request(runtime.baseUrl, "/catalog.entities.upsert", {
-    ...requestOptions(runtime),
-    method: "POST",
-    body: buildEntityMutationBody(identifier, params),
-  });
+  const response = await request<UpsertEntityResponse>(
+    runtime,
+    "/catalog.entities.upsert",
+    {
+      method: "POST",
+      body: buildEntityMutationBody(identifier, params),
+    },
+  );
 
-  return response as UpsertEntityResponse;
+  return response.body;
 }
 
 type GetEntityScorecardsParams = {
@@ -701,17 +710,16 @@ async function getEntityScorecards(
   if (params.cursor !== undefined) query.cursor = params.cursor;
   if (params.limit !== undefined) query.limit = params.limit;
 
-  const response = await request(
-    runtime.baseUrl,
+  const response = await request<GetEntityScorecardsResponse>(
+    runtime,
     "/catalog.entities.scorecards",
     {
-      ...requestOptions(runtime),
       method: "GET",
       query,
     },
   );
 
-  return response as GetEntityScorecardsResponse;
+  return response.body;
 }
 
 type GetEntityTasksParams = {
@@ -769,13 +777,16 @@ async function getEntityTasks(
   if (params.cursor !== undefined) query.cursor = params.cursor;
   if (params.limit !== undefined) query.limit = params.limit;
 
-  const response = await request(runtime.baseUrl, "/catalog.entities.tasks", {
-    ...requestOptions(runtime),
-    method: "GET",
-    query,
-  });
+  const response = await request<GetEntityTasksResponse>(
+    runtime,
+    "/catalog.entities.tasks",
+    {
+      method: "GET",
+      query,
+    },
+  );
 
-  return response as GetEntityTasksResponse;
+  return response.body;
 }
 
 // --- Property parsing helpers ---

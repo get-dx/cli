@@ -169,15 +169,6 @@ type ListEntityTypesResponse = {
   response_metadata?: { next_cursor?: string | null };
 };
 
-function requestOptions(runtime: Runtime) {
-  return {
-    token: runtime.token,
-    agent: runtime.context.agent,
-    agentSessionId: runtime.context.agentSessionId,
-    userAgent: `dx-cli/${runtime.version}`,
-  };
-}
-
 type GetEntityTypeResponse = {
   ok: true;
   entity_type: EntityType;
@@ -235,30 +226,32 @@ export async function getEntityType(
   runtime: Runtime,
   identifier: string,
 ): Promise<GetEntityTypeResponse> {
-  const response = await request(runtime.baseUrl, "/catalog.entityTypes.info", {
-    ...requestOptions(runtime),
-    method: "GET",
-    query: { identifier },
-  });
+  const response = await request<GetEntityTypeResponse>(
+    runtime,
+    "/catalog.entityTypes.info",
+    {
+      method: "GET",
+      query: { identifier },
+    },
+  );
 
-  return response as GetEntityTypeResponse;
+  return response.body;
 }
 
 async function deleteEntityType(
   runtime: Runtime,
   identifier: string,
 ): Promise<DeleteEntityTypeResponse> {
-  const response = await request(
-    runtime.baseUrl,
+  const response = await request<DeleteEntityTypeResponse>(
+    runtime,
     "/catalog.entityTypes.delete",
     {
-      ...requestOptions(runtime),
       method: "POST",
       query: { identifier },
     },
   );
 
-  return response as DeleteEntityTypeResponse;
+  return response.body;
 }
 
 async function listEntityTypes(
@@ -269,13 +262,16 @@ async function listEntityTypes(
   if (params.cursor !== undefined) query.cursor = params.cursor;
   if (params.limit !== undefined) query.limit = params.limit;
 
-  const response = await request(runtime.baseUrl, "/catalog.entityTypes.list", {
-    ...requestOptions(runtime),
-    method: "GET",
-    query,
-  });
+  const response = await request<ListEntityTypesResponse>(
+    runtime,
+    "/catalog.entityTypes.list",
+    {
+      method: "GET",
+      query,
+    },
+  );
 
-  return response as ListEntityTypesResponse;
+  return response.body;
 }
 
 // --- Include helpers ---
