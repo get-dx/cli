@@ -1,8 +1,11 @@
+import type { Logger } from "./logger.js";
+
 export interface Runtime {
   baseUrl: string;
   token: string;
   context: CliContext;
   version: string;
+  logger: Logger;
 }
 
 export interface CliContext {

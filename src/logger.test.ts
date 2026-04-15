@@ -1,23 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  createLogger,
-  getLogger,
-  initializeLogger,
-  resetLoggerForTests,
-} from "./logger.js";
+import { createLogger } from "./logger.js";
 
 const originalEnv = { ...process.env };
 
 beforeEach(() => {
   process.env = { ...originalEnv };
   vi.restoreAllMocks();
-  resetLoggerForTests();
 });
 
 afterEach(() => {
   process.env = { ...originalEnv };
-  resetLoggerForTests();
 });
 
 describe("logger", () => {
@@ -78,17 +71,5 @@ describe("logger", () => {
     const output = writes.join("");
     expect(output).toContain("WARN warn shown");
     expect(output).not.toContain("hidden");
-  });
-
-  it("returns the initialized singleton logger", () => {
-    process.env.DX_LOG_LEVEL = "debug";
-
-    const logger = initializeLogger({ json: false });
-
-    expect(getLogger()).toBe(logger);
-  });
-
-  it("throws when getLogger is called before initialization", () => {
-    expect(() => getLogger()).toThrow("Logger has not been initialized");
   });
 });

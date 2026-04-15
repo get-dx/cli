@@ -29,8 +29,6 @@ const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
   error: 40,
 };
 
-let singletonLogger: Logger | null = null;
-
 export function createLogger(options: LoggerOptions): Logger {
   const configuredLevel = parseLogLevel(process.env.DX_LOG_LEVEL);
 
@@ -52,19 +50,6 @@ export function createLogger(options: LoggerOptions): Logger {
       writeLog(configuredLevel, options, "error", message, fields);
     },
   };
-}
-
-export function initializeLogger(options: LoggerOptions): Logger {
-  singletonLogger = createLogger(options);
-  return singletonLogger;
-}
-
-export function getLogger(): Logger {
-  if (!singletonLogger) {
-    throw new Error("Logger has not been initialized");
-  }
-
-  return singletonLogger;
 }
 
 export function parseLogLevel(value: string | undefined): LogLevel | null {
@@ -128,8 +113,4 @@ function writeLog(
   process.stderr.write(
     `${entry.time} ${entry.level.toUpperCase()} ${entry.message}${renderedFields}\n`,
   );
-}
-
-export function resetLoggerForTests(): void {
-  singletonLogger = null;
 }

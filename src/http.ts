@@ -1,5 +1,4 @@
 import { HttpError } from "./errors.js";
-import { getLogger } from "./logger.js";
 import type { RequestOptions, Runtime } from "./types.js";
 
 export type RequestResponse<T extends Record<string, unknown>> = {
@@ -43,7 +42,7 @@ export async function request<T extends Record<string, unknown>>(
   const requestBody =
     options.body !== undefined ? JSON.stringify(options.body) : undefined;
 
-  getLogger().debug("Sending HTTP request", {
+  runtime.logger.debug("Sending HTTP request", {
     body: options.body ?? null,
     headers: redactHeaders(headers),
     method,
@@ -64,7 +63,7 @@ export async function request<T extends Record<string, unknown>>(
   const responseBodyText = await response.text();
   const parsedResponseBody = parseResponseBody(responseBodyText);
 
-  getLogger().debug("Received HTTP response", {
+  runtime.logger.debug("Received HTTP response", {
     body: parsedResponseBody,
     headers: headersToObject(response.headers),
     method,

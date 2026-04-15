@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseRetryAfterMs, request } from "./http.js";
-import { initializeLogger, resetLoggerForTests } from "./logger.js";
+import { createLogger } from "./logger.js";
 import type { Runtime } from "./types.js";
 
 const originalEnv = { ...process.env };
@@ -11,19 +11,17 @@ const runtime: Runtime = {
   token: "token-123",
   context: { json: false },
   version: "0.1.0",
+  logger: createLogger({ json: false }),
 };
 
 beforeEach(() => {
   process.env = { ...originalEnv };
   vi.restoreAllMocks();
-  resetLoggerForTests();
-  initializeLogger({ json: false });
 });
 
 afterEach(() => {
   process.env = { ...originalEnv };
   vi.unstubAllGlobals();
-  resetLoggerForTests();
 });
 
 describe("parseRetryAfterMs", () => {
@@ -100,7 +98,6 @@ describe("http logging", () => {
     }) as typeof process.stderr.write);
 
     process.env.DX_LOG_LEVEL = "debug";
-    initializeLogger({ json: false });
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -116,6 +113,7 @@ describe("http logging", () => {
       token: "secret-token",
       context: { json: false },
       version: "test",
+      logger: createLogger({ json: false }),
     };
 
     await request(loggingRuntime, "/widgets.info", {
@@ -143,7 +141,6 @@ describe("http logging", () => {
     }) as typeof process.stderr.write);
 
     process.env.DX_LOG_LEVEL = "debug";
-    initializeLogger({ json: true });
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -159,6 +156,7 @@ describe("http logging", () => {
       token: "secret-token",
       context: { json: false },
       version: "test",
+      logger: createLogger({ json: true }),
     };
 
     await request(loggingRuntime, "/widgets.info", {
