@@ -1,33 +1,34 @@
 import { HttpError } from "./errors.js";
-import type { RequestOptions } from "./types.js";
+import type { RequestOptions, Runtime } from "./types.js";
 
-type HttpSuccessResponse = Record<string, unknown> & { ok: true };
+export type RequestResponse<T extends Record<string, unknown>> = {
+  body: T;
+  retryAfterMs?: number;
+};
 
-export async function request(
-  baseUrl: string,
+export async function request<T extends Record<string, unknown>>(
+  runtime: Runtime,
   route: string,
   options: RequestOptions = {},
-): Promise<HttpSuccessResponse> {
+): Promise<RequestResponse<T>> {
   const method = options.method || "GET";
   const headers = new Headers({
     Accept: "application/json",
-    "User-Agent": options.userAgent || "dx-cli/dev",
+    "User-Agent": `dx-cli/${runtime.version}`,
   });
 
-  if (options.token) {
-    headers.set("Authorization", `Bearer ${options.token}`);
-  }
+  headers.set("Authorization", `Bearer ${runtime.token}`);
 
   if (options.body !== undefined) {
     headers.set("Content-Type", "application/json");
   }
 
-  if (options.agent) {
-    headers.set("X-DX-Agent-Name", options.agent);
+  if (runtime.context.agent) {
+    headers.set("X-DX-Agent-Name", runtime.context.agent);
   }
 
-  if (options.agentSessionId) {
-    headers.set("X-DX-Agent-Session-Id", options.agentSessionId);
+  if (runtime.context.agentSessionId) {
+    headers.set("X-DX-Agent-Session-Id", runtime.context.agentSessionId);
   }
 
   const query = new URLSearchParams();
@@ -37,7 +38,7 @@ export async function request(
     }
   });
 
-  const url = `${baseUrl}${route}${query.size > 0 ? `?${query.toString()}` : ""}`;
+  const url = `${runtime.baseUrl}${route}${query.size > 0 ? `?${query.toString()}` : ""}`;
 
   let response: Response;
   try {
@@ -68,10 +69,32 @@ export async function request(
   }
 
   try {
-    return JSON.parse(responseBodyText) as HttpSuccessResponse;
+    const body = JSON.parse(responseBodyText) as T;
+    const retryAfterMs = parseRetryAfterMs(response.headers);
+
+    return retryAfterMs === undefined ? { body } : { body, retryAfterMs };
   } catch (error) {
     throw new HttpError(`Invalid JSON response: ${(error as Error).message}`);
   }
+}
+
+export function parseRetryAfterMs(headers: Headers): number | undefined {
+  const retryAfter = headers.get("retry-after");
+  if (!retryAfter) {
+    return undefined;
+  }
+
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.ceil(seconds * 1000);
+  }
+
+  const retryAt = Date.parse(retryAfter);
+  if (Number.isNaN(retryAt)) {
+    return undefined;
+  }
+
+  return Math.max(0, retryAt - Date.now());
 }
 
 function extractErrorMessage(body: unknown): string | null {
@@ -80,6 +103,15 @@ function extractErrorMessage(body: unknown): string | null {
   }
 
   const record = body as Record<string, unknown>;
+  if (
+    record.error_details &&
+    typeof record.error_details === "object" &&
+    typeof (record.error_details as Record<string, unknown>).message ===
+      "string"
+  ) {
+    return (record.error_details as Record<string, string>).message;
+  }
+
   if (typeof record.error === "string") {
     return record.error;
   }

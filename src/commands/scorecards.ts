@@ -508,26 +508,20 @@ type UpdateScorecardResponse = {
   scorecard: Scorecard;
 };
 
-function requestOptions(runtime: Runtime) {
-  return {
-    token: runtime.token,
-    agent: runtime.context.agent,
-    agentSessionId: runtime.context.agentSessionId,
-    userAgent: `dx-cli/${runtime.version}`,
-  };
-}
-
 export async function createScorecard(
   runtime: Runtime,
   payload: CreateScorecardPayload,
 ): Promise<CreateScorecardResponse> {
-  const response = await request(runtime.baseUrl, "/scorecards.create", {
-    ...requestOptions(runtime),
-    method: "POST",
-    body: payload,
-  });
+  const response = await request<CreateScorecardResponse>(
+    runtime,
+    "/scorecards.create",
+    {
+      method: "POST",
+      body: payload,
+    },
+  );
 
-  return response as CreateScorecardResponse;
+  return response.body;
 }
 
 function buildCreatePayload(raw: unknown): CreateScorecardPayload {
@@ -545,13 +539,16 @@ export async function getScorecard(
   runtime: Runtime,
   id: string,
 ): Promise<GetScorecardResponse> {
-  const response = await request(runtime.baseUrl, "/scorecards.info", {
-    ...requestOptions(runtime),
-    method: "GET",
-    query: { id },
-  });
+  const response = await request<GetScorecardResponse>(
+    runtime,
+    "/scorecards.info",
+    {
+      method: "GET",
+      query: { id },
+    },
+  );
 
-  return response as GetScorecardResponse;
+  return response.body;
 }
 
 type ListScorecardsParams = {
@@ -575,26 +572,32 @@ export async function listScorecards(
   if (params.limit !== undefined) query.limit = params.limit;
   if (params.include_unpublished) query.include_unpublished = true;
 
-  const response = await request(runtime.baseUrl, "/scorecards.list", {
-    ...requestOptions(runtime),
-    method: "GET",
-    query,
-  });
+  const response = await request<ListScorecardsResponse>(
+    runtime,
+    "/scorecards.list",
+    {
+      method: "GET",
+      query,
+    },
+  );
 
-  return response as ListScorecardsResponse;
+  return response.body;
 }
 
 export async function updateScorecard(
   runtime: Runtime,
   payload: UpdateScorecardPayload,
 ): Promise<UpdateScorecardResponse> {
-  const response = await request(runtime.baseUrl, "/scorecards.update", {
-    ...requestOptions(runtime),
-    method: "POST",
-    body: payload,
-  });
+  const response = await request<UpdateScorecardResponse>(
+    runtime,
+    "/scorecards.update",
+    {
+      method: "POST",
+      body: payload,
+    },
+  );
 
-  return response as unknown as UpdateScorecardResponse;
+  return response.body;
 }
 
 // --- YAML helpers ---

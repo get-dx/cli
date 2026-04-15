@@ -15,10 +15,6 @@ export interface RequestOptions {
   method?: "GET" | "POST";
   query?: Record<string, string | number | boolean | undefined>;
   body?: unknown;
-  token?: string;
-  agent?: string;
-  agentSessionId?: string;
-  userAgent?: string;
 }
 
 export interface StoredConfig {
