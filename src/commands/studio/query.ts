@@ -15,9 +15,12 @@ import { renderJson } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
-import { renderCsvSaved, renderQueryResultsTable } from "./queryRendering.js";
+import {
+  QueryProgressReporter,
+  renderCsvSaved,
+  renderQueryResultsTable,
+} from "./queryRendering.js";
 
-const ANSI_ESCAPE_REGEX = /\u001B\[[0-9;]*m/g;
 const DEFAULT_RETRY_AFTER_MS = 1000;
 const PENDING_QUERY_RUN_STATUSES = new Set<StudioQueryRunStatus>([
   "queued",
@@ -442,88 +445,6 @@ async function waitForRetryAfter(retryAfterMs: number | null): Promise<void> {
   await new Promise<void>((resolve) => {
     setTimeout(resolve, delayMs);
   });
-}
-
-class QueryProgressReporter {
-  private readonly enabled = Boolean(process.stderr.isTTY);
-  private readonly frames = [
-    "⠋",
-    "⠙",
-    "⠹",
-    "⠸",
-    "⠼",
-    "⠴",
-    "⠦",
-    "⠧",
-    "⠇",
-    "⠏",
-  ].map((frame) => ui.dim(frame));
-  private timer?: ReturnType<typeof setInterval>;
-  private frameIndex = 0;
-  private currentMessage = "";
-  private lastLineLength = 0;
-
-  start(message: string): void {
-    if (!this.enabled) {
-      return;
-    }
-
-    this.currentMessage = message;
-    this.render();
-    this.timer = setInterval(() => this.render(), 80);
-    this.timer.unref?.();
-  }
-
-  update(message: string): void {
-    if (!this.enabled) {
-      return;
-    }
-
-    this.currentMessage = message;
-    this.render();
-  }
-
-  stop(finalMessage?: string): void {
-    if (!this.enabled) {
-      return;
-    }
-
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = undefined;
-    }
-
-    if (finalMessage) {
-      process.stderr.write(`\r${this.padLine(finalMessage)}\n`);
-      this.lastLineLength = 0;
-      return;
-    }
-
-    if (this.lastLineLength > 0) {
-      process.stderr.write(`\r${" ".repeat(this.lastLineLength)}\r`);
-      this.lastLineLength = 0;
-    }
-  }
-
-  private render(): void {
-    const frame = this.frames[this.frameIndex % this.frames.length];
-    this.frameIndex += 1;
-    process.stderr.write(
-      `\r${this.padLine(`${frame} ${this.currentMessage}`)}`,
-    );
-  }
-
-  private padLine(text: string): string {
-    const visibleLength = this.visibleLength(text);
-    const padded =
-      text + " ".repeat(Math.max(0, this.lastLineLength - visibleLength));
-    this.lastLineLength = Math.max(this.lastLineLength, visibleLength);
-    return padded;
-  }
-
-  private visibleLength(text: string): number {
-    return text.replace(ANSI_ESCAPE_REGEX, "").length;
-  }
 }
 
 async function writeResponseBodyToFile(

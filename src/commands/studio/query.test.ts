@@ -17,6 +17,8 @@ vi.mock("../../secrets.js", () => ({
 }));
 
 const originalEnv = { ...process.env };
+const stdoutWrites: string[] = [];
+const stderrWrites: string[] = [];
 
 beforeEach(() => {
   process.env = { ...originalEnv };
@@ -24,6 +26,20 @@ beforeEach(() => {
   setToken.mockReset();
   deleteToken.mockReset();
   vi.restoreAllMocks();
+  stdoutWrites.length = 0;
+  stderrWrites.length = 0;
+  vi.spyOn(process.stdout, "write").mockImplementation(((
+    chunk: string | Uint8Array,
+  ) => {
+    stdoutWrites.push(String(chunk));
+    return true;
+  }) as typeof process.stdout.write);
+  vi.spyOn(process.stderr, "write").mockImplementation(((
+    chunk: string | Uint8Array,
+  ) => {
+    stderrWrites.push(String(chunk));
+    return true;
+  }) as typeof process.stderr.write);
 });
 
 afterEach(() => {
@@ -60,14 +76,6 @@ describe("studio query command", () => {
   };
 
   it("runs a query and prints the results as an ASCII table", async () => {
-    const writes: string[] = [];
-    vi.spyOn(process.stdout, "write").mockImplementation(((
-      chunk: string | Uint8Array,
-    ) => {
-      writes.push(String(chunk));
-      return true;
-    }) as typeof process.stdout.write);
-
     process.env.DX_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
@@ -123,21 +131,13 @@ describe("studio query command", () => {
       expect.objectContaining({ method: "GET" }),
     );
 
-    expect(writes.join("")).toContain("+----+---------+");
-    expect(writes.join("")).toContain("| id | name    |");
-    expect(writes.join("")).toContain("| 1  | api     |");
-    expect(writes.join("")).toContain("| 2  | web app |");
+    expect(stdoutWrites.join("")).toContain("+----+---------+");
+    expect(stdoutWrites.join("")).toContain("| id | name    |");
+    expect(stdoutWrites.join("")).toContain("| 1  | api     |");
+    expect(stdoutWrites.join("")).toContain("| 2  | web app |");
   });
 
   it("prints the JSON results payload with --json", async () => {
-    const writes: string[] = [];
-    vi.spyOn(process.stdout, "write").mockImplementation(((
-      chunk: string | Uint8Array,
-    ) => {
-      writes.push(String(chunk));
-      return true;
-    }) as typeof process.stdout.write);
-
     process.env.DX_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
@@ -159,7 +159,7 @@ describe("studio query command", () => {
     const { run } = await import("../../cli.js");
     await run(["node", "dx", "--json", "studio", "query", "SELECT 1"]);
 
-    expect(JSON.parse(writes.join(""))).toEqual(resultsResponse);
+    expect(JSON.parse(stdoutWrites.join(""))).toEqual(resultsResponse);
   });
 
   it("uses Retry-After to pace polling", async () => {
@@ -217,14 +217,6 @@ describe("studio query command", () => {
   });
 
   it("downloads CSV results to disk with --output", async () => {
-    const writes: string[] = [];
-    vi.spyOn(process.stdout, "write").mockImplementation(((
-      chunk: string | Uint8Array,
-    ) => {
-      writes.push(String(chunk));
-      return true;
-    }) as typeof process.stdout.write);
-
     process.env.DX_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
@@ -265,20 +257,13 @@ describe("studio query command", () => {
       ]);
 
       expect(fs.readFileSync(outputPath, "utf8")).toBe("");
-      expect(writes.join("")).toContain(path.resolve(outputPath));
+      expect(stdoutWrites.join("")).toContain(path.resolve(outputPath));
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
   it("exits with code 2 when --output is combined with --json", async () => {
-    const writes: string[] = [];
-    vi.spyOn(process.stdout, "write").mockImplementation(((
-      chunk: string | Uint8Array,
-    ) => {
-      writes.push(String(chunk));
-      return true;
-    }) as typeof process.stdout.write);
     const exitSpy = vi
       .spyOn(process, "exit")
       .mockImplementation(() => undefined as never);
@@ -295,7 +280,7 @@ describe("studio query command", () => {
       "results.csv",
     ]);
 
-    expect(JSON.parse(writes.join(""))).toEqual({
+    expect(JSON.parse(stdoutWrites.join(""))).toEqual({
       ok: false,
       error: "--output cannot be used with --json",
     });
@@ -303,13 +288,6 @@ describe("studio query command", () => {
   });
 
   it("exits with code 4 when no API token is configured", async () => {
-    const stderrWrites: string[] = [];
-    vi.spyOn(process.stderr, "write").mockImplementation(((
-      chunk: string | Uint8Array,
-    ) => {
-      stderrWrites.push(String(chunk));
-      return true;
-    }) as typeof process.stderr.write);
     const exitSpy = vi
       .spyOn(process, "exit")
       .mockImplementation(() => undefined as never);
@@ -322,13 +300,6 @@ describe("studio query command", () => {
   });
 
   it("exits when the query run fails", async () => {
-    const stderrWrites: string[] = [];
-    vi.spyOn(process.stderr, "write").mockImplementation(((
-      chunk: string | Uint8Array,
-    ) => {
-      stderrWrites.push(String(chunk));
-      return true;
-    }) as typeof process.stderr.write);
     const exitSpy = vi
       .spyOn(process, "exit")
       .mockImplementation(() => undefined as never);
