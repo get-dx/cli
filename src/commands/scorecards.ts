@@ -1,4 +1,7 @@
+import fs from "fs";
+
 import { Command } from "commander";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 import {
   createExampleText,
@@ -6,17 +9,91 @@ import {
   parsePositiveIntOption,
   wrapAction,
 } from "../commandHelpers.js";
-import { CliError, EXIT_CODES } from "../errors.js";
+import { CliError, EXIT_CODES, HttpError } from "../errors.js";
 import { request } from "../http.js";
-import { renderJson } from "../renderers.js";
+import { renderJson, renderRichText } from "../renderers.js";
 import { buildRuntime } from "../runtime.js";
 import type { Runtime } from "../types.js";
+import * as ui from "../ui.js";
 import { renderScorecard, renderScorecardList } from "./scorecardsRendering.js";
 
 export function scorecardsCommand() {
   const scorecards = new Command()
     .name("scorecards")
     .description("Manage scorecards");
+
+  scorecards
+    .command("create")
+    .description(
+      "Create a new scorecard from a YAML file or stdin. The `init` command can be used to generate a starting template.",
+    )
+    .option(
+      "--from-file <path>",
+      "Read a YAML file and create a scorecard from its contents",
+    )
+    .option(
+      "--from-stdin",
+      "Read YAML from stdin and create a scorecard from its contents",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Generate a blank template first",
+          command: "dx scorecards init ./my-scorecard.yaml",
+        },
+        {
+          label: "Create a scorecard from a YAML file",
+          command: "dx scorecards create --from-file ./my-scorecard.yaml",
+        },
+        {
+          label: "Create a scorecard from stdin",
+          command:
+            "cat ./my-scorecard.yaml | dx scorecards create --from-stdin",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (options, command) => {
+        const modeCount = [options.fromFile, options.fromStdin].filter(
+          Boolean,
+        ).length;
+        if (modeCount === 0) {
+          throw new CliError(
+            "One of --from-file or --from-stdin is required",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+        if (modeCount > 1) {
+          throw new CliError(
+            "--from-file and --from-stdin are mutually exclusive",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+
+        const runtime = buildRuntime(getContext(command));
+
+        let raw: unknown;
+        if (options.fromFile) {
+          raw = readYamlFile(options.fromFile as string);
+        } else {
+          raw = await readYamlStdin();
+        }
+
+        const payload = buildCreatePayload(raw);
+        const response = await createScorecard(runtime, payload);
+
+        if (runtime.context.json) {
+          renderJson({ ok: true, scorecard: response.scorecard });
+        } else {
+          renderScorecard(
+            response.scorecard,
+            null,
+            `${ui.success(ui.GLYPHS.CHECK)} Scorecard created`,
+          );
+        }
+      }),
+    );
 
   scorecards
     .command("info")
@@ -60,6 +137,82 @@ export function scorecardsCommand() {
           renderJson({ ok: true, scorecard: processedScorecard });
         } else {
           renderScorecard(response.scorecard, includeSections);
+        }
+      }),
+    );
+
+  scorecards
+    .command("init")
+    .description(
+      "Write a scorecard YAML file, either from an existing scorecard or as a blank template",
+    )
+    .argument("<path>", "File path to write the YAML to")
+    .option(
+      "--id <id>",
+      "Fetch an existing scorecard and use it as the template",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Write a blank scorecard template",
+          command: "dx scorecards init ./my-scorecard.yaml",
+        },
+        {
+          label: "Initialize from an existing scorecard",
+          command: "dx scorecards init ./my-scorecard.yaml --id qjfj1a6cmit4",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (path, options, command) => {
+        const runtime = buildRuntime(getContext(command));
+
+        if (options.id) {
+          const id = options.id as string;
+          let scorecardResponse;
+          try {
+            scorecardResponse = await getScorecard(runtime, id);
+          } catch (err) {
+            const exitCode =
+              err instanceof HttpError &&
+              err.status !== undefined &&
+              err.status < 500
+                ? EXIT_CODES.ARGUMENT_ERROR
+                : EXIT_CODES.RETRY_RECOMMENDED;
+            throw new CliError(
+              `Failed to fetch scorecard "${id}": ${err instanceof Error ? err.message : String(err)}`,
+              exitCode,
+            );
+          }
+          const yaml = scorecardToYaml(scorecardResponse.scorecard);
+          fs.writeFileSync(path, yaml, "utf8");
+          if (runtime.context.json) {
+            renderJson({ ok: true, id, path });
+          } else {
+            renderRichText([
+              ui.p(
+                `${ui.success(ui.GLYPHS.CHECK)} Scorecard written to ${ui.code(path)}.`,
+              ),
+              ui.p(
+                `Edit the file, then run: ${ui.code(`dx scorecards update ${id} --from-file ${path}`)}`,
+              ),
+            ]);
+          }
+        } else {
+          fs.writeFileSync(path, SCORECARD_BLANK_TEMPLATE_YAML, "utf8");
+          if (runtime.context.json) {
+            renderJson({ ok: true, path });
+          } else {
+            renderRichText([
+              ui.p(
+                `${ui.success(ui.GLYPHS.CHECK)} Blank template written to ${ui.code(path)}.`,
+              ),
+              ui.p(
+                `Edit the file, then run: ${ui.code(`dx scorecards create --from-file ${path}`)}`,
+              ),
+            ]);
+          }
         }
       }),
     );
@@ -130,6 +283,81 @@ export function scorecardsCommand() {
       }),
     );
 
+  scorecards
+    .command("update")
+    .description(
+      "Update an existing scorecard from a YAML file or stdin. The `init` command can be used to initialize the scorecard file.",
+    )
+    .argument("<id>", "The unique ID of the scorecard")
+    .option(
+      "--from-file <path>",
+      "Read a YAML file and update the scorecard with its contents",
+    )
+    .option(
+      "--from-stdin",
+      "Read YAML from stdin and update the scorecard with its contents",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Initialize a file first",
+          command: "dx scorecards init ./my-scorecard.yaml --id qjfj1a6cmit4",
+        },
+        {
+          label: "Update a scorecard from a YAML file",
+          command:
+            "dx scorecards update qjfj1a6cmit4 --from-file ./my-scorecard.yaml",
+        },
+        {
+          label: "Update a scorecard from stdin",
+          command:
+            "cat ./my-scorecard.yaml | dx scorecards update qjfj1a6cmit4 --from-stdin",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (id, options, command) => {
+        const modeCount = [options.fromFile, options.fromStdin].filter(
+          Boolean,
+        ).length;
+        if (modeCount === 0) {
+          throw new CliError(
+            "One of --from-file or --from-stdin is required",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+        if (modeCount > 1) {
+          throw new CliError(
+            "--from-file and --from-stdin are mutually exclusive",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+
+        const runtime = buildRuntime(getContext(command));
+
+        let raw: unknown;
+        if (options.fromFile) {
+          raw = readYamlFile(options.fromFile as string);
+        } else {
+          raw = await readYamlStdin();
+        }
+
+        const payload = buildUpdatePayload(id, raw);
+        const response = await updateScorecard(runtime, payload);
+
+        if (runtime.context.json) {
+          renderJson({ ok: true, scorecard: response.scorecard });
+        } else {
+          renderScorecard(
+            response.scorecard,
+            null,
+            `${ui.success(ui.GLYPHS.CHECK)} Scorecard updated`,
+          );
+        }
+      }),
+    );
+
   return scorecards;
 }
 
@@ -148,6 +376,8 @@ export type Scorecard = {
   editors: ScorecardUser[];
   admins: ScorecardUser[];
   sql_errors: unknown[];
+  max_entity_points?: number;
+  evaluation_frequency_hours?: number;
   checks: ScorecardCheckDefinition[];
   // LEVEL-type scorecard fields
   levels?: ScorecardLevel[];
@@ -205,9 +435,75 @@ export type ScorecardCheckDefinition = {
   check_group?: { id: string; name: string };
 };
 
+export type CreateScorecardPayload = {
+  name: string;
+  type: "LEVEL" | "POINTS";
+  entity_filter_type: string;
+  description?: string;
+  published?: boolean;
+  entity_filter_type_identifiers?: string[];
+  entity_filter_sql?: string;
+  tags?: ScorecardTag[];
+  editors?: ScorecardUser[];
+  checks?: ScorecardCheckDefinitionPayload[];
+  // LEVEL-type scorecard fields
+  empty_level_label?: string;
+  empty_level_color?: string;
+  levels?: ScorecardLevelPayload[];
+  // POINTS-type scorecard fields
+  check_groups?: ScorecardCheckGroupPayload[];
+};
+
+export type UpdateScorecardPayload = {
+  id: string;
+  name?: string;
+  description?: string;
+  type?: "LEVEL" | "POINTS";
+  published?: boolean;
+  entity_filter_type?: string;
+  entity_filter_sql?: string | null;
+  entity_filter_type_ids?: string[];
+  tags?: ScorecardTag[];
+  editors?: ScorecardUser[];
+  admins?: ScorecardUser[];
+  checks?: ScorecardCheckDefinitionPayload[];
+  // LEVEL-type scorecard fields
+  levels?: ScorecardLevelPayload[];
+  empty_level_label?: string;
+  empty_level_color?: string;
+  // POINTS-type scorecard fields
+  check_groups?: ScorecardCheckGroupPayload[];
+};
+
+type ScorecardLevelPayload = ScorecardLevel & {
+  key: string;
+};
+
+type ScorecardCheckGroupPayload = ScorecardCheckGroup & {
+  key: string;
+};
+
+type ScorecardCheckDefinitionPayload = Omit<
+  ScorecardCheckDefinition,
+  "type" | "check_group"
+> & {
+  scorecard_level_key?: string;
+  scorecard_check_group_key?: string;
+};
+
 // --- API ---
 
 type GetScorecardResponse = {
+  ok: true;
+  scorecard: Scorecard;
+};
+
+type CreateScorecardResponse = {
+  ok: true;
+  scorecard: Scorecard;
+};
+
+type UpdateScorecardResponse = {
   ok: true;
   scorecard: Scorecard;
 };
@@ -219,6 +515,30 @@ function requestOptions(runtime: Runtime) {
     agentSessionId: runtime.context.agentSessionId,
     userAgent: `dx-cli/${runtime.version}`,
   };
+}
+
+export async function createScorecard(
+  runtime: Runtime,
+  payload: CreateScorecardPayload,
+): Promise<CreateScorecardResponse> {
+  const response = await request(runtime.baseUrl, "/scorecards.create", {
+    ...requestOptions(runtime),
+    method: "POST",
+    body: payload,
+  });
+
+  return response as CreateScorecardResponse;
+}
+
+function buildCreatePayload(raw: unknown): CreateScorecardPayload {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new CliError(
+      "YAML content must be an object",
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+  const { id: _id, ...rest } = raw as Record<string, unknown>;
+  return rest as CreateScorecardPayload;
 }
 
 export async function getScorecard(
@@ -262,6 +582,164 @@ export async function listScorecards(
   });
 
   return response as ListScorecardsResponse;
+}
+
+export async function updateScorecard(
+  runtime: Runtime,
+  payload: UpdateScorecardPayload,
+): Promise<UpdateScorecardResponse> {
+  const response = await request(runtime.baseUrl, "/scorecards.update", {
+    ...requestOptions(runtime),
+    method: "POST",
+    body: payload,
+  });
+
+  return response as unknown as UpdateScorecardResponse;
+}
+
+// --- YAML helpers ---
+
+const SCORECARD_BLANK_TEMPLATE_YAML = fs.readFileSync(
+  new URL("./scorecard-blank-template.yaml", import.meta.url),
+  "utf8",
+);
+
+/**
+ * These keys are ignored when initializing a file to update
+ */
+const SCORECARD_IGNORED_KEYS: ReadonlyArray<keyof Scorecard> = [
+  // Read-only: managed through other parts of the app, not the scorecards API
+  "admins",
+  // Deprecated fields
+  "evaluation_frequency_hours",
+  "entity_filter_type_ids",
+  // Reporting on state
+  "sql_errors",
+  "max_entity_points",
+];
+
+const SCORECARD_TRANSFORM_KEYS: Partial<
+  Record<keyof Scorecard, (value: unknown) => unknown>
+> = {
+  editors: (value) => (value as ScorecardUser[]).map((editor) => editor.id),
+  tags: (value) =>
+    (value as ScorecardTag[]).map((tag) => ({ value: tag.value })),
+  levels: (value) => {
+    if (!Array.isArray(value)) {
+      return value;
+    } else {
+      return value.map((level) => {
+        return {
+          ...level,
+          key: toSnakeCase(level.name),
+        };
+      });
+    }
+  },
+  check_groups: (value) => {
+    if (!Array.isArray(value)) {
+      return value;
+    } else {
+      return value.map((checkGroup) => {
+        return {
+          ...checkGroup,
+          key: toSnakeCase(checkGroup.name),
+        };
+      });
+    }
+  },
+  checks: (value) => {
+    return (value as ScorecardCheckDefinition[]).map((check) => {
+      const { level, check_group, ...rest } = check;
+      const payload: ScorecardCheckDefinitionPayload = rest;
+      if (level) {
+        payload.scorecard_level_key = toSnakeCase(level.name);
+      } else if (check_group) {
+        payload.scorecard_check_group_key = toSnakeCase(check_group.name);
+      }
+      return payload;
+    });
+  },
+};
+
+function scorecardToYaml(scorecard: Scorecard): string {
+  const obj: Partial<Scorecard> = { ...scorecard };
+  for (const key of SCORECARD_IGNORED_KEYS) {
+    delete obj[key];
+  }
+  const objLoose = obj as Record<string, unknown>;
+  for (const key of Object.keys(SCORECARD_TRANSFORM_KEYS)) {
+    const transformFn = SCORECARD_TRANSFORM_KEYS[key as keyof Scorecard];
+    if (transformFn) {
+      objLoose[key] = transformFn(objLoose[key]);
+    }
+  }
+  return stringifyYaml(obj, { blockQuote: "literal" });
+}
+
+function readYamlFile(filePath: string): unknown {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, "utf8");
+  } catch (err) {
+    throw new CliError(
+      `Could not read file "${filePath}": ${(err as Error).message}`,
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+  return parseYaml(content);
+}
+
+async function readYamlStdin(): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk));
+    process.stdin.on("end", () => {
+      const content = Buffer.concat(chunks).toString("utf8");
+      try {
+        resolve(parseYaml(content));
+      } catch (err) {
+        reject(
+          new CliError(
+            `Failed to parse YAML from stdin: ${(err as Error).message}`,
+            EXIT_CODES.ARGUMENT_ERROR,
+          ),
+        );
+      }
+    });
+    process.stdin.on("error", (err) => {
+      reject(
+        new CliError(
+          `Failed to read from stdin: ${err.message}`,
+          EXIT_CODES.ARGUMENT_ERROR,
+        ),
+      );
+    });
+  });
+}
+
+function buildUpdatePayload(id: string, raw: unknown): UpdateScorecardPayload {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new CliError(
+      "YAML content must be an object",
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+  return { ...(raw as Record<string, unknown>), id };
+}
+
+function toSnakeCase(str: string): string {
+  return (
+    str
+      // First, handle camelCase/PascalCase transitions
+      .replace(/([a-z])([A-Z])/g, "$1_$2")
+      // Then convert to lowercase
+      .toLowerCase()
+      // Replace sequences of non-alphanumeric characters with single underscore
+      .replace(/[^a-z0-9]+/g, "_")
+      // Remove leading and trailing underscores
+      .replace(/^_+|_+$/g, "")
+  );
 }
 
 // --- Include helpers ---
