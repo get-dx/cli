@@ -1,4 +1,7 @@
+import fs from "fs";
+
 import { Command } from "commander";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 import {
   createExampleText,
@@ -6,11 +9,12 @@ import {
   parsePositiveIntOption,
   wrapAction,
 } from "../../commandHelpers.js";
-import { CliError, EXIT_CODES } from "../../errors.js";
+import { CliError, EXIT_CODES, HttpError } from "../../errors.js";
 import { request } from "../../http.js";
-import { renderJson } from "../../renderers.js";
+import { renderJson, renderRichText } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
+import * as ui from "../../ui.js";
 import {
   renderEntityType,
   renderEntityTypeDeleted,
@@ -21,6 +25,79 @@ export function entityTypesCommand() {
   const entityTypes = new Command()
     .name("entityTypes")
     .description("Manage catalog entity types");
+
+  entityTypes
+    .command("create")
+    .description(
+      "Create a new entity type from a YAML file or stdin. The `init` command can be used to generate a starting template.",
+    )
+    .option(
+      "--from-file <path>",
+      "Read a YAML file and create an entity type from its contents",
+    )
+    .option(
+      "--from-stdin",
+      "Read YAML from stdin and create an entity type from its contents",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Generate a blank template first",
+          command: "dx catalog entityTypes init ./my-entity-type.yaml",
+        },
+        {
+          label: "Create an entity type from a YAML file",
+          command:
+            "dx catalog entityTypes create --from-file ./my-entity-type.yaml",
+        },
+        {
+          label: "Create an entity type from stdin",
+          command:
+            "cat ./my-entity-type.yaml | dx catalog entityTypes create --from-stdin",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (options, command) => {
+        const modeCount = [options.fromFile, options.fromStdin].filter(
+          Boolean,
+        ).length;
+        if (modeCount === 0) {
+          throw new CliError(
+            "One of --from-file or --from-stdin is required",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+        if (modeCount > 1) {
+          throw new CliError(
+            "--from-file and --from-stdin are mutually exclusive",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+
+        const runtime = buildRuntime(getContext(command));
+
+        let raw: unknown;
+        if (options.fromFile) {
+          raw = readYamlFile(options.fromFile as string);
+        } else {
+          raw = await readYamlStdin();
+        }
+
+        const payload = buildCreatePayload(raw);
+        const response = await createEntityType(runtime, payload);
+
+        if (runtime.context.json) {
+          renderJson({ ok: true, entity_type: response.entity_type });
+        } else {
+          renderEntityType(
+            response.entity_type,
+            `${ui.success(ui.GLYPHS.CHECK)} Entity type created`,
+          );
+        }
+      }),
+    );
 
   entityTypes
     .command("delete")
@@ -96,6 +173,83 @@ export function entityTypesCommand() {
     );
 
   entityTypes
+    .command("init")
+    .description(
+      "Write an entity type YAML file, either from an existing entity type or as a blank template",
+    )
+    .argument("<path>", "File path to write the YAML to")
+    .option(
+      "--identifier <identifier>",
+      "Fetch an existing entity type and use it as the template",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Write a blank entity type template",
+          command: "dx catalog entityTypes init ./my-entity-type.yaml",
+        },
+        {
+          label: "Initialize from an existing entity type",
+          command:
+            "dx catalog entityTypes init ./my-entity-type.yaml --identifier service",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (path, options, command) => {
+        const runtime = buildRuntime(getContext(command));
+
+        if (options.identifier) {
+          const identifier = options.identifier as string;
+          let entityTypeResponse;
+          try {
+            entityTypeResponse = await getEntityType(runtime, identifier);
+          } catch (err) {
+            const exitCode =
+              err instanceof HttpError &&
+              err.status !== undefined &&
+              err.status < 500
+                ? EXIT_CODES.ARGUMENT_ERROR
+                : EXIT_CODES.RETRY_RECOMMENDED;
+            throw new CliError(
+              `Failed to fetch entity type "${identifier}": ${err instanceof Error ? err.message : String(err)}`,
+              exitCode,
+            );
+          }
+          const yaml = entityTypeToYaml(entityTypeResponse.entity_type);
+          fs.writeFileSync(path, yaml, "utf8");
+          if (runtime.context.json) {
+            renderJson({ ok: true, identifier, path });
+          } else {
+            renderRichText([
+              ui.p(
+                `${ui.success(ui.GLYPHS.CHECK)} Entity type written to ${ui.code(path)}.`,
+              ),
+              ui.p(
+                `Edit the file, then run: ${ui.code(`dx catalog entityTypes update ${identifier} --from-file ${path}`)}`,
+              ),
+            ]);
+          }
+        } else {
+          fs.writeFileSync(path, ENTITY_TYPE_BLANK_TEMPLATE_YAML, "utf8");
+          if (runtime.context.json) {
+            renderJson({ ok: true, path });
+          } else {
+            renderRichText([
+              ui.p(
+                `${ui.success(ui.GLYPHS.CHECK)} Blank template written to ${ui.code(path)}.`,
+              ),
+              ui.p(
+                `Edit the file, then run: ${ui.code(`dx catalog entityTypes create --from-file ${path}`)}`,
+              ),
+            ]);
+          }
+        }
+      }),
+    );
+
+  entityTypes
     .command("list")
     .description("List all entity types in your software catalog")
     .option("--cursor <cursor>", "Cursor for the next page of results")
@@ -153,6 +307,81 @@ export function entityTypesCommand() {
       }),
     );
 
+  entityTypes
+    .command("update")
+    .description(
+      "Update an existing entity type from a YAML file or stdin. The `init` command can be used to initialize the entity type file.",
+    )
+    .argument("<identifier>", "The unique identifier of the entity type")
+    .option(
+      "--from-file <path>",
+      "Read a YAML file and update the entity type with its contents",
+    )
+    .option(
+      "--from-stdin",
+      "Read YAML from stdin and update the entity type with its contents",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Initialize a file first",
+          command:
+            "dx catalog entityTypes init --identifier service ./my-entity-type.yaml",
+        },
+        {
+          label: "Update an entity type from a YAML file",
+          command:
+            "dx catalog entityTypes update service --from-file ./my-entity-type.yaml",
+        },
+        {
+          label: "Update an entity type from stdin",
+          command:
+            "cat ./my-entity-type.yaml | dx catalog entityTypes update service --from-stdin",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (identifier, options, command) => {
+        const modeCount = [options.fromFile, options.fromStdin].filter(
+          Boolean,
+        ).length;
+        if (modeCount === 0) {
+          throw new CliError(
+            "One of --from-file or --from-stdin is required",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+        if (modeCount > 1) {
+          throw new CliError(
+            "--from-file and --from-stdin are mutually exclusive",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+
+        const runtime = buildRuntime(getContext(command));
+
+        let raw: unknown;
+        if (options.fromFile) {
+          raw = readYamlFile(options.fromFile as string);
+        } else {
+          raw = await readYamlStdin();
+        }
+
+        const payload = buildUpdatePayload(identifier, raw);
+        const response = await updateEntityType(runtime, payload);
+
+        if (runtime.context.json) {
+          renderJson({ ok: true, entity_type: response.entity_type });
+        } else {
+          renderEntityType(
+            response.entity_type,
+            `${ui.success(ui.GLYPHS.CHECK)} Entity type updated`,
+          );
+        }
+      }),
+    );
+
   return entityTypes;
 }
 
@@ -175,6 +404,34 @@ type GetEntityTypeResponse = {
 };
 
 type DeleteEntityTypeResponse = {
+  ok: true;
+  entity_type: EntityType;
+};
+
+type CreateEntityTypePayload = {
+  identifier: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  properties?: Property[];
+  aliases?: Record<string, boolean>;
+};
+
+type CreateEntityTypeResponse = {
+  ok: true;
+  entity_type: EntityType;
+};
+
+type UpdateEntityTypePayload = {
+  identifier: string;
+  name?: string;
+  description?: string;
+  icon?: string;
+  properties?: Property[];
+  aliases?: Record<string, boolean>;
+};
+
+type UpdateEntityTypeResponse = {
   ok: true;
   entity_type: EntityType;
 };
@@ -274,6 +531,38 @@ async function listEntityTypes(
   return response.body;
 }
 
+async function createEntityType(
+  runtime: Runtime,
+  payload: CreateEntityTypePayload,
+): Promise<CreateEntityTypeResponse> {
+  const response = await request<CreateEntityTypeResponse>(
+    runtime,
+    "/catalog.entityTypes.create",
+    {
+      method: "POST",
+      body: payload,
+    },
+  );
+
+  return response.body;
+}
+
+async function updateEntityType(
+  runtime: Runtime,
+  payload: UpdateEntityTypePayload,
+): Promise<UpdateEntityTypeResponse> {
+  const response = await request<UpdateEntityTypeResponse>(
+    runtime,
+    "/catalog.entityTypes.update",
+    {
+      method: "POST",
+      body: payload,
+    },
+  );
+
+  return response.body;
+}
+
 // --- Include helpers ---
 
 const ENTITY_TYPE_INCLUDE_SECTIONS = ["core", "properties", "aliases"] as const;
@@ -337,4 +626,104 @@ function parseEntityTypeIncludeSections(
     }
   }
   return results as EntityTypeIncludeSection[];
+}
+
+// --- YAML helpers ---
+
+const ENTITY_TYPE_BLANK_TEMPLATE_YAML = fs.readFileSync(
+  new URL("./entity-type-blank-template.yaml", import.meta.url),
+  "utf8",
+);
+
+const ENTITY_TYPE_IGNORED_KEYS: ReadonlyArray<keyof EntityType> = [
+  // Reporting on state
+  "created_at",
+  "updated_at",
+];
+
+const PROPERTY_IGNORED_KEYS: ReadonlyArray<keyof Property> = [
+  // Reporting on state
+  "created_at",
+  "updated_at",
+];
+
+function entityTypeToYaml(entityType: EntityType): string {
+  const obj = { ...entityType } as Partial<EntityType>;
+  for (const key of ENTITY_TYPE_IGNORED_KEYS) {
+    delete obj[key];
+  }
+  if (obj.properties) {
+    obj.properties = obj.properties.map((prop) => {
+      const p = { ...prop };
+      for (const key of PROPERTY_IGNORED_KEYS) {
+        delete p[key];
+      }
+      return p;
+    });
+  }
+  return stringifyYaml(obj, { blockQuote: "literal" });
+}
+
+function readYamlFile(filePath: string): unknown {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, "utf8");
+  } catch (err) {
+    throw new CliError(
+      `Could not read file "${filePath}": ${(err as Error).message}`,
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+  return parseYaml(content);
+}
+
+async function readYamlStdin(): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk));
+    process.stdin.on("end", () => {
+      const content = Buffer.concat(chunks).toString("utf8");
+      try {
+        resolve(parseYaml(content));
+      } catch (err) {
+        reject(
+          new CliError(
+            `Failed to parse YAML from stdin: ${(err as Error).message}`,
+            EXIT_CODES.ARGUMENT_ERROR,
+          ),
+        );
+      }
+    });
+    process.stdin.on("error", (err) => {
+      reject(
+        new CliError(
+          `Failed to read from stdin: ${err.message}`,
+          EXIT_CODES.ARGUMENT_ERROR,
+        ),
+      );
+    });
+  });
+}
+
+function buildCreatePayload(raw: unknown): CreateEntityTypePayload {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new CliError(
+      "YAML content must be an object",
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+  return raw as CreateEntityTypePayload;
+}
+
+function buildUpdatePayload(
+  identifier: string,
+  raw: unknown,
+): UpdateEntityTypePayload {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new CliError(
+      "YAML content must be an object",
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+  return { ...(raw as Record<string, unknown>), identifier };
 }

@@ -1,0 +1,51 @@
+# Entity type configuration
+#
+# Edit this file, then run:
+#
+# ```
+# dx catalog entityTypes create --from-file <path>
+# ```
+#
+# After the entity type is created, make updates by running:
+#
+# ```
+# dx catalog entityTypes update <identifier> --from-file <path>
+# ```
+
+identifier: ""
+name: ""
+description: ""
+icon: server
+
+# Properties for this entity type (optional)
+properties:
+  - identifier: tier
+    name: Tier
+    type: select
+    description: null
+    definition:
+      options:
+        - value: Tier-1
+          color: "#ef4444"
+        - value: Tier-2
+          color: "#fbbf24"
+        - value: Tier-3
+          color: "#38bdf8"
+    is_required: false
+    visibility: visible
+    ordering: 0
+  - identifier: incident-runbook
+    name: Incident runbook
+    type: url
+    description: null
+    definition:
+      call_to_action: globe
+      call_to_action_type: icon
+    is_required: false
+    visibility: visible
+    ordering: 1
+
+# Aliases available for this entity type (optional)
+# aliases:
+#   github_repo: true
+aliases: {}
