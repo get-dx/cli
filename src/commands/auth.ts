@@ -90,7 +90,8 @@ export type AuthInfoResponse = {
   account: { name: string };
 };
 
-async function getAuthInfo(runtime: Runtime): Promise<AuthInfoResponse> {
+// TODO: should we move this somewhere more central, since `init` needs it?
+export async function getAuthInfo(runtime: Runtime): Promise<AuthInfoResponse> {
   const response = await request<AuthInfoResponse>(runtime, "/auth.info", {
     method: "GET",
   });
