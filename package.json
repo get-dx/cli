@@ -19,6 +19,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@inquirer/prompts": "^8.4.1",
     "commander": "^14.0.1",
     "dayjs": "^1.11.20",
     "picocolors": "^1.1.1",
