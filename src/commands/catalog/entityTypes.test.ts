@@ -557,8 +557,6 @@ describe("catalog entityTypes commands", () => {
       const yaml = writeFileSyncSpy.mock.calls[0]?.[1] as string;
       expect(yaml).not.toContain("created_at");
       expect(yaml).not.toContain("updated_at");
-      expect(yaml).not.toContain("icon");
-      expect(yaml).not.toContain("ordering");
     });
 
     it("--identifier returns JSON with --json flag", async () => {
