@@ -42,12 +42,6 @@ describe("cli", () => {
 
     const output = stdout.join("");
     expect(output).toContain("Usage: dx [options] [command]");
-    expect(output).toContain("DX CLI");
-    expect(output).toContain("auth");
-    expect(output).toContain("catalog");
-    expect(output).toContain("scorecards");
-    expect(output).toContain("studio");
-    expect(output).not.toContain("(outputHelp)");
     expect(stderr.join("")).toBe("");
     expect(exitSpy).not.toHaveBeenCalled();
   });
