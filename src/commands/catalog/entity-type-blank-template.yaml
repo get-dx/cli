@@ -1,0 +1,25 @@
+# Entity type configuration
+#
+# Edit this file, then run:
+#
+# ```
+# dx catalog entityTypes create --from-file <path>
+# ```
+#
+# After the entity type is created, make updates by running:
+#
+# ```
+# dx catalog entityTypes update <identifier> --from-file <path>
+# ```
+
+identifier: ""
+name: ""
+description: ""
+
+# Properties for this entity type (optional)
+properties: []
+
+# Aliases available for this entity type (optional)
+# aliases:
+#   github_repo: true
+aliases: {}
