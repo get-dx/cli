@@ -10,7 +10,13 @@ import cliPackage from "../package.json" with { type: "json" };
 
 export async function run(argv = process.argv): Promise<void> {
   try {
-    await createProgram().parseAsync(argv);
+    const program = createProgram();
+    if (argv.length <= 2) {
+      program.outputHelp();
+      return;
+    }
+
+    await program.parseAsync(argv);
   } catch (error) {
     handleError(error, undefined, argv);
   }
