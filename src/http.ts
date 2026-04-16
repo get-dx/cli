@@ -14,6 +14,8 @@ export async function request<T extends Record<string, unknown>>(
   const method = options.method || "GET";
   const headers = new Headers({
     Accept: "application/json",
+    "X-Client-Type": "dx-cli",
+    "X-Client-Version": runtime.version,
     "User-Agent": `dx-cli/${runtime.version}`,
   });
 
