@@ -408,11 +408,11 @@ type DeleteEntityTypeResponse = {
   entity_type: EntityType;
 };
 
-// TODO: double-check fields
 type CreateEntityTypePayload = {
   identifier: string;
   name: string;
   description?: string;
+  icon?: string;
   properties?: Property[];
   aliases?: Record<string, boolean>;
 };
@@ -426,6 +426,7 @@ type UpdateEntityTypePayload = {
   identifier: string;
   name?: string;
   description?: string;
+  icon?: string;
   properties?: Property[];
   aliases?: Record<string, boolean>;
 };
