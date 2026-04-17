@@ -244,8 +244,10 @@ async function optionallySetupSkill(runtime: Runtime) {
     stdin: "inherit",
   })`npx --yes -- skills@latest add get-dx/dx-cli --global`;
 
-  // To update: npx skills update get-dx/dx-cli --global
-  // To uninstall: npx skills remove get-dx/dx-cli --global
+  runtime.logger.debug("To update: npx skills update get-dx/dx-cli --global");
+  runtime.logger.debug(
+    "To uninstall: npx skills remove get-dx/dx-cli --global",
+  );
 
   if (result.exitCode !== 0) {
     throw new CliError(`Failed to setup the DX skill: ${result.stderr}`);
