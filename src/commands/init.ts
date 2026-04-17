@@ -1,5 +1,6 @@
 import { input, password, confirm, select } from "@inquirer/prompts";
 import { Command } from "commander";
+import { execa } from "execa";
 
 import { buildRuntime, buildRuntimeSafe } from "../runtime.js";
 import { getAuthInfo, type AuthInfoResponse } from "./auth.js";
@@ -172,7 +173,7 @@ async function attemptLogin(
     throw new CliError(`Login failed`);
   }
 
-  renderRichText([ui.p(`Login successful!`)]);
+  renderRichText([ui.p(`Login successful.`)]);
 
   persistBaseUrl(apiBaseUrl);
   setToken(apiBaseUrl, token);
@@ -190,13 +191,25 @@ async function optionallySetupSkill(runtime: Runtime) {
     default: true,
   });
 
-  if (setupSkill) {
-    renderRichText([ui.p(`Setting up the DX skill...`)]);
-  } else {
+  if (!setupSkill) {
     renderRichText([
       ui.p(`Skipping the DX skill setup. You can always do this later.`),
     ]);
+    return;
   }
+
+  renderRichText([ui.p(`Setting up the DX skill...`)]);
+
+  // TODO: install the DX skill from github
+  const result = await execa({
+    stdout: ["pipe", "inherit"],
+  })`npx --yes -- skills@latest --help`;
+
+  if (result.exitCode !== 0) {
+    throw new CliError(`Failed to setup the DX skill: ${result.stderr}`);
+  }
+
+  renderRichText([ui.p(`DX skill setup successful.`)]);
 }
 
 function createEmptyContext(): CliContext {
