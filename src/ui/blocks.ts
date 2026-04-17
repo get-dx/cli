@@ -111,6 +111,18 @@ export class DescriptionListItemContainer extends AbstractBlock {
   }
 }
 
+export class CodeBlock extends AbstractBlock {
+  private readonly text: string;
+  constructor(text: string) {
+    super();
+    this.text = text;
+  }
+
+  render(): string {
+    return pc.cyan(this.text) + "\n";
+  }
+}
+
 export class JsonBlock extends AbstractBlock {
   private readonly value: Record<string, unknown>;
   constructor(value: Record<string, unknown>) {

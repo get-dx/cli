@@ -1,3 +1,6 @@
+import { access } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { input, password, confirm } from "@inquirer/prompts";
 import { Command } from "commander";
 import { execa } from "execa";
@@ -102,7 +105,7 @@ function showWelcomeBanner() {
 }
 
 async function ensureLoggedIn(runtime: Runtime | null): Promise<Runtime> {
-  renderRichText([ui.h1(`Checking if you are logged in...`)]);
+  renderRichText([ui.h1(`Checking if you are logged in...`), ui.blankLine()]);
 
   if (runtime) {
     let authInfo: AuthInfoResponse | null = null;
@@ -126,18 +129,22 @@ async function ensureLoggedIn(runtime: Runtime | null): Promise<Runtime> {
   let parsed: ParsedHostname = { type: "invalid" };
   while (parsed.type === "invalid") {
     const raw = await input({
-      message:
-        "What is your DX hostname? (leave blank for app.getdx.com)",
+      message: "What is your DX hostname? (leave blank for app.getdx.com)",
     });
     parsed = parseHostname(raw);
     if (parsed.type === "invalid") {
-      renderRichText([ui.p(ui.error(`Could not recognise that hostname. Please try again.`))]);
+      renderRichText([
+        ui.p(ui.error(`Could not recognise that hostname. Please try again.`)),
+      ]);
     }
   }
 
   switch (parsed.type) {
     case "cloud":
-      return await attemptLogin("https://api.getdx.com", "https://app.getdx.com");
+      return await attemptLogin(
+        "https://api.getdx.com",
+        "https://app.getdx.com",
+      );
     case "dedicated": {
       const { accountName } = parsed;
       return await attemptLogin(
@@ -196,10 +203,29 @@ async function attemptLogin(
 }
 
 async function optionallySetupSkill(runtime: Runtime) {
-  renderRichText([ui.h1(`Checking for the DX skill...`)]);
+  renderRichText([ui.h1(`Checking for the DX skill...`), ui.blankLine()]);
+
+  const skillPath = join(homedir(), ".agents", "skills", "dx-cli");
+  const skillInstalled = await access(skillPath)
+    .then(() => true)
+    .catch(() => false);
+  if (skillInstalled) {
+    renderRichText([
+      ui.p(`The DX skill is already installed.`),
+      ui.blankLine(),
+    ]);
+    return;
+  }
+
+  renderRichText([
+    ui.p(`The DX skill is not installed. Would you like to install it?`),
+    ui.p("This will run the following command:", false),
+    ui.codeBlock("npx --yes -- skills@latest add get-dx/dx-cli --global"),
+    ui.blankLine(),
+  ]);
 
   const setupSkill = await confirm({
-    message: "Would you like to setup the DX skill for AI agents?",
+    message: "Continue?",
     default: true,
   });
 
@@ -212,10 +238,14 @@ async function optionallySetupSkill(runtime: Runtime) {
 
   renderRichText([ui.p(`Setting up the DX skill...`)]);
 
-  // TODO: install the DX skill from github
   const result = await execa({
-    stdout: ["pipe", "inherit"],
-  })`npx --yes -- skills@latest --help`;
+    stdout: "inherit",
+    stderr: "inherit",
+    stdin: "inherit",
+  })`npx --yes -- skills@latest add get-dx/dx-cli --global`;
+
+  // To update: npx skills update get-dx/dx-cli --global
+  // To uninstall: npx skills remove get-dx/dx-cli --global
 
   if (result.exitCode !== 0) {
     throw new CliError(`Failed to setup the DX skill: ${result.stderr}`);
