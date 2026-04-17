@@ -1,4 +1,4 @@
-import { input, password, confirm, select } from "@inquirer/prompts";
+import { input, password, confirm } from "@inquirer/prompts";
 import { Command } from "commander";
 import { execa } from "execa";
 
@@ -14,7 +14,39 @@ import { CliContext, Runtime } from "../types.js";
 import { persistBaseUrl } from "../config.js";
 import { setToken } from "../secrets.js";
 
-type DeploymentType = "cloud" | "dedicated" | "managed";
+type ParsedHostname =
+  | { type: "cloud" }
+  | { type: "dedicated"; accountName: string }
+  | { type: "managed"; uiBaseUrl: string }
+  | { type: "invalid" };
+
+function parseHostname(raw: string): ParsedHostname {
+  const normalized = raw.trim().replace(/\/$/, "");
+
+  if (!normalized || normalized === "app.getdx.com") {
+    return { type: "cloud" };
+  }
+
+  try {
+    const url = new URL(
+      normalized.startsWith("http") ? normalized : `https://${normalized}`,
+    );
+    const host = url.hostname;
+
+    const dedicatedMatch = host.match(/^(.+)\.getdx\.io$/);
+    if (dedicatedMatch) {
+      return { type: "dedicated", accountName: dedicatedMatch[1] };
+    }
+
+    if (host) {
+      return { type: "managed", uiBaseUrl: url.origin };
+    }
+  } catch {
+    // fall through to invalid
+  }
+
+  return { type: "invalid" };
+}
 
 // FIXME: make this WAY more glam
 // Choose a more interesting ASCII art font from https://patorjk.com/software/taag/
@@ -91,57 +123,37 @@ async function ensureLoggedIn(runtime: Runtime | null): Promise<Runtime> {
 
   renderRichText([ui.p(`You are not logged in yet.`)]);
 
-  const accountType = await select<DeploymentType>({
-    message: "What kind of DX account do you use?",
-    choices: [
-      {
-        name: `Cloud (https://app.getdx.com)`,
-        value: "cloud",
-      },
-      {
-        name: "Dedicated (e.g. https://your-company.getdx.io)",
-        value: "dedicated",
-      },
-      {
-        name: "Managed (custom domain, e.g. https://dx.engineering-tools.example.com)",
-        value: "managed",
-      },
-    ],
-  });
+  let parsed: ParsedHostname = { type: "invalid" };
+  while (parsed.type === "invalid") {
+    const raw = await input({
+      message:
+        "What is your DX hostname? (leave blank for app.getdx.com)",
+    });
+    parsed = parseHostname(raw);
+    if (parsed.type === "invalid") {
+      renderRichText([ui.p(ui.error(`Could not recognise that hostname. Please try again.`))]);
+    }
+  }
 
-  switch (accountType) {
+  switch (parsed.type) {
     case "cloud":
-      return await attemptLogin(
-        "https://api.getdx.com",
-        "https://app.getdx.com",
-      );
+      return await attemptLogin("https://api.getdx.com", "https://app.getdx.com");
     case "dedicated": {
-      const prefix = await input({
-        message:
-          "What is your company's prefix? (e.g. 'your-company' for https://your-company.getdx.io)",
-      });
-      if (!prefix) {
-        throw new CliError("Company prefix is required");
-      }
-      const apiBaseUrl = `https://api.${prefix}.getdx.io`;
-      const uiBaseUrl = `https://${prefix}.getdx.io`;
-      return await attemptLogin(apiBaseUrl, uiBaseUrl);
+      const { accountName } = parsed;
+      return await attemptLogin(
+        `https://api.${accountName}.getdx.io`,
+        `https://${accountName}.getdx.io`,
+      );
     }
     case "managed": {
-      const uiBaseUrl = await input({
-        message: "What is the base URL you use to login to the web UI?",
+      const apiBaseUrl = await input({
+        message: "What is your API base URL?",
       });
-      const apiBaseUrl = await input({ message: "What is your API base URL?" });
       if (!apiBaseUrl) {
         throw new CliError("API base URL is required");
       }
-      if (!uiBaseUrl) {
-        throw new CliError("UI base URL is required");
-      }
-      return await attemptLogin(apiBaseUrl, uiBaseUrl);
+      return await attemptLogin(apiBaseUrl, parsed.uiBaseUrl);
     }
-    default:
-      throw new CliError(`Unknown deployment type: ${accountType}`);
   }
 }
 
