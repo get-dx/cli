@@ -24,15 +24,6 @@ Set `DX_LOG_LEVEL` to one of `debug`, `info`, `warn`, or `error` to enable CLI l
 
 Logs are always written to `stderr`. They are human-readable by default, and switch to JSON when `--json` is present or `stderr` is not a TTY.
 
-Deferred in this repo version:
-
-- `dx init`
-- `dx scorecards list|get|create|update`
-- `dx catalog entities list|create|update`
-- `dx workflows list`
-- `dx workflows trigger`
-- `dx studio query`
-
 ## Developing the CLI
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md).
