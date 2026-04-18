@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
----
+## 0.1.2 - 2026-04-17
+
+Fix the repo associations in package.json so publishing works.
 
 ## 0.1.1 - 2026-04-17
 
