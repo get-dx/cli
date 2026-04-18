@@ -1,22 +1,41 @@
 {
   "name": "@get-dx/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DX CLI",
-  "private": true,
+  "author": "DX <developers@getdx.com>",
+  "bugs": {
+    "url": "https://github.com/get-dx/dx-cli/issues"
+  },
   "type": "module",
   "bin": {
-    "dx": "./dist/index.js"
+    "dx": "dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://github.com/get-dx/dx-cli#readme",
+  "license": "Apache-2.0",
   "engines": {
     "node": "20.x"
   },
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/get-dx/dx-cli.git",
+    "directory": "."
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit",
+    "build": "./bin/build",
+    "clean": "rm -rf dist",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "prepack": "pnpm build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "commander": "^14.0.1",

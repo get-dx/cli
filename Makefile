@@ -12,9 +12,7 @@ deps:
 	pnpm install
 
 build:
-	pnpm build
-	cp src/commands/scorecard-blank-template.yaml dist/commands/
-	cp src/commands/catalog/entity-type-blank-template.yaml dist/commands/catalog/
+	./bin/build
 
 link:
 	pnpm link --global

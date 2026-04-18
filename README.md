@@ -1,6 +1,12 @@
-# dx-cli
+# DX CLI
 
-Standalone DX CLI for existing token-authenticated DX web API endpoints.
+AI-Native CLI for interacting with DX.
+
+## Install
+
+```bash
+npm install --global @get-dx/cli
+```
 
 ## Commands
 
