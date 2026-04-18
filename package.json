@@ -8,7 +8,7 @@
   },
   "type": "module",
   "bin": {
-    "dx": "./dist/index.js"
+    "dx": "dist/index.js"
   },
   "files": [
     "dist"
