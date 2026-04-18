@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+rm -rf dist
+pnpm exec tsc -p tsconfig.build.json
+cp src/commands/scorecard-blank-template.yaml dist/commands/
+cp src/commands/catalog/entity-type-blank-template.yaml dist/commands/catalog/

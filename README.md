@@ -2,6 +2,12 @@
 
 Standalone DX CLI for existing token-authenticated DX web API endpoints.
 
+## Install
+
+```bash
+npm install --global @get-dx/cli
+```
+
 ## Commands
 
 - `dx auth login --token <account-web-api-token>`
