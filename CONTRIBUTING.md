@@ -27,4 +27,24 @@ Make sure that calls to the `dx` binary run outside of your agent client's sandb
 
 ## Publishing (for maintainers)
 
-TODO: add details
+- Update [CHANGELOG.md](./CHANGELOG.md) with release notes.
+
+- Edit the version number in `package.json`:
+
+  ```diff
+   {
+     "name": "@get-dx/backstage-plugin",
+  -  "version": "1.0.0",
+  +  "version": "1.1.0", (Insert whatever version is appropriate according to semver)
+   ...
+   }
+  ```
+
+  - Submit a PR and merge the changes to the `main` branch.
+
+  - The [Publish Package action](https://github.com/get-dx/cli/actions/workflows/publish.yaml) will run based off of the new commit on the `main` branch, but the workflow will be in a pending state until approved.
+
+  - Reach out to the team's Tech Lead to approve the deployment in GitHub.
+    This will cause the workflow to fully run and publish the new version to NPM.
+    Once the workflow is complete, the new version will be visible in the
+    [package's versions tab](https://www.npmjs.com/package/@get-dx/cli?activeTab=versions).
