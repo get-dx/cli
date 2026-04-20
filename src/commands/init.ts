@@ -220,7 +220,7 @@ async function optionallySetupSkill(runtime: Runtime) {
   renderRichText([
     ui.p(`The DX skill is not installed. Would you like to install it?`),
     ui.p("This will run the following command:", false),
-    ui.codeBlock("npx --yes -- skills@latest add get-dx/dx-cli --global"),
+    ui.codeBlock("npx --yes -- skills@latest add get-dx/cli --global"),
     ui.blankLine(),
   ]);
 
@@ -244,7 +244,7 @@ async function optionallySetupSkill(runtime: Runtime) {
     stdout: "inherit",
     stderr: "inherit",
     stdin: "inherit",
-  })`npx --yes -- skills@latest add get-dx/dx-cli --global`;
+  })`npx --yes -- skills@latest add get-dx/cli --global`;
 
   runtime.logger.debug("To update: npx skills update dx-cli --global");
   runtime.logger.debug("To uninstall: npx skills remove dx-cli --global");
