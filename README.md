@@ -6,8 +6,23 @@ AI-Native CLI for interacting with DX.
 
 ## Install
 
-```bash
+```shell
 npm install -g @get-dx/cli
+```
+
+## Getting started
+
+Interactively login and install the AI agent skill:
+
+```shell
+dx init
+```
+
+Show help text:
+
+```shell
+dx --help
+dx <subcommand> --help
 ```
 
 ## Logging
