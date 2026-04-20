@@ -15,6 +15,14 @@ The most important commands for development are:
 - `make dev`: watches the `src/` directory and calls `make` to reinstall whenever changes are detected. Requires [`watchexec`](https://github.com/watchexec/watchexec).
 - `make verify`: runs all of the CI checks: format check, typecheck, lint, and unit tests.
 
+## Agent skills
+
+The CLI defines a `dx-cli` skill, intended for CLI users to install. It also has agent skills intended for use during development of the CLI itself. These are stored in the `.agents-internal-dev/skills/` directory rather than a canonical location like `.agents/skills/`, to avoid getting picked up by the [`skills`](https://www.npmjs.com/package/skills) binary and recommended to CLI users. To install these skills, run the following:
+
+```shell
+ln -s .agents-internal-dev .agents
+```
+
 ## Recommended agent setup
 
 A git worktree setup script should install and login:

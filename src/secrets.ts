@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execaSync } from "execa";
 
 import { CliError } from "./errors.js";
 
@@ -44,17 +44,20 @@ function macosSecretStore(): SecretStore {
   return {
     get(baseUrl) {
       try {
-        return execFileSync(
-          "security",
-          ["find-generic-password", "-s", SERVICE, "-a", baseUrl, "-w"],
-          { encoding: "utf8" },
-        ).trim();
+        return execaSync("security", [
+          "find-generic-password",
+          "-s",
+          SERVICE,
+          "-a",
+          baseUrl,
+          "-w",
+        ]).stdout.trim();
       } catch {
         return null;
       }
     },
     set(baseUrl, token) {
-      execFileSync("security", [
+      execaSync("security", [
         "add-generic-password",
         "-U",
         "-s",
@@ -67,7 +70,7 @@ function macosSecretStore(): SecretStore {
     },
     delete(baseUrl) {
       try {
-        execFileSync("security", [
+        execaSync("security", [
           "delete-generic-password",
           "-s",
           SERVICE,
@@ -85,17 +88,19 @@ function linuxSecretStore(): SecretStore {
   return {
     get(baseUrl) {
       try {
-        return execFileSync(
-          "secret-tool",
-          ["lookup", "service", SERVICE, "account", baseUrl],
-          { encoding: "utf8" },
-        ).trim();
+        return execaSync("secret-tool", [
+          "lookup",
+          "service",
+          SERVICE,
+          "account",
+          baseUrl,
+        ]).stdout.trim();
       } catch {
         return null;
       }
     },
     set(baseUrl, token) {
-      execFileSync(
+      execaSync(
         "secret-tool",
         ["store", "--label=dx-cli", "service", SERVICE, "account", baseUrl],
         { input: token },

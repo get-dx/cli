@@ -38,8 +38,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@inquirer/prompts": "^8.4.1",
     "commander": "^14.0.1",
     "dayjs": "^1.11.20",
+    "execa": "^9.6.1",
     "picocolors": "^1.1.1",
     "yaml": "^2.8.3"
   },

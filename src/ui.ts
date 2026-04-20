@@ -12,6 +12,7 @@ import {
   ParagraphBlock,
   UnorderedListBlock,
   DescriptionListBlockOptions,
+  CodeBlock,
 } from "./ui/blocks.js";
 
 dayjs.extend(relativeTimePlugin);
@@ -81,8 +82,16 @@ export function dli(
   }
 }
 
+export function codeBlock(text: string): Block {
+  return new CodeBlock(text);
+}
+
 export function json(value: Record<string, unknown>): Block {
   return new JsonBlock(value);
+}
+
+export function blankLine(): Block {
+  return new ParagraphBlock("", false);
 }
 
 // Inline elements

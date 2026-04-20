@@ -2,6 +2,7 @@ import { Command, Option } from "commander";
 
 import { authCommand } from "./commands/auth.js";
 import { catalogCommand } from "./commands/catalog.js";
+import { initCommand } from "./commands/init.js";
 import { scorecardsCommand } from "./commands/scorecards.js";
 import { studioCommand } from "./commands/studio.js";
 import { handleError } from "./commandHelpers.js";
@@ -42,6 +43,7 @@ function createProgram(): Command {
 
   program.addCommand(authCommand());
   program.addCommand(catalogCommand());
+  program.addCommand(initCommand());
   program.addCommand(scorecardsCommand());
   program.addCommand(studioCommand());
 
