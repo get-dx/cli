@@ -84,6 +84,7 @@ export function initCommand() {
         await optionallySetupSkill(runtime);
 
         renderRichText([
+          ui.blankLine(),
           ui.p(
             `${ui.success(ui.GLYPHS.CHECK)} Done! You are now ready to use the DX CLI.`,
           ),
@@ -116,15 +117,13 @@ async function ensureLoggedIn(runtime: Runtime | null): Promise<Runtime> {
     }
 
     if (authInfo) {
-      renderRichText([ui.p(`You are logged in!`)]);
-
       renderAuthInfo(authInfo, runtime.token, runtime.baseUrl);
 
       return runtime;
     }
   }
 
-  renderRichText([ui.p(`You are not logged in yet.`)]);
+  renderRichText([ui.p(`You are not logged in yet.`), ui.blankLine()]);
 
   let parsed: ParsedHostname = { type: "invalid" };
   while (parsed.type === "invalid") {
@@ -185,14 +184,12 @@ async function attemptLogin(
     token,
   });
 
-  renderRichText([ui.p(`Attempting login...`)]);
+  renderRichText([ui.blankLine(), ui.p(`Attempting login...`), ui.blankLine()]);
 
   const response = await getAuthInfo(runtime);
   if (!response.ok) {
     throw new CliError(`Login failed`);
   }
-
-  renderRichText([ui.p(`Login successful.`)]);
 
   persistBaseUrl(apiBaseUrl);
   setToken(apiBaseUrl, token);
@@ -203,7 +200,11 @@ async function attemptLogin(
 }
 
 async function optionallySetupSkill(runtime: Runtime) {
-  renderRichText([ui.h1(`Checking for the DX skill...`), ui.blankLine()]);
+  renderRichText([
+    ui.blankLine(),
+    ui.h1(`Checking for the DX skill...`),
+    ui.blankLine(),
+  ]);
 
   const skillPath = join(homedir(), ".agents", "skills", "dx-cli");
   const skillInstalled = await access(skillPath)
@@ -214,6 +215,10 @@ async function optionallySetupSkill(runtime: Runtime) {
       ui.p(`The DX skill is already installed.`),
       ui.blankLine(),
     ]);
+
+    runtime.logger.debug("To update: npx skills update dx-cli --global");
+    runtime.logger.debug("To uninstall: npx skills remove dx-cli --global");
+
     return;
   }
 
@@ -244,10 +249,8 @@ async function optionallySetupSkill(runtime: Runtime) {
     stdin: "inherit",
   })`npx --yes -- skills@latest add get-dx/dx-cli --global`;
 
-  runtime.logger.debug("To update: npx skills update get-dx/dx-cli --global");
-  runtime.logger.debug(
-    "To uninstall: npx skills remove get-dx/dx-cli --global",
-  );
+  runtime.logger.debug("To update: npx skills update dx-cli --global");
+  runtime.logger.debug("To uninstall: npx skills remove dx-cli --global");
 
   if (result.exitCode !== 0) {
     throw new CliError(`Failed to setup the DX skill: ${result.stderr}`);
