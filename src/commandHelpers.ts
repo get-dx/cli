@@ -66,6 +66,11 @@ export function handleError(
       process.stderr.write(
         `The API returned an error with status code ${error.status}:\n\n${JSON.stringify(error.body, null, 2)}\n`,
       );
+    } else if (
+      error instanceof CommanderError &&
+      (error.code === "commander.help" || error.message === "(outputHelp)")
+    ) {
+      // Commander already printed the relevant help text.
     } else {
       process.stderr.write(
         `${error instanceof Error ? error.message : String(error)}\n`,
