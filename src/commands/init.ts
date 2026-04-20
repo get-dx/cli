@@ -238,6 +238,8 @@ async function optionallySetupSkill(runtime: Runtime) {
 
   renderRichText([ui.p(`Setting up the DX skill...`)]);
 
+  // NOTE: if the user chooses "no" for the final confirmation prompt, `skills` still exits with a 0 status.
+  // We are also not able to pipe the output without also breaking interactivity.
   const result = await execa({
     stdout: "inherit",
     stderr: "inherit",
@@ -250,8 +252,6 @@ async function optionallySetupSkill(runtime: Runtime) {
   if (result.exitCode !== 0) {
     throw new CliError(`Failed to setup the DX skill: ${result.stderr}`);
   }
-
-  renderRichText([ui.p(`DX skill setup successful.`)]);
 }
 
 function createEmptyContext(): CliContext {
