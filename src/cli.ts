@@ -61,7 +61,7 @@ function createProgram(): Command {
  */
 function applyExitOverride(cmd: Command): void {
   cmd.exitOverride();
-  cmd.configureOutput({ writeErr: () => {} });
+  cmd.configureOutput({ outputError: () => {} });
   for (const sub of cmd.commands) {
     applyExitOverride(sub);
   }
