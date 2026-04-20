@@ -98,6 +98,62 @@ describe("auth commands", () => {
       );
       expect(writes.join("")).toContain('"token_name": "cli"');
     });
+
+    it("accepts personal access tokens", async () => {
+      process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
+      process.env.DX_BASE_URL = "https://api.example.com";
+
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              auth: {
+                token_type: "personal_access_token",
+                token_name: "pat",
+                scopes: ["entities:read"],
+                created_at: "2026-03-31T12:00:00Z",
+              },
+              account: { name: "DX" },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "auth",
+        "login",
+        "--token",
+        "secret-token",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/auth.info",
+        expect.objectContaining({ method: "GET" }),
+      );
+      expect(setToken).toHaveBeenCalledWith(
+        "https://api.example.com",
+        "secret-token",
+      );
+      expect(writes.join("")).toContain(
+        '"token_type": "personal_access_token"',
+      );
+      expect(writes.join("")).toContain('"token_name": "pat"');
+    });
   });
 
   describe("status", () => {
@@ -188,6 +244,49 @@ describe("auth commands", () => {
       expect(output).toContain("- auth:read");
       expect(output).toContain("(2026-03-31T12:00:00Z)");
       expect(output).not.toContain("\u001b[");
+    });
+
+    it("renders personal access tokens in human-readable output", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-1234");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              auth: {
+                token_type: "personal_access_token",
+                token_name: "pat",
+                scopes: ["entities:read"],
+                created_at: "2026-03-31T12:00:00Z",
+              },
+              account: { name: "DX" },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "auth", "status"]);
+
+      const output = writes.join("");
+      expect(output).toContain(
+        "✓ Logged in to https://api.example.com account DX",
+      );
+      expect(output).toContain("Token:            toke**1234");
+      expect(output).toContain("Token type:       Personal access token");
+      expect(output).toContain("Token name:       pat");
     });
 
     it("uses colors when stdout is a tty", async () => {

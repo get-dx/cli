@@ -19,7 +19,10 @@ export function authCommand(): Command {
 
   auth
     .command("login")
-    .requiredOption("--token <token>", "Account web API token")
+    .requiredOption(
+      "--token <token>",
+      "Account web API token or personal access token",
+    )
     .action(
       wrapAction(async (commandOptions, command) => {
         const context = getContext(command);
@@ -77,7 +80,7 @@ export function authCommand(): Command {
   return auth;
 }
 
-export type TokenType = "account_web_api_token";
+export type TokenType = "account_web_api_token" | "personal_access_token";
 
 export type AuthInfoResponse = {
   ok: true;
