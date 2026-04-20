@@ -12,7 +12,12 @@ on:
 env: {}
 jobs:
   verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22, 24]
     runs-on: blacksmith-4vcpu-ubuntu-2404
+    name: verify (Node ${{ matrix.node-version }})
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -22,7 +27,7 @@ jobs:
           run_install: false
       - uses: useblacksmith/setup-node@v5
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
           cache: "pnpm"
       - name: Run make
         run: make

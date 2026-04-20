@@ -16,7 +16,7 @@
   "homepage": "https://github.com/get-dx/cli#readme",
   "license": "Apache-2.0",
   "engines": {
-    "node": "20.x"
+    "node": "^20.0.0 || ^22.0.0 || ^24.0.0"
   },
   "private": false,
   "publishConfig": {
