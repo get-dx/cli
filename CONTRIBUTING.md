@@ -17,7 +17,6 @@ The most important commands for development are:
 The CLI defines a `dx-cli` skill, intended for CLI users to install. It also has agent skills intended for use during development of the CLI itself. These are stored in the `.agents-internal-dev/skills/` directory rather than a canonical location like `.agents/skills/`, to avoid getting picked up by the [`skills`](https://www.npmjs.com/package/skills) binary and recommended to CLI users. To install these skills, run the following:
 
 ```shell
-mkdir -p .agents/
 ln -s .agents-internal-dev .agents
 ```
 
