@@ -28,19 +28,13 @@ All commands accept `--json` to return machine-readable JSON instead of human-re
 
 ## Authentication
 
-Before using any command, verify that you are authenticated:
+Before using a `dx` subcommand for the first time, verify that you are authenticated:
 
 ```
 dx auth status
 ```
 
-If this returns an error or shows that you are not logged in, stop and ask the user to run:
-
-```
-dx auth login --token <token>
-```
-
-Tokens are DX web API tokens. They are scoped per DX instance base URL and stored locally.
+If this returns an error or shows that you are not logged in, stop and ask the user to login interactively with `dx init`, or non-interactively with `dx auth login`.
 
 ## Glossary
 
