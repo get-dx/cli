@@ -2,8 +2,7 @@
 
 AI-Native CLI for interacting with DX.
 
-<img width="800" height="437" alt="cli-demo" src="https://github.com/user-attachments/assets/9bf2afb5-45c5-46b2-8035-f34e812ebd5e" />
-
+<img width="800" height="423" alt="cli-demo" src="https://github.com/user-attachments/assets/a89f7d53-2617-413e-84df-07293149e9c8" />
 
 ## Install
 
@@ -13,7 +12,7 @@ npm install -g @get-dx/cli
 
 ## Commands
 
-Global flags available on any command: `--json`, `--agent <name>`, and `--agent-session-id <id>`.
+Global flags available on any command: `--json`.
 
 | Area       | Command                                                              | Description                                                                         |
 | ---------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
