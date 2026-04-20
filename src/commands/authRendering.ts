@@ -52,6 +52,8 @@ function tokenTypeName(tokenType: TokenType): string {
   switch (tokenType) {
     case "account_web_api_token":
       return "Account-level web API token";
+    case "personal_access_token":
+      return "Personal access token";
     default:
       throw new Error(`Unknown token type: ${tokenType}`);
   }

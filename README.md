@@ -1,22 +1,14 @@
-# dx-cli
+# DX CLI
 
-Standalone DX CLI for existing token-authenticated DX web API endpoints.
+AI-Native CLI for interacting with DX.
 
-## Commands
+<img width="800" height="423" alt="cli-demo" src="https://github.com/user-attachments/assets/a89f7d53-2617-413e-84df-07293149e9c8" />
 
-- `dx auth login --token <account-web-api-token>`
-- `dx auth logout`
-- `dx auth status`
-- `dx catalog entities info <identifier>`
+## Install
 
-## Agent Provenance
-
-The CLI can automatically attach agent metadata from:
-
-- `DX_AGENT_NAME`
-- `DX_AGENT_SESSION_ID`
-
-Explicit `--agent` and `--agent-session-id` flags take precedence over the environment.
+```bash
+npm install -g @get-dx/cli
+```
 
 ## Logging
 
