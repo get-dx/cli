@@ -107,7 +107,7 @@ describe("studio query command", () => {
       "dx",
       "studio",
       "query",
-      "SELECT id, name FROM github_repos LIMIT 2",
+      "SELECT id, name FROM github_repositories LIMIT 2",
     ]);
 
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -116,7 +116,7 @@ describe("studio query command", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
-          sql: "SELECT id, name FROM github_repos LIMIT 2",
+          sql: "SELECT id, name FROM github_repositories LIMIT 2",
         }),
       }),
     );
@@ -338,7 +338,7 @@ describe("studio query command", () => {
         "dx",
         "studio",
         "query",
-        "SELECT * FROM github_repos WHERE owner = $owner",
+        "SELECT * FROM github_repositories WHERE owner = $owner",
         "--variable",
         "owner=my-org",
       ]);
@@ -348,7 +348,7 @@ describe("studio query command", () => {
         "https://api.example.com/studio.queryRuns.execute",
         expect.objectContaining({
           body: JSON.stringify({
-            sql: "SELECT * FROM github_repos WHERE owner = $owner",
+            sql: "SELECT * FROM github_repositories WHERE owner = $owner",
             variables: { owner: "my-org" },
           }),
         }),
@@ -365,7 +365,7 @@ describe("studio query command", () => {
         "dx",
         "studio",
         "query",
-        "SELECT * FROM github_repos LIMIT $limit",
+        "SELECT * FROM github_repositories LIMIT $limit",
         "--variable",
         "limit=10",
       ]);
@@ -375,7 +375,7 @@ describe("studio query command", () => {
         "https://api.example.com/studio.queryRuns.execute",
         expect.objectContaining({
           body: JSON.stringify({
-            sql: "SELECT * FROM github_repos LIMIT $limit",
+            sql: "SELECT * FROM github_repositories LIMIT $limit",
             variables: { limit: 10 },
           }),
         }),
@@ -392,7 +392,7 @@ describe("studio query command", () => {
         "dx",
         "studio",
         "query",
-        "SELECT * FROM github_repos WHERE language IN ($langs)",
+        "SELECT * FROM github_repositories WHERE language IN ($langs)",
         "--variable",
         "langs=go,typescript,ruby",
       ]);
@@ -402,7 +402,7 @@ describe("studio query command", () => {
         "https://api.example.com/studio.queryRuns.execute",
         expect.objectContaining({
           body: JSON.stringify({
-            sql: "SELECT * FROM github_repos WHERE language IN ($langs)",
+            sql: "SELECT * FROM github_repositories WHERE language IN ($langs)",
             variables: { langs: ["go", "typescript", "ruby"] },
           }),
         }),
@@ -419,7 +419,7 @@ describe("studio query command", () => {
         "dx",
         "studio",
         "query",
-        "SELECT * FROM github_repos WHERE id IN ($repo_ids)",
+        "SELECT * FROM github_repositories WHERE id IN ($repo_ids)",
         "--variable",
         "repo_ids=1,2,3",
       ]);
@@ -429,7 +429,7 @@ describe("studio query command", () => {
         "https://api.example.com/studio.queryRuns.execute",
         expect.objectContaining({
           body: JSON.stringify({
-            sql: "SELECT * FROM github_repos WHERE id IN ($repo_ids)",
+            sql: "SELECT * FROM github_repositories WHERE id IN ($repo_ids)",
             variables: { repo_ids: [1, 2, 3] },
           }),
         }),
@@ -446,7 +446,7 @@ describe("studio query command", () => {
         "dx",
         "studio",
         "query",
-        "SELECT * FROM github_repos WHERE owner = $owner AND id IN ($ids)",
+        "SELECT * FROM github_repositories WHERE owner = $owner AND id IN ($ids)",
         "--variable",
         "owner=my-org",
         "--variable",
@@ -458,7 +458,7 @@ describe("studio query command", () => {
         "https://api.example.com/studio.queryRuns.execute",
         expect.objectContaining({
           body: JSON.stringify({
-            sql: "SELECT * FROM github_repos WHERE owner = $owner AND id IN ($ids)",
+            sql: "SELECT * FROM github_repositories WHERE owner = $owner AND id IN ($ids)",
             variables: { owner: "my-org", ids: [10, 20] },
           }),
         }),

@@ -50,7 +50,7 @@ export function queryCommand() {
         {
           label: "Run a query and print the JSON results payload",
           command:
-            "dx studio query 'SELECT id, name FROM github_repos LIMIT 5' --json",
+            "dx studio query 'SELECT id, name FROM github_repositories LIMIT 5' --json",
         },
         {
           label: "Run a query and save the full result set as CSV",
