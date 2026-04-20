@@ -1,3 +1,5 @@
+import pc from "picocolors";
+
 const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
 
 export type LogLevel = (typeof LOG_LEVELS)[number];
@@ -111,6 +113,19 @@ function writeLog(
       ? ` ${JSON.stringify(entry.fields)}`
       : "";
   process.stderr.write(
-    `${entry.time} ${entry.level.toUpperCase()} ${entry.message}${renderedFields}\n`,
+    `${pc.dim(entry.time)} ${colorizeLevel(entry.level)} ${entry.message}${pc.dim(renderedFields)}\n`,
   );
+}
+
+function colorizeLevel(level: LogLevel): string {
+  switch (level) {
+    case "debug":
+      return pc.blue("DEBUG");
+    case "info":
+      return pc.bold("INFO");
+    case "warn":
+      return pc.yellow("WARN");
+    case "error":
+      return pc.red("ERROR");
+  }
 }
