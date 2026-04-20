@@ -34,6 +34,12 @@ export function queryCommand() {
     .description("Execute a Data Studio SQL query and wait for the results")
     .argument("<sql>", "SQL query to execute")
     .option("--output <filename>", "Save the full result set as CSV to a file")
+    .option(
+      "--variable <key=value>",
+      "Set a template variable referenced in the SQL (can be repeated; use comma-separated values for arrays)",
+      (val: string, prev: string[]) => [...prev, val],
+      [] as string[],
+    )
     .addHelpText(
       "afterAll",
       createExampleText([
@@ -51,6 +57,16 @@ export function queryCommand() {
           command:
             "dx studio query 'SELECT * FROM github_pulls' --output pulls.csv",
         },
+        {
+          label: "Run a parameterized query with a scalar variable",
+          command:
+            "dx studio query 'SELECT * FROM github_repositories WHERE name = $name' --variable name=my-repo",
+        },
+        {
+          label: "Run a parameterized query with an array variable",
+          command:
+            "dx studio query 'SELECT * FROM github_repositories WHERE id IN ($repo_ids)' --variable repo_ids=1,2,3",
+        },
       ]),
     )
     .action(
@@ -63,10 +79,11 @@ export function queryCommand() {
           );
         }
 
+        const variables = parseVariables(options.variable as string[]);
         const runtime = buildRuntime(context);
         const progress = new QueryProgressReporter();
 
-        const queryRun = await executeQuery(runtime, progress, sql);
+        const queryRun = await executeQuery(runtime, progress, sql, variables);
         await waitForQuery(runtime, progress, queryRun.id);
 
         if (options.output) {
@@ -130,11 +147,12 @@ async function executeQuery(
   runtime: Runtime,
   progress: QueryProgressReporter,
   sql: string,
+  variables?: Record<string, string | number | string[] | number[]>,
 ): Promise<StudioQueryRun> {
   try {
     renderRunningQuery(sql);
     progress.start(ui.bold("Submitting query"));
-    const executeResponse = await executeStudioQuery(runtime, sql);
+    const executeResponse = await executeStudioQuery(runtime, sql, variables);
     const queryRun = executeResponse.body.query_run;
     await waitForRetryAfter(executeResponse.retryAfterMs);
     return queryRun;
@@ -207,13 +225,14 @@ function renderPendingQueryStatus(queryRunId: string): string {
 async function executeStudioQuery(
   runtime: Runtime,
   sql: string,
+  variables?: Record<string, string | number | string[] | number[]>,
 ): Promise<{ body: ExecuteStudioQueryResponse; retryAfterMs?: number }> {
   return request<ExecuteStudioQueryResponse>(
     runtime,
     "/studio.queryRuns.execute",
     {
       method: "POST",
-      body: { sql },
+      body: variables ? { sql, variables } : { sql },
     },
   );
 }
@@ -426,6 +445,31 @@ async function writeResponseBodyToFile(
   } finally {
     reader.releaseLock();
   }
+}
+
+function parseVariables(
+  vars: string[],
+): Record<string, string | number | string[] | number[]> | undefined {
+  if (vars.length === 0) return undefined;
+  const result: Record<string, string | number | string[] | number[]> = {};
+  for (const v of vars) {
+    const eqIdx = v.indexOf("=");
+    if (eqIdx === -1) {
+      throw new CliError(
+        `Invalid variable format: "${v}". Expected key=value.`,
+        EXIT_CODES.ARGUMENT_ERROR,
+      );
+    }
+    const key = v.slice(0, eqIdx);
+    const raw = v.slice(eqIdx + 1);
+    const parts = raw.includes(",") ? raw.split(",") : [raw];
+    const coerced = parts.map((p) =>
+      p !== "" && !isNaN(Number(p)) ? Number(p) : p,
+    );
+    result[key] =
+      coerced.length === 1 ? coerced[0] : (coerced as string[] | number[]);
+  }
+  return result;
 }
 
 function buildFailedQueryError(error?: StudioQueryRunError): CliError {

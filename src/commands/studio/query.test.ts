@@ -302,6 +302,205 @@ describe("studio query command", () => {
     expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.RETRY_RECOMMENDED);
   });
 
+  describe("--variable option", () => {
+    function makeSuccessfulFetch() {
+      return vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ ok: true, query_run: queuedQueryRun }),
+            { status: 202, headers: { "Retry-After": "0" } },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ ok: true, query_run: succeededQueryRun }),
+            { status: 200 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(resultsResponse), { status: 200 }),
+        );
+    }
+
+    beforeEach(() => {
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+    });
+
+    it("sends a scalar string variable", async () => {
+      const fetchMock = makeSuccessfulFetch();
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "query",
+        "SELECT * FROM github_repos WHERE owner = $owner",
+        "--variable",
+        "owner=my-org",
+      ]);
+
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        1,
+        "https://api.example.com/studio.queryRuns.execute",
+        expect.objectContaining({
+          body: JSON.stringify({
+            sql: "SELECT * FROM github_repos WHERE owner = $owner",
+            variables: { owner: "my-org" },
+          }),
+        }),
+      );
+    });
+
+    it("sends a scalar numeric variable", async () => {
+      const fetchMock = makeSuccessfulFetch();
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "query",
+        "SELECT * FROM github_repos LIMIT $limit",
+        "--variable",
+        "limit=10",
+      ]);
+
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        1,
+        "https://api.example.com/studio.queryRuns.execute",
+        expect.objectContaining({
+          body: JSON.stringify({
+            sql: "SELECT * FROM github_repos LIMIT $limit",
+            variables: { limit: 10 },
+          }),
+        }),
+      );
+    });
+
+    it("sends an array of strings for comma-separated values", async () => {
+      const fetchMock = makeSuccessfulFetch();
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "query",
+        "SELECT * FROM github_repos WHERE language IN ($langs)",
+        "--variable",
+        "langs=go,typescript,ruby",
+      ]);
+
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        1,
+        "https://api.example.com/studio.queryRuns.execute",
+        expect.objectContaining({
+          body: JSON.stringify({
+            sql: "SELECT * FROM github_repos WHERE language IN ($langs)",
+            variables: { langs: ["go", "typescript", "ruby"] },
+          }),
+        }),
+      );
+    });
+
+    it("sends an array of numbers for comma-separated numeric values", async () => {
+      const fetchMock = makeSuccessfulFetch();
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "query",
+        "SELECT * FROM github_repos WHERE id IN ($repo_ids)",
+        "--variable",
+        "repo_ids=1,2,3",
+      ]);
+
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        1,
+        "https://api.example.com/studio.queryRuns.execute",
+        expect.objectContaining({
+          body: JSON.stringify({
+            sql: "SELECT * FROM github_repos WHERE id IN ($repo_ids)",
+            variables: { repo_ids: [1, 2, 3] },
+          }),
+        }),
+      );
+    });
+
+    it("sends multiple variables when --variable is repeated", async () => {
+      const fetchMock = makeSuccessfulFetch();
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "query",
+        "SELECT * FROM github_repos WHERE owner = $owner AND id IN ($ids)",
+        "--variable",
+        "owner=my-org",
+        "--variable",
+        "ids=10,20",
+      ]);
+
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        1,
+        "https://api.example.com/studio.queryRuns.execute",
+        expect.objectContaining({
+          body: JSON.stringify({
+            sql: "SELECT * FROM github_repos WHERE owner = $owner AND id IN ($ids)",
+            variables: { owner: "my-org", ids: [10, 20] },
+          }),
+        }),
+      );
+    });
+
+    it("omits variables from the request body when none are provided", async () => {
+      const fetchMock = makeSuccessfulFetch();
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { run } = await import("../../cli.js");
+      await run(["node", "dx", "studio", "query", "SELECT 1"]);
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(JSON.parse(init.body as string)).not.toHaveProperty("variables");
+    });
+
+    it("exits with code 2 for a variable missing the = separator", async () => {
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "studio",
+        "query",
+        "SELECT 1",
+        "--variable",
+        "badvalue",
+      ]);
+
+      expect(JSON.parse(stdoutWrites.join(""))).toMatchObject({
+        ok: false,
+        error: expect.stringContaining('"badvalue"'),
+      });
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+    });
+  });
+
   it("exits when the query run fails", async () => {
     const exitSpy = vi
       .spyOn(process, "exit")
