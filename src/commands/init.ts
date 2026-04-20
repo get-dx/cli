@@ -112,7 +112,7 @@ async function ensureLoggedIn(runtime: Runtime | null): Promise<Runtime> {
     let authInfo: AuthInfoResponse | null = null;
     try {
       authInfo = await getAuthInfo(runtime);
-    } catch (error) {
+    } catch (_error) {
       // Do nothing, we don't mind if this fails
     }
 
@@ -165,10 +165,8 @@ async function ensureLoggedIn(runtime: Runtime | null): Promise<Runtime> {
 
 async function attemptLogin(
   apiBaseUrl: string,
-  uiBaseUrl: string,
+  _uiBaseUrl: string,
 ): Promise<Runtime> {
-  // TODO: implement
-
   const token = await password({
     message: "Paste your account web API token here:",
     mask: true,
