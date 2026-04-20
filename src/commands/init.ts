@@ -211,10 +211,7 @@ async function optionallySetupSkill(runtime: Runtime) {
     .then(() => true)
     .catch(() => false);
   if (skillInstalled) {
-    renderRichText([
-      ui.p(`The DX skill is already installed.`),
-      ui.blankLine(),
-    ]);
+    renderRichText([ui.p(`The DX skill is already installed.`)]);
 
     runtime.logger.debug("To update: npx skills update dx-cli --global");
     runtime.logger.debug("To uninstall: npx skills remove dx-cli --global");
