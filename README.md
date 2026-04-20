@@ -2,7 +2,8 @@
 
 AI-Native CLI for interacting with DX.
 
-<img width="1876" height="1064" alt="cli_demo" src="https://github.com/user-attachments/assets/7b4f97e2-4fa8-4b95-a182-aa4ea4af4cfe" />
+<img width="800" height="437" alt="cli-demo" src="https://github.com/user-attachments/assets/9bf2afb5-45c5-46b2-8035-f34e812ebd5e" />
+
 
 ## Install
 
