@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.1.4 - 2026-04-21
+
+### Added
+
+- `dx studio query`: Add support for variables through the repeatable `--variable key=value` flag
 - Expand supported Node.js versions to include the current LTS majors and run CI verification on Node 20, 22, and 24.
+
+### Fixed
+
+- Remove false positive "skill installed" message if the agent skill was cancelled.
+- Clean up skill file instructions for if the user is not authenticated.
+- Fix missing subcommand help output (e.g. running `dx catalog`)
 
 ## 0.1.3 - 2026-04-20
 
