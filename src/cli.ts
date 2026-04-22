@@ -5,6 +5,7 @@ import { catalogCommand } from "./commands/catalog.js";
 import { initCommand } from "./commands/init.js";
 import { scorecardsCommand } from "./commands/scorecards.js";
 import { studioCommand } from "./commands/studio.js";
+import { teamsCommand } from "./commands/teams.js";
 import { handleError } from "./commandHelpers.js";
 
 import cliPackage from "../package.json" with { type: "json" };
@@ -46,6 +47,7 @@ function createProgram(): Command {
   program.addCommand(initCommand());
   program.addCommand(scorecardsCommand());
   program.addCommand(studioCommand());
+  program.addCommand(teamsCommand());
 
   applyExitOverride(program);
 
