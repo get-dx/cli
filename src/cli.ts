@@ -23,7 +23,7 @@ export async function run(argv = process.argv): Promise<void> {
   }
 }
 
-function createProgram(): Command {
+export function createProgram(): Command {
   const program = new Command();
 
   program
