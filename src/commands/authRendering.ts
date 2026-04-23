@@ -21,6 +21,16 @@ export function renderAuthInfo(
           "Token created at",
           ui.timestampSummary(authInfo.auth.created_at),
         ),
+        ...(authInfo.auth.token_type === "personal_access_token"
+          ? [
+              ui.dli(
+                "Token expires at",
+                authInfo.auth.expires_at
+                  ? ui.timestampSummary(authInfo.auth.expires_at)
+                  : ui.dim("(no expiration)"),
+              ),
+            ]
+          : []),
       ],
       { termWidth: 18 },
     ),

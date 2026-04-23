@@ -268,6 +268,7 @@ describe("auth commands", () => {
                 token_type: "personal_access_token",
                 token_name: "pat",
                 scopes: ["entities:read"],
+                expires_at: "2027-06-30T00:00:00Z",
                 created_at: "2026-03-31T12:00:00Z",
               },
               account: { name: "DX" },
@@ -287,6 +288,48 @@ describe("auth commands", () => {
       expect(output).toContain("Token:            toke**1234");
       expect(output).toContain("Token type:       Personal access token");
       expect(output).toContain("Token name:       pat");
+      expect(output).toContain("Token expires at");
+      expect(output).toContain("(2027-06-30T00:00:00Z)");
+    });
+
+    it("shows no expiration for personal access tokens without expires_at", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-1234");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              auth: {
+                token_type: "personal_access_token",
+                token_name: "pat",
+                scopes: ["entities:read"],
+                expires_at: null,
+                created_at: "2026-03-31T12:00:00Z",
+              },
+              account: { name: "DX" },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "auth", "status"]);
+
+      const output = writes.join("");
+      expect(output).toContain("Token expires at");
+      expect(output).toContain("(no expiration)");
     });
 
     it("uses colors when stdout is a tty", async () => {
