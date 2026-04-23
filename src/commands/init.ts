@@ -1,9 +1,10 @@
 import { access } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { input, password, confirm } from "@inquirer/prompts";
+import { input, password, confirm, select } from "@inquirer/prompts";
 import { Command } from "commander";
 import { execa } from "execa";
+import open from "open";
 
 import { buildRuntime, buildRuntimeSafe } from "../runtime.js";
 import { getAuthInfo, type AuthInfoResponse } from "./auth.js";
@@ -168,12 +169,35 @@ async function ensureLoggedIn(
 
 async function attemptLogin(
   apiBaseUrl: string,
-  _uiBaseUrl: string,
+  uiBaseUrl: string,
 ): Promise<Runtime> {
-  const token = await password({
-    message: "Paste your account web API token here:",
-    mask: true,
+  const method = await select({
+    message: "How would you like to log in?",
+    choices: [
+      { name: "Open browser", value: "browser" },
+      { name: "Paste API token", value: "token" },
+    ],
   });
+
+  let token: string;
+
+  if (method === "browser") {
+    const authUrl = `${uiBaseUrl}/cli/auth`;
+    renderRichText([
+      ui.p(`Opening ${authUrl} in your browser...`),
+      ui.blankLine(),
+    ]);
+    await openUrl(authUrl);
+    token = await password({
+      message: "Paste the token from the browser here:",
+      mask: true,
+    });
+  } else {
+    token = await password({
+      message: "Paste your account web API token here:",
+      mask: true,
+    });
+  }
 
   if (!token) {
     throw new CliError("Account web API token is required");
@@ -254,6 +278,14 @@ async function optionallySetupSkill(runtime: Runtime) {
 
   if (result.exitCode !== 0) {
     throw new CliError(`Failed to setup the DX skill: ${result.stderr}`);
+  }
+}
+
+async function openUrl(url: string): Promise<void> {
+  try {
+    await open(url);
+  } catch {
+    // silently continue — user can navigate manually
   }
 }
 
