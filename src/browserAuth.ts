@@ -55,7 +55,9 @@ export async function openUrl(url: string): Promise<void> {
   try {
     await open(url);
   } catch {
-    // silently continue — user can navigate manually
+    process.stderr.write(
+      `Failed to open browser automatically. Visit this URL to continue:\n${url}\n\n`,
+    );
   }
 }
 
