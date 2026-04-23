@@ -72,12 +72,14 @@ describe("startBrowserLogin", () => {
   it("returns an authUrl with the correct structure and query parameters", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({ access_token: "tok-abc", redirect_uri: null }),
-          { status: 200 },
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ access_token: "tok-abc", redirect_uri: null }),
+            { status: 200 },
+          ),
         ),
-      ),
     );
 
     const { authUrl, waitForToken } = await startBrowserLogin(
@@ -111,12 +113,14 @@ describe("startBrowserLogin", () => {
   it("waitForToken resolves with the access token on a successful exchange", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({ access_token: "tok-abc", redirect_uri: null }),
-          { status: 200 },
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ access_token: "tok-abc", redirect_uri: null }),
+            { status: 200 },
+          ),
         ),
-      ),
     );
 
     const { authUrl, waitForToken } = await startBrowserLogin(
@@ -148,12 +152,14 @@ describe("startBrowserLogin", () => {
   });
 
   it("waitForToken sends the code and code_verifier to the token endpoint", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({ access_token: "tok-xyz", redirect_uri: null }),
-        { status: 200 },
-      ),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ access_token: "tok-xyz", redirect_uri: null }),
+          { status: 200 },
+        ),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
     const { authUrl, waitForToken } = await startBrowserLogin(
@@ -288,9 +294,11 @@ describe("startBrowserLogin", () => {
   it("rejects when the token exchange response contains no access_token", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ redirect_uri: null }), { status: 200 }),
-      ),
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ redirect_uri: null }), { status: 200 }),
+        ),
     );
 
     const { authUrl, waitForToken } = await startBrowserLogin(
