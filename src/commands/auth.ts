@@ -88,6 +88,8 @@ export type AuthInfoResponse = {
     token_type: TokenType;
     token_name: string;
     scopes: string[];
+    effective_scopes: string[];
+    expires_at: string;
     created_at: string;
   };
   account: { name: string };
