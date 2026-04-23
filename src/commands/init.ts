@@ -70,8 +70,12 @@ export function initCommand() {
   const init = new Command()
     .name("init")
     .description("Initialize the DX CLI")
+    .option(
+      "--host <hostname>",
+      "DX hostname for dedicated or managed deployments (e.g. mycompany.getdx.io)",
+    )
     .action(
-      wrapAction(async (_commandOptions, command) => {
+      wrapAction(async (commandOptions, command) => {
         const context = getContext(command);
         let runtime = buildRuntimeSafe(context);
 
@@ -79,7 +83,8 @@ export function initCommand() {
 
         showWelcomeBanner();
 
-        runtime = await ensureLoggedIn(runtime);
+        const host = commandOptions.host || process.env.DX_HOST;
+        runtime = await ensureLoggedIn(runtime, host);
 
         await optionallySetupSkill(runtime);
 
@@ -105,7 +110,10 @@ function showWelcomeBanner() {
   renderRichText([ui.p(ui.success(WELCOME_BANNER))]);
 }
 
-async function ensureLoggedIn(runtime: Runtime | null): Promise<Runtime> {
+async function ensureLoggedIn(
+  runtime: Runtime | null,
+  host?: string,
+): Promise<Runtime> {
   renderRichText([ui.h1(`Checking if you are logged in...`), ui.blankLine()]);
 
   if (runtime) {
@@ -125,16 +133,30 @@ async function ensureLoggedIn(runtime: Runtime | null): Promise<Runtime> {
 
   renderRichText([ui.p(`You are not logged in yet.`), ui.blankLine()]);
 
-  let parsed: ParsedHostname = { type: "invalid" };
-  while (parsed.type === "invalid") {
-    const raw = await input({
-      message: "What is your DX hostname? (leave blank for app.getdx.com)",
-    });
-    parsed = parseHostname(raw);
+  let parsed: ParsedHostname;
+
+  if (host) {
+    parsed = parseHostname(host);
     if (parsed.type === "invalid") {
-      renderRichText([
-        ui.p(ui.error(`Could not recognise that hostname. Please try again.`)),
-      ]);
+      throw new CliError(
+        `Could not recognize hostname "${host}". Expected app.getdx.com, <account>.getdx.io, or a custom domain.`,
+      );
+    }
+  } else {
+    parsed = { type: "invalid" };
+    while (parsed.type === "invalid") {
+      const raw = await input({
+        message: "What is your DX hostname?",
+        default: "app.getdx.com",
+      });
+      parsed = parseHostname(raw);
+      if (parsed.type === "invalid") {
+        renderRichText([
+          ui.p(
+            ui.error(`Could not recognize that hostname. Please try again.`),
+          ),
+        ]);
+      }
     }
   }
 
