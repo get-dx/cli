@@ -30,14 +30,23 @@ export async function startBrowserLogin(
   return {
     authUrl: `${uiBaseUrl}/cli/auth?${params.toString()}`,
     waitForToken: async () => {
-      const { code, sendResponse } = await waitForCode();
-      const { accessToken, redirectUri } = await exchangeCodeForToken(
-        apiBaseUrl,
-        code,
-        codeVerifier,
-      );
-      sendResponse(redirectUri);
-      return accessToken;
+      const { code, sendResponse, sendError } = await waitForCode();
+      try {
+        const { accessToken, redirectUri } = await exchangeCodeForToken(
+          apiBaseUrl,
+          code,
+          codeVerifier,
+        );
+        sendResponse(redirectUri);
+        return accessToken;
+      } catch (err) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Authentication failed: unknown error";
+        sendError(message);
+        throw err;
+      }
     },
   };
 }
@@ -73,7 +82,9 @@ async function exchangeCodeForToken(
   });
 
   if (!response.ok) {
-    throw new CliError(`Token exchange failed with status ${response.status}`);
+    throw new CliError(
+      `Authentication failed: token exchange failed with status ${response.status}`,
+    );
   }
 
   const body = (await response.json()) as {
@@ -82,7 +93,7 @@ async function exchangeCodeForToken(
   };
 
   if (!body.access_token) {
-    throw new CliError("No access token returned from token exchange");
+    throw new CliError("Authentication failed: no access token returned");
   }
 
   return {
@@ -91,23 +102,33 @@ async function exchangeCodeForToken(
   };
 }
 
+function sendErrorResponse(
+  res: import("node:http").ServerResponse,
+  message: string,
+): void {
+  res.writeHead(400, { "Content-Type": "text/plain" }).end(message);
+}
+
 async function startCallbackServer(expectedState: string): Promise<{
   port: number;
   waitForCode: () => Promise<{
     code: string;
     sendResponse: (redirectUri: string | null) => void;
+    sendError: (message: string) => void;
   }>;
 }> {
   return new Promise((resolve, reject) => {
     let resolveCode!: (result: {
       code: string;
       sendResponse: (redirectUri: string | null) => void;
+      sendError: (message: string) => void;
     }) => void;
     let rejectCode!: (err: Error) => void;
 
     const codePromise = new Promise<{
       code: string;
       sendResponse: (redirectUri: string | null) => void;
+      sendError: (message: string) => void;
     }>((res, rej) => {
       resolveCode = res;
       rejectCode = rej;
@@ -121,8 +142,9 @@ async function startCallbackServer(expectedState: string): Promise<{
       server.close();
 
       if (state !== expectedState) {
-        res.writeHead(400).end();
-        rejectCode(new CliError("State mismatch in auth callback"));
+        const message = "Authentication failed: state mismatch";
+        sendErrorResponse(res, message);
+        rejectCode(new CliError(message));
       } else if (code) {
         resolveCode({
           code,
@@ -133,10 +155,12 @@ async function startCallbackServer(expectedState: string): Promise<{
               res.writeHead(200).end();
             }
           },
+          sendError: (message) => sendErrorResponse(res, message),
         });
       } else {
-        res.writeHead(400).end();
-        rejectCode(new CliError("No code received from browser"));
+        const message = "Authentication failed: no code received";
+        sendErrorResponse(res, message);
+        rejectCode(new CliError(message));
       }
     });
 
@@ -152,10 +176,11 @@ async function startCallbackServer(expectedState: string): Promise<{
             new Promise<{
               code: string;
               sendResponse: (redirectUri: string | null) => void;
+              sendError: (message: string) => void;
             }>((_, rej) =>
               setTimeout(() => {
                 server.close();
-                rej(new CliError("Browser authentication timed out"));
+                rej(new CliError("Authentication failed: timed out"));
               }, CALLBACK_TIMEOUT_MS),
             ),
           ]),
