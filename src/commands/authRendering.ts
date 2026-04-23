@@ -35,7 +35,7 @@ export function renderAuthInfo(
       { termWidth: 18 },
     ),
     ui.p(ui.bold("Token scopes:"), false),
-    ...scopesContent(authInfo.auth.effective_scopes),
+    ...scopesContent(authInfo.auth.scopes),
   ]);
 }
 
