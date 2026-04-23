@@ -4,11 +4,11 @@ import { join } from "node:path";
 import { input, password, confirm, select } from "@inquirer/prompts";
 import { Command } from "commander";
 import { execa } from "execa";
-import open from "open";
 
 import { buildRuntime, buildRuntimeSafe } from "../runtime.js";
 import { getAuthInfo, type AuthInfoResponse } from "./auth.js";
 import { renderAuthInfo } from "./authRendering.js";
+import { openUrl, startBrowserLogin } from "../browserAuth.js";
 import { getContext } from "../commandHelpers.js";
 import { wrapAction } from "../commandHelpers.js";
 import { renderRichText } from "../renderers.js";
@@ -182,16 +182,20 @@ async function attemptLogin(
   let token: string;
 
   if (method === "browser") {
-    const authUrl = `${uiBaseUrl}/cli/auth`;
+    const { authUrl, waitForToken } = await startBrowserLogin(
+      apiBaseUrl,
+      uiBaseUrl,
+    );
+
     renderRichText([
-      ui.p(`Opening ${authUrl} in your browser...`),
+      ui.p(`Opening your browser to complete authentication...`),
       ui.blankLine(),
     ]);
     await openUrl(authUrl);
-    token = await password({
-      message: "Paste the token from the browser here:",
-      mask: true,
-    });
+
+    renderRichText([ui.p(`Waiting for authentication in your browser...`)]);
+
+    token = await waitForToken();
   } else {
     token = await password({
       message: "Paste your account web API token here:",
@@ -278,14 +282,6 @@ async function optionallySetupSkill(runtime: Runtime) {
 
   if (result.exitCode !== 0) {
     throw new CliError(`Failed to setup the DX skill: ${result.stderr}`);
-  }
-}
-
-async function openUrl(url: string): Promise<void> {
-  try {
-    await open(url);
-  } catch {
-    // silently continue — user can navigate manually
   }
 }
 
