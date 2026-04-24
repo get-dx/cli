@@ -13,10 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `dx teams findByMembers`: Add support for finding a team by member email addresses.
 
-### Fixed
-
-- `dx teams findByMembers`: Show an actionable error when no active DX users are found for the provided email addresses.
-
 ## 0.1.5 - 2026-04-23
 
 ### Added
