@@ -354,6 +354,9 @@ async function listSnapshots(runtime: Runtime): Promise<ListSnapshotsResponse> {
     "/snapshots.list",
     {
       method: "GET",
+      query: {
+        ordering: "completed_at",
+      },
     },
   );
 
