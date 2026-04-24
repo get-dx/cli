@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `dx snapshots csatComments list`: Add support for listing CSAT comments for a snapshot.
+- `dx snapshots info --id`: Add support for retrieving results for a single snapshot.
+- `dx snapshots list`: Add support for listing DX snapshots.
+- `dx snapshots driverComments list`: Add support for listing driver comments for a snapshot.
+
+New Skill! A new snapshot-analysis skill is available.
+
 ## 0.1.7 - 2026-04-24
 
 ### Added

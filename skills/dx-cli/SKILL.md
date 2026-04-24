@@ -60,3 +60,4 @@ If this returns an error or shows that you are not logged in, stop and ask the u
 
 - [Catalog management](./references/catalog-management.md) — Entities and entity types: listing, inspecting, creating, updating, and deleting.
 - [Scorecards management](./references/scorecards-management.md) — Scorecards and checks: listing, inspecting, creating, updating, and deleting via YAML.
+- [Snapshot analysis](./references/snapshot-analysis.md) — Analyze snapshot scores, driver comments, and CSAT comments.
