@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import open from "open";
 
 import { CliError } from "./errors.js";
 
@@ -49,16 +48,6 @@ export async function startBrowserLogin(
       }
     },
   };
-}
-
-export async function openUrl(url: string): Promise<void> {
-  try {
-    await open(url);
-  } catch {
-    process.stderr.write(
-      `Failed to open browser automatically. Visit this URL to continue:\n${url}\n\n`,
-    );
-  }
 }
 
 // RFC 7636 §4.1 — 32 random bytes base64url-encoded = 43 unreserved chars

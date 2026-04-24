@@ -4,11 +4,12 @@ import { join } from "node:path";
 import { input, password, confirm, select } from "@inquirer/prompts";
 import { Command } from "commander";
 import { execa } from "execa";
+import open from "open";
 
 import { buildRuntime, buildRuntimeSafe } from "../runtime.js";
 import { getAuthInfo, type AuthInfoResponse } from "./auth.js";
 import { renderAuthInfo } from "./authRendering.js";
-import { openUrl, startBrowserLogin } from "../browserAuth.js";
+import { startBrowserLogin } from "../browserAuth.js";
 import { getContext } from "../commandHelpers.js";
 import { wrapAction } from "../commandHelpers.js";
 import { renderRichText } from "../renderers.js";
@@ -191,10 +192,22 @@ async function attemptLogin(
       ui.p(`Opening your browser to complete authentication...`),
       ui.blankLine(),
     ]);
-    await openUrl(authUrl);
+
+    try {
+      await open(authUrl);
+    } catch {
+      renderRichText([
+        ui.p(
+          `Failed to open browser automatically. Visit this URL to continue:`,
+        ),
+        ui.blankLine(),
+        ui.codeBlock(authUrl),
+        ui.blankLine(),
+        ui.blankLine(),
+      ]);
+    }
 
     renderRichText([ui.p(`Waiting for authentication in your browser...`)]);
-
     token = await waitForToken();
   } else {
     token = await password({
