@@ -44,6 +44,31 @@ afterEach(() => {
 });
 
 describe("teams command", () => {
+  const findByMembersResponse = {
+    ok: true as const,
+    team: {
+      id: "MTYyMDQz",
+      name: "Core Data",
+      members: [
+        {
+          id: "NjA",
+          name: "Chester Tester",
+          email: "chester@company.com",
+        },
+        {
+          id: "Mzc0OTQw",
+          name: "Jane Doe",
+          email: "jane@company.com",
+        },
+      ],
+      manager: {
+        id: "NTEyMDUw",
+        name: "John Doe",
+        email: "john@company.com",
+      },
+    },
+  };
+
   const mockResponse = {
     ok: true as const,
     teams: [
@@ -60,6 +85,151 @@ describe("teams command", () => {
       },
     ],
   };
+
+  it("finds a team by member email addresses in human-readable output", async () => {
+    process.env.DX_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(findByMembersResponse), {
+          status: 200,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "teams",
+      "findByMembers",
+      "--team-emails",
+      "chester@company.com, jane@company.com",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/teams.findByMembers?team_emails=chester%40company.com%2Cjane%40company.com",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(stdoutWrites.join("")).toContain("Team");
+    expect(stdoutWrites.join("")).toContain("Core Data");
+    expect(stdoutWrites.join("")).toContain("john@company.com");
+    expect(stdoutWrites.join("")).toContain("jane@company.com");
+  });
+
+  it("prints the findByMembers API response with --json", async () => {
+    process.env.DX_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(findByMembersResponse), {
+          status: 200,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "--json",
+      "teams",
+      "findByMembers",
+      "--team-emails",
+      "chester@company.com,jane@company.com",
+    ]);
+
+    expect(JSON.parse(stdoutWrites.join(""))).toEqual(findByMembersResponse);
+  });
+
+  it("errors when findByMembers is missing --team-emails", async () => {
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+
+    const { run } = await import("../cli.js");
+    await run(["node", "dx", "teams", "findByMembers"]);
+
+    expect(stderrWrites.join("")).toContain("--team-emails is required");
+    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+  });
+
+  it("prints an actionable findByMembers error when no users are found", async () => {
+    process.env.DX_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ ok: false, error: "no_users_found" }), {
+          status: 400,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "teams",
+      "findByMembers",
+      "--team-emails",
+      "missing@example.com",
+    ]);
+
+    const stderr = stderrWrites.join("");
+    expect(stderr).toContain("No active DX users were found");
+    expect(stderr).toContain("missing@example.com");
+    expect(stderr).toContain("exist and are active");
+    expect(stderr).not.toContain('"error": "no_users_found"');
+    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+  });
+
+  it("preserves structured findByMembers API errors with --json", async () => {
+    process.env.DX_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ ok: false, error: "no_users_found" }), {
+          status: 400,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "--json",
+      "teams",
+      "findByMembers",
+      "--team-emails",
+      "missing@example.com",
+    ]);
+
+    expect(JSON.parse(stdoutWrites.join(""))).toEqual({
+      ok: false,
+      error: "no_users_found",
+      http_status: 400,
+      body: {
+        ok: false,
+        error: "no_users_found",
+      },
+    });
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
 
   it("lists teams in human-readable output", async () => {
     process.env.DX_BASE_URL = "https://api.example.com";
