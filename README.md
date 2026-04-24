@@ -18,7 +18,7 @@ Interactively login and install the AI agent skill:
 dx init
 ```
 
-The CLI defaults to `app.getdx.com` (DX Cloud). Press Enter to accept the default and then paste your API token.
+The CLI uses `app.getdx.com` as the hostname and `api.getdx.com` as the api base url by default.
 
 ### Dedicated or managed deployments
 
