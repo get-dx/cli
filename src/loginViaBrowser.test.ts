@@ -27,12 +27,15 @@ vi.mock("picocolors", () => ({
 }));
 
 beforeEach(() => {
-  vi.mocked(AuthCodeCallbackServer).mockImplementation(() => ({
-    start: mockStart,
-    getAddress: mockGetAddress,
-    listenForCodeResponse: mockListenForCodeResponse,
-    stop: mockStop,
-  }));
+  vi.mocked(AuthCodeCallbackServer).mockImplementation(
+    () =>
+      ({
+        start: mockStart,
+        getAddress: mockGetAddress,
+        listenForCodeResponse: mockListenForCodeResponse,
+        stop: mockStop,
+      }) as unknown as AuthCodeCallbackServer,
+  );
 
   mockStart.mockResolvedValue(undefined);
   mockGetAddress.mockReturnValue("http://127.0.0.1:12345");
