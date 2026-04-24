@@ -4,12 +4,10 @@ import { join } from "node:path";
 import { input, password, confirm, select } from "@inquirer/prompts";
 import { Command } from "commander";
 import { execa } from "execa";
-import open from "open";
-
 import { buildRuntime, buildRuntimeSafe } from "../runtime.js";
 import { getAuthInfo, type AuthInfoResponse } from "./auth.js";
 import { renderAuthInfo } from "./authRendering.js";
-import { startBrowserLogin } from "../browserAuth.js";
+import { loginViaBrowser } from "../loginViaBrowser.js";
 import { getContext } from "../commandHelpers.js";
 import { wrapAction } from "../commandHelpers.js";
 import { renderRichText } from "../renderers.js";
@@ -183,32 +181,7 @@ async function attemptLogin(
   let token: string;
 
   if (method === "browser") {
-    const { authUrl, waitForToken } = await startBrowserLogin(
-      apiBaseUrl,
-      uiBaseUrl,
-    );
-
-    renderRichText([
-      ui.p(`Opening your browser to complete authentication...`),
-      ui.blankLine(),
-    ]);
-
-    try {
-      await open(authUrl);
-    } catch {
-      renderRichText([
-        ui.p(
-          `Failed to open browser automatically. Visit this URL to continue:`,
-        ),
-        ui.blankLine(),
-        ui.codeBlock(authUrl),
-        ui.blankLine(),
-        ui.blankLine(),
-      ]);
-    }
-
-    renderRichText([ui.p(`Waiting for authentication in your browser...`)]);
-    token = await waitForToken();
+    token = await loginViaBrowser(uiBaseUrl);
   } else {
     token = await password({
       message: "Paste your account web API token here:",
