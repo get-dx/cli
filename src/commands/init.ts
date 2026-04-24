@@ -133,31 +133,12 @@ async function ensureLoggedIn(
 
   renderRichText([ui.p(`You are not logged in yet.`), ui.blankLine()]);
 
-  let parsed: ParsedHostname;
+  const parsed: ParsedHostname = host ? parseHostname(host) : { type: "cloud" };
 
-  if (host) {
-    parsed = parseHostname(host);
-    if (parsed.type === "invalid") {
-      throw new CliError(
-        `Could not recognize hostname "${host}". Expected app.getdx.com, <account>.getdx.io, or a custom domain.`,
-      );
-    }
-  } else {
-    parsed = { type: "invalid" };
-    while (parsed.type === "invalid") {
-      const raw = await input({
-        message: "What is your DX hostname?",
-        default: "app.getdx.com",
-      });
-      parsed = parseHostname(raw);
-      if (parsed.type === "invalid") {
-        renderRichText([
-          ui.p(
-            ui.error(`Could not recognize that hostname. Please try again.`),
-          ),
-        ]);
-      }
-    }
+  if (parsed.type === "invalid") {
+    throw new CliError(
+      `Could not recognize hostname "${host}". Expected app.getdx.com, <account>.getdx.io, or a custom domain.`,
+    );
   }
 
   switch (parsed.type) {
