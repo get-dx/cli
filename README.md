@@ -18,6 +18,26 @@ Interactively login and install the AI agent skill:
 dx init
 ```
 
+The CLI uses `app.getdx.com` as the hostname and `api.getdx.com` as the api base url by default.
+
+### Dedicated or managed deployments
+
+If your organization is on a dedicated or managed DX deployment, pass your custom hostname at init time:
+
+```shell
+# Flag (dedicated instance at mycompany.getdx.io)
+dx init --host mycompany.getdx.io
+
+# Env var — useful for CI or scripted setups
+DX_HOST=mycompany.getdx.io dx init
+```
+
+The `DX_HOST` and `--host` values accept:
+
+- `app.getdx.com` — DX Cloud (default)
+- `<account>.getdx.io` — DX dedicated (derives `https://api.<account>.getdx.io` automatically)
+- Any custom domain — you will be prompted for the separate API base URL
+
 Show help text:
 
 ```shell
