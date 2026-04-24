@@ -369,7 +369,7 @@ describe("snapshots command", () => {
     await run(["node", "dx", "snapshots", "list"]);
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://api.example.com/snapshots.list",
+      "https://api.example.com/snapshots.list?ordering=completed_at",
       expect.objectContaining({ method: "GET" }),
     );
     expect(stdoutWrites.join("")).toContain("Snapshots");
