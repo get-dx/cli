@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `dx teams info`: Add support for retrieving details for an individual team.
+
 ## 0.1.6 - 2026-04-24
 
 ### Added
