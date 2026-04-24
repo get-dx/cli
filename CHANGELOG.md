@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.1.7 - 2026-04-24
+
 ### Added
 
 - `dx teams info`: Add support for retrieving details for an individual team.
+
+### Improved
+
+- `dx init`: Initialization no longer prompts all users to to provide hostname when majority have a default app.getdx.com.
 
 ## 0.1.6 - 2026-04-24
 
