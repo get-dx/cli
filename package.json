@@ -1,6 +1,6 @@
 {
   "name": "@get-dx/cli",
-  "version": "0.1.7",
+  "version": "0.1.6",
   "description": "DX CLI",
   "author": "DX <developers@getdx.com>",
   "bugs": {
