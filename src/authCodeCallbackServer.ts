@@ -3,8 +3,6 @@ import type { AddressInfo } from "node:net";
 
 import { CliError } from "./errors.js";
 
-const CALLBACK_TIMEOUT_MS = 5 * 60 * 1000;
-
 export type CodeResponse =
   | { type: "SUCCESS"; token: string; redirectUri: string | null }
   | { type: "ERROR"; error: Error };
@@ -17,7 +15,6 @@ export type CodeListenerFn = (
 export class AuthCodeCallbackServer {
   private server: import("node:http").Server | null = null;
   private address: string | null = null;
-  private timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   async start(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
@@ -45,11 +42,6 @@ export class AuthCodeCallbackServer {
         reject(new Error("Unreachable: server not started"));
         return;
       }
-
-      this.timeoutId = setTimeout(() => {
-        this.stop();
-        reject(new CliError("Authentication failed: timed out"));
-      }, CALLBACK_TIMEOUT_MS);
 
       this.server.on("request", async (req, res) => {
         this.stop();
@@ -98,10 +90,6 @@ export class AuthCodeCallbackServer {
   }
 
   stop(): void {
-    if (this.timeoutId !== null) {
-      clearTimeout(this.timeoutId);
-      this.timeoutId = null;
-    }
     this.server?.close();
     this.server = null;
   }
