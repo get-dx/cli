@@ -32,8 +32,6 @@ export default defineConfig(
       "src/renderers.ts",
       "src/commandHelpers.ts",
       "src/logger.ts",
-      "src/commands/studio/queryRendering.ts",
-      "src/commands/studio/query.ts",
       // Tests and test helpers
       "**/*.test.ts",
       "src/testSetup.ts",
