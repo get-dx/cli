@@ -1,3 +1,4 @@
+import pc from "picocolors";
 import { Command, CommanderError } from "commander";
 
 import { CliError, EXIT_CODES, HttpError } from "./errors.js";
@@ -64,7 +65,9 @@ export function handleError(
   } else {
     if (error instanceof HttpError) {
       process.stderr.write(
-        `The API returned an error with status code ${error.status}:\n\n${JSON.stringify(error.body, null, 2)}\n`,
+        pc.red(
+          `The API returned an error with status code ${error.status}:\n\n${JSON.stringify(error.body, null, 2)}\n`,
+        ),
       );
     } else if (
       error instanceof CommanderError &&
@@ -73,7 +76,7 @@ export function handleError(
       // Commander already printed the relevant help text.
     } else {
       process.stderr.write(
-        `${error instanceof Error ? error.message : String(error)}\n`,
+        pc.red(`${error instanceof Error ? error.message : String(error)}\n`),
       );
     }
   }
