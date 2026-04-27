@@ -1,12 +1,14 @@
+import { password, select } from "@inquirer/prompts";
 import { Command } from "commander";
 
 import { deleteToken, setToken } from "../secrets.js";
 import { renderJson } from "../renderers.js";
 import { renderAuthInfo, renderLoggedOut } from "./authRendering.js";
-import { wrapAction } from "../commandHelpers.js";
-import { getContext } from "../commandHelpers.js";
-import { persistBaseUrl, resolveBaseUrl } from "../config.js";
+import { getContext, wrapAction } from "../commandHelpers.js";
+import { persistBaseUrl, resolveBaseUrl, resolveUiUrl } from "../config.js";
+import { CliError } from "../errors.js";
 import { request } from "../http.js";
+import { loginViaBrowser } from "../loginViaBrowser.js";
 import { buildLogger, buildRuntime } from "../runtime.js";
 import type { Runtime } from "../types.js";
 import cliPackage from "../../package.json" with { type: "json" };
@@ -19,17 +21,50 @@ export function authCommand(): Command {
 
   auth
     .command("login")
-    .requiredOption(
+    .option(
       "--token <token>",
-      "Account web API token or personal access token",
+      "Account web API token or personal access token (omit for interactive browser or paste)",
     )
     .action(
-      wrapAction(async (commandOptions, command) => {
+      wrapAction(async (commandOptions: { token?: string }, command) => {
         const context = getContext(command);
         const baseUrl = resolveBaseUrl();
+
+        let token = commandOptions.token;
+        if (!token) {
+          if (!process.stdin.isTTY || !process.stderr.isTTY) {
+            throw new CliError(
+              "`dx auth login` without `--token` requires an interactive terminal; pass `--token` for non-interactive use",
+            );
+          }
+
+          const method = await select({
+            message: "How would you like to log in?",
+            choices: [
+              { name: "Open browser", value: "browser" },
+              { name: "Paste API token", value: "token" },
+            ],
+          });
+
+          if (method === "browser") {
+            token = await loginViaBrowser(resolveUiUrl(baseUrl));
+          } else {
+            token = await password({
+              message: "Paste your account web API token here:",
+              mask: true,
+            });
+          }
+
+          if (!token) {
+            throw new CliError(
+              "Account web API token or personal access token is required",
+            );
+          }
+        }
+
         const runtime = {
           baseUrl,
-          token: commandOptions.token,
+          token,
           context,
           version: cliPackage.version,
           logger: buildLogger(context),
@@ -37,12 +72,12 @@ export function authCommand(): Command {
 
         const response = await getAuthInfo(runtime);
         persistBaseUrl(baseUrl);
-        setToken(baseUrl, commandOptions.token);
+        setToken(baseUrl, token);
         if (context.json) {
           renderJson({ ...response, base_url: baseUrl });
           return;
         }
-        renderAuthInfo(response, commandOptions.token, baseUrl);
+        renderAuthInfo(response, token, baseUrl);
       }),
     );
 
