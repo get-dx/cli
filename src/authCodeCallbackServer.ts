@@ -77,7 +77,9 @@ export class AuthCodeCallbackServer {
           if (result.redirectUri) {
             res.writeHead(302, { Location: result.redirectUri }).end();
           } else {
-            res.writeHead(200).end();
+            res
+              .writeHead(200, { "Content-Type": "text/plain" })
+              .end("Authentication successful");
           }
         } else {
           res
