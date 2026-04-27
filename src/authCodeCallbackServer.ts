@@ -1,4 +1,6 @@
 import { createServer } from "node:http";
+
+import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
 import { CliError } from "./errors.js";
@@ -13,7 +15,7 @@ export type OnCodeReceiptFn = (
 ) => Promise<OnCodeReceiptReponse>;
 
 export class AuthCodeCallbackServer {
-  private server: import("node:http").Server | null = null;
+  private server: Server | null = null;
   private address: string | null = null;
 
   async start(): Promise<void> {
