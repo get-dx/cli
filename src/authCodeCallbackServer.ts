@@ -36,7 +36,9 @@ export class AuthCodeCallbackServer {
     return this.address;
   }
 
-  async listenForCode(onCodeReceipt: OnCodeReceiptFn): Promise<OnCodeReceiptReponse> {
+  async listenForCode(
+    onCodeReceipt: OnCodeReceiptFn,
+  ): Promise<OnCodeReceiptReponse> {
     return new Promise<OnCodeReceiptReponse>((resolve, reject) => {
       if (!this.server) {
         reject(new Error("Unreachable: server not started"));

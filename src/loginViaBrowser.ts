@@ -47,7 +47,10 @@ export async function loginViaBrowser(uiBaseUrl: string): Promise<string> {
 
   renderRichText([ui.p(`Waiting for authentication in your browser...`)]);
 
-  const handleCodeReceipt: OnCodeReceiptFn = async (stateFromResponse: string, code: string): Promise<OnCodeReceiptReponse> => {
+  const handleCodeReceipt: OnCodeReceiptFn = async (
+    stateFromResponse: string,
+    code: string,
+  ): Promise<OnCodeReceiptReponse> => {
     const valid = validateState(stateFromResponse, state);
     if (!valid) {
       return {
@@ -56,7 +59,11 @@ export async function loginViaBrowser(uiBaseUrl: string): Promise<string> {
       };
     }
 
-    const tokenExchangeResponse = await exchangeCodeForToken(uiBaseUrl, code, codeVerifier);
+    const tokenExchangeResponse = await exchangeCodeForToken(
+      uiBaseUrl,
+      code,
+      codeVerifier,
+    );
 
     if (!tokenExchangeResponse.ok) {
       return {
@@ -71,7 +78,7 @@ export async function loginViaBrowser(uiBaseUrl: string): Promise<string> {
       access_token: string;
       redirect_uri: string;
     };
-  
+
     return {
       type: "SUCCESS" as const,
       token: body.access_token,
@@ -85,7 +92,10 @@ export async function loginViaBrowser(uiBaseUrl: string): Promise<string> {
   return serverResult.token;
 }
 
-function validateState(stateFromResponse: string, originalState: string): boolean {
+function validateState(
+  stateFromResponse: string,
+  originalState: string,
+): boolean {
   return stateFromResponse === originalState;
 }
 
