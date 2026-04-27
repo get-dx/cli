@@ -23,7 +23,7 @@ export function authCommand(): Command {
     .command("login")
     .option(
       "--token <token>",
-      "Account web API token or personal access token (omit for interactive browser or paste)",
+      "Account web API token or personal access token. Omit this option to login interactively by web browser or pasting.",
     )
     .action(
       wrapAction(async (commandOptions: { token?: string }, command) => {
