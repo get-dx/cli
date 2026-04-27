@@ -4,6 +4,7 @@ import { authCommand } from "./commands/auth.js";
 import { catalogCommand } from "./commands/catalog.js";
 import { initCommand } from "./commands/init.js";
 import { scorecardsCommand } from "./commands/scorecards.js";
+import { snapshotsCommand } from "./commands/snapshots.js";
 import { studioCommand } from "./commands/studio.js";
 import { teamsCommand } from "./commands/teams.js";
 import { handleError } from "./commandHelpers.js";
@@ -46,6 +47,7 @@ function createProgram(): Command {
   program.addCommand(catalogCommand());
   program.addCommand(initCommand());
   program.addCommand(scorecardsCommand());
+  program.addCommand(snapshotsCommand());
   program.addCommand(studioCommand());
   program.addCommand(teamsCommand());
 
