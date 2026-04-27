@@ -4,7 +4,8 @@ import open from "open";
 
 import {
   AuthCodeCallbackServer,
-  CodeResponse,
+  OnCodeReceiptFn,
+  OnCodeReceiptReponse,
 } from "./authCodeCallbackServer.js";
 import { CliError } from "./errors.js";
 import { renderRichText } from "./renderers.js";
@@ -46,52 +47,58 @@ export async function loginViaBrowser(uiBaseUrl: string): Promise<string> {
 
   renderRichText([ui.p(`Waiting for authentication in your browser...`)]);
 
-  const serverResult = await server.listenForCodeResponse(
-    async (stateFromResponse, code) => {
-      if (stateFromResponse !== state) {
-        return {
-          type: "ERROR" as const,
-          error: new CliError("Authentication failed: state mismatch"),
-        };
-      }
-      return await exchangeCodeForToken(uiBaseUrl, code, codeVerifier);
-    },
-  );
+  const handleCodeReceipt: OnCodeReceiptFn = async (stateFromResponse: string, code: string): Promise<OnCodeReceiptReponse> => {
+    const valid = validateState(stateFromResponse, state);
+    if (!valid) {
+      return {
+        type: "ERROR" as const,
+        error: new CliError("Authentication failed: state mismatch"),
+      };
+    }
+
+    const tokenExchangeResponse = await exchangeCodeForToken(uiBaseUrl, code, codeVerifier);
+
+    if (!tokenExchangeResponse.ok) {
+      return {
+        type: "ERROR" as const,
+        error: new CliError(
+          `Authentication failed: token exchange failed with status ${tokenExchangeResponse.status}`,
+        ),
+      };
+    }
+
+    const body = (await tokenExchangeResponse.json()) as {
+      access_token: string;
+      redirect_uri: string;
+    };
+  
+    return {
+      type: "SUCCESS" as const,
+      token: body.access_token,
+      redirectUri: body.redirect_uri,
+    };
+  };
+
+  const serverResult = await server.listenForCode(handleCodeReceipt);
 
   if (serverResult.type === "ERROR") throw serverResult.error;
   return serverResult.token;
+}
+
+function validateState(stateFromResponse: string, originalState: string): boolean {
+  return stateFromResponse === originalState;
 }
 
 async function exchangeCodeForToken(
   baseUrl: string,
   code: string,
   codeVerifier: string,
-): Promise<CodeResponse> {
-  const response = await fetch(`${baseUrl}/cli/token`, {
+): Promise<Response> {
+  return fetch(`${baseUrl}/cli/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ code, code_verifier: codeVerifier }),
   });
-
-  if (!response.ok) {
-    return {
-      type: "ERROR" as const,
-      error: new CliError(
-        `Authentication failed: token exchange failed with status ${response.status}`,
-      ),
-    };
-  }
-
-  const body = (await response.json()) as {
-    access_token: string;
-    redirect_uri: string;
-  };
-
-  return {
-    type: "SUCCESS" as const,
-    token: body.access_token,
-    redirectUri: body.redirect_uri,
-  };
 }
 
 // RFC 8252 §8.9: random string used to prevent CSRF-style attacks

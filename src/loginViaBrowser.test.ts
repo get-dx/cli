@@ -4,7 +4,7 @@ import { AuthCodeCallbackServer } from "./authCodeCallbackServer.js";
 
 const mockStart = vi.fn();
 const mockGetAddress = vi.fn();
-const mockListenForCodeResponse = vi.fn();
+const mockListenForCode = vi.fn();
 const mockStop = vi.fn();
 const mockOpen = vi.fn();
 
@@ -32,7 +32,7 @@ beforeEach(() => {
       ({
         start: mockStart,
         getAddress: mockGetAddress,
-        listenForCodeResponse: mockListenForCodeResponse,
+        listenForCode: mockListenForCode,
         stop: mockStop,
       }) as unknown as AuthCodeCallbackServer,
   );
@@ -49,7 +49,7 @@ afterEach(() => {
 
 describe("loginViaBrowser", () => {
   it("starts the callback server and returns the access token on success", async () => {
-    mockListenForCodeResponse.mockResolvedValue({
+    mockListenForCode.mockResolvedValue({
       type: "SUCCESS",
       token: "access-token-abc",
       redirectUri: null,
@@ -66,7 +66,7 @@ describe("loginViaBrowser", () => {
   });
 
   it("builds the auth URL with callback_uri, state, and S256 PKCE params", async () => {
-    mockListenForCodeResponse.mockResolvedValue({
+    mockListenForCode.mockResolvedValue({
       type: "SUCCESS",
       token: "token",
       redirectUri: null,
@@ -88,7 +88,7 @@ describe("loginViaBrowser", () => {
   });
 
   it("throws CliError when the callback state does not match", async () => {
-    mockListenForCodeResponse.mockImplementation(
+    mockListenForCode.mockImplementation(
       async (callback: (state: string, code: string) => Promise<unknown>) => {
         return callback("tampered-state", "some-code");
       },
@@ -106,7 +106,7 @@ describe("loginViaBrowser", () => {
       capturedState = new URL(url).searchParams.get("state") ?? "";
     });
 
-    mockListenForCodeResponse.mockImplementation(
+    mockListenForCode.mockImplementation(
       async (callback: (state: string, code: string) => Promise<unknown>) => {
         return callback(capturedState, "auth-code-xyz");
       },
@@ -149,7 +149,7 @@ describe("loginViaBrowser", () => {
       capturedState = new URL(url).searchParams.get("state") ?? "";
     });
 
-    mockListenForCodeResponse.mockImplementation(
+    mockListenForCode.mockImplementation(
       async (callback: (state: string, code: string) => Promise<unknown>) => {
         return callback(capturedState, "auth-code-xyz");
       },
@@ -176,7 +176,7 @@ describe("loginViaBrowser", () => {
     }) as typeof process.stdout.write);
 
     mockOpen.mockRejectedValue(new Error("Cannot open browser"));
-    mockListenForCodeResponse.mockResolvedValue({
+    mockListenForCode.mockResolvedValue({
       type: "SUCCESS",
       token: "token",
       redirectUri: null,

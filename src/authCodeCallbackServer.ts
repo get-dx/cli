@@ -3,14 +3,14 @@ import type { AddressInfo } from "node:net";
 
 import { CliError } from "./errors.js";
 
-export type CodeResponse =
+export type OnCodeReceiptReponse =
   | { type: "SUCCESS"; token: string; redirectUri: string | null }
   | { type: "ERROR"; error: Error };
 
-export type CodeListenerFn = (
+export type OnCodeReceiptFn = (
   state: string,
   code: string,
-) => Promise<CodeResponse>;
+) => Promise<OnCodeReceiptReponse>;
 
 export class AuthCodeCallbackServer {
   private server: import("node:http").Server | null = null;
@@ -36,8 +36,8 @@ export class AuthCodeCallbackServer {
     return this.address;
   }
 
-  async listenForCodeResponse(listener: CodeListenerFn): Promise<CodeResponse> {
-    return new Promise<CodeResponse>((resolve, reject) => {
+  async listenForCode(onCodeReceipt: OnCodeReceiptFn): Promise<OnCodeReceiptReponse> {
+    return new Promise<OnCodeReceiptReponse>((resolve, reject) => {
       if (!this.server) {
         reject(new Error("Unreachable: server not started"));
         return;
@@ -57,9 +57,9 @@ export class AuthCodeCallbackServer {
           return;
         }
 
-        let result: CodeResponse;
+        let result: OnCodeReceiptReponse;
         try {
-          result = await listener(state ?? "", code);
+          result = await onCodeReceipt(state ?? "", code);
         } catch (err) {
           const message =
             err instanceof Error
@@ -83,7 +83,7 @@ export class AuthCodeCallbackServer {
           }
         } else {
           res
-            .writeHead(400, { "Content-Type": "text/plain" })
+            .writeHead(500, { "Content-Type": "text/plain" })
             .end(result.error.message);
         }
         resolve(result);
