@@ -52,7 +52,7 @@ export class AuthCodeCallbackServer {
 
         if (!code) {
           const message = "Authentication failed: no code received";
-          res.writeHead(400, { "Content-Type": "text/plain" }).end(message);
+          res.writeHead(500, { "Content-Type": "text/plain" }).end(message);
           resolve({ type: "ERROR", error: new CliError(message) });
           return;
         }
@@ -65,7 +65,7 @@ export class AuthCodeCallbackServer {
             err instanceof Error
               ? err.message
               : "Authentication failed: unknown error";
-          res.writeHead(400, { "Content-Type": "text/plain" }).end(message);
+          res.writeHead(500, { "Content-Type": "text/plain" }).end(message);
           resolve({
             type: "ERROR",
             error: err instanceof Error ? err : new CliError(message),
