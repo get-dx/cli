@@ -89,6 +89,8 @@ export function renderEntityDeleted(entity: Entity) {
 
 export function renderEntityScorecardList(
   scorecards: ScorecardReport[],
+  entityIdentifier: string,
+  runtime: Runtime,
   nextCursor: string | null,
 ): void {
   const blocks = [ui.h1("Scorecards")];
@@ -103,7 +105,9 @@ export function renderEntityScorecardList(
 
   for (const scorecard of scorecards) {
     blocks.push(ui.h2(scorecard.name));
-    blocks.push(...scorecardReportContent(scorecard));
+    blocks.push(
+      ...scorecardReportContent(scorecard, entityIdentifier, runtime),
+    );
   }
 
   renderRichText(blocks);
@@ -130,9 +134,23 @@ function webLink(path: string, runtime: Runtime): string {
   return `${runtime.baseUrl}${path}`;
 }
 
-function scorecardReportContent(scorecard: ScorecardReport): ui.Block[] {
+function scorecardReportContent(
+  scorecard: ScorecardReport,
+  entityIdentifier: string,
+  runtime: Runtime,
+): ui.Block[] {
   const blocks: ui.Block[] = [];
 
+  blocks.push(
+    ui.p(
+      ui.link(
+        webLink(
+          `/catalog/${entityIdentifier}/scorecards?expanded=${scorecard.id}`,
+          runtime,
+        ),
+      ),
+    ),
+  );
   if (scorecard.type === "POINTS") {
     const total = scorecard.points_meta?.points_total ?? 0;
     const achieved = scorecard.points_meta?.points_achieved ?? 0;

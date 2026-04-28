@@ -478,6 +478,8 @@ export function entitiesCommand() {
         } else {
           renderEntityScorecardList(
             response.scorecards,
+            identifier,
+            runtime,
             response.response_metadata?.next_cursor ?? null,
           );
         }
