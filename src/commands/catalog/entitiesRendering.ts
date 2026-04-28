@@ -8,10 +8,12 @@ import {
 import { renderRichText } from "../../renderers.js";
 import { ListItemContainer } from "../../ui/blocks.js";
 import * as ui from "../../ui.js";
+import { Runtime } from "../../types.js";
 
 export function renderEntityList(
   entities: Partial<Entity>[],
   nextCursor: string | null,
+  runtime: Runtime,
 ) {
   const blocks = [ui.h1("Entities")];
 
@@ -34,7 +36,7 @@ export function renderEntityList(
 
     if (entity.identifier) {
       blocks.push(ui.h3("Core attributes"));
-      blocks.push(...coreContent(entity));
+      blocks.push(...coreContent(entity, runtime));
     }
 
     if (entity.owner_teams || entity.owner_users) {
@@ -58,13 +60,14 @@ export function renderEntityList(
 
 export function renderEntity(
   entity: Partial<Entity>,
+  runtime: Runtime,
   title = "Entity Information",
 ) {
   renderRichText([
     ui.h1(title),
 
     entity.identifier
-      ? [ui.h2("Core attributes"), ...coreContent(entity)]
+      ? [ui.h2("Core attributes"), ...coreContent(entity, runtime)]
       : null,
 
     entity.owner_teams ? [ui.h2("Owners"), ...ownersContent(entity)] : null,
@@ -121,6 +124,10 @@ export function renderEntityTaskList(tasks: Task[], nextCursor: string | null) {
   }
 
   renderRichText(blocks);
+}
+
+function webLink(path: string, runtime: Runtime): string {
+  return `${runtime.baseUrl}${path}`;
 }
 
 function scorecardReportContent(scorecard: ScorecardReport): ui.Block[] {
@@ -249,7 +256,7 @@ function dueDateText(completeBy: string): string {
   }
 }
 
-function coreContent(entity: Partial<Entity>): ui.Block[] {
+function coreContent(entity: Partial<Entity>, runtime: Runtime): ui.Block[] {
   return [
     ui.dl(
       [
@@ -259,7 +266,10 @@ function coreContent(entity: Partial<Entity>): ui.Block[] {
         ui.dli("Created", [
           ui.p(ui.timestampSummary(entity.created_at!), false),
         ]),
-        ui.dli("Last updated", [ui.p(ui.timestampSummary(entity.updated_at!))]),
+        ui.dli("Last updated", ui.timestampSummary(entity.updated_at!)),
+        ui.dli("Web link", [
+          ui.p(ui.link(webLink(`/catalog/${entity.identifier}`, runtime))),
+        ]),
         ui.dli("Description", [
           ui.p(entity.description ?? ui.dim("(None)"), false),
         ]),

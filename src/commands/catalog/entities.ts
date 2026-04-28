@@ -114,7 +114,7 @@ export function entitiesCommand() {
         if (runtime.context.json) {
           renderJson(response);
         } else {
-          renderEntity(response.entity);
+          renderEntity(response.entity, runtime);
         }
       }),
     );
@@ -202,6 +202,7 @@ export function entitiesCommand() {
         } else {
           renderEntity(
             response.entity,
+            runtime,
             `${ui.success(ui.GLYPHS.CHECK)} Entity updated`,
           );
         }
@@ -284,7 +285,7 @@ export function entitiesCommand() {
             response.result === "created_new_entity"
               ? `${ui.success(ui.GLYPHS.CHECK)} Created new entity`
               : `${ui.success(ui.GLYPHS.CHECK)} Updated existing entity`;
-          renderEntity(response.entity, title);
+          renderEntity(response.entity, runtime, title);
         }
       }),
     );
@@ -323,7 +324,7 @@ export function entitiesCommand() {
         if (runtime.context.json) {
           renderJson(processedResponse);
         } else {
-          renderEntity(processedResponse.entity);
+          renderEntity(processedResponse.entity, runtime);
         }
       }),
     );
@@ -387,6 +388,7 @@ export function entitiesCommand() {
           renderEntityList(
             processedEntities,
             response.response_metadata?.next_cursor ?? null,
+            runtime,
           );
         }
       }),
