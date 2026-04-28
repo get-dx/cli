@@ -128,12 +128,12 @@ export type WorkflowSummary = {
   description: string | null;
   icon: string | null;
   color: string | null;
-  scope: string;
-  entity_filter_type: string | null;
+  scope: "ENTITY" | "GLOBAL";
+  entity_filter_type: "ENTITY_TYPES" | "SQL";
   entity_filter_sql: string | null;
   entity_filter_type_identifiers: string[] | null;
-  execution_type: string;
-  trigger_type: string;
+  execution_type: "SIMPLE" | "EVENT_DRIVEN";
+  trigger_type: "ANY" | "APPROVAL" | "RUNNERS" | "ENTITY";
   parameters: WorkflowParameter[];
 };
 

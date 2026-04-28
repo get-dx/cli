@@ -99,7 +99,9 @@ describe("workflows commands", () => {
       expect(out).toContain("Workflows");
       expect(out).toContain("Provision Single-tenant Instance");
       expect(out).toContain("provision-single-tenant-instance");
-      expect(out).toContain("ENTITY");
+      expect(out).toContain("Catalog entity");
+      expect(out).toContain("Event-driven");
+      expect(out).toContain("All users");
     });
 
     it("prints the API response with --json", async () => {
