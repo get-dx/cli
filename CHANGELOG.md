@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `dx workflows list`: Add support for listing Self-service workflow definitions.
+
 ## 0.2.0 - 2026-04-27
 
 ### Added
