@@ -6,6 +6,7 @@ import { initCommand } from "./commands/init.js";
 import { scorecardsCommand } from "./commands/scorecards.js";
 import { studioCommand } from "./commands/studio.js";
 import { teamsCommand } from "./commands/teams.js";
+import { workflowsCommand } from "./commands/workflows.js";
 import { handleError } from "./commandHelpers.js";
 
 import cliPackage from "../package.json" with { type: "json" };
@@ -48,6 +49,7 @@ function createProgram(): Command {
   program.addCommand(scorecardsCommand());
   program.addCommand(studioCommand());
   program.addCommand(teamsCommand());
+  program.addCommand(workflowsCommand());
 
   applyExitOverride(program);
 
