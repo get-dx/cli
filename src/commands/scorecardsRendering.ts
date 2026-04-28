@@ -145,7 +145,7 @@ function entityFilterContent(scorecard: Partial<Scorecard>): ui.Block[] {
   } else if (scorecard.entity_filter_type === "sql") {
     blocks.push(ui.p(`Filter: ${ui.code("sql")}`));
     if (scorecard.entity_filter_sql) {
-      blocks.push(truncatedSqlBlock(scorecard.entity_filter_sql));
+      blocks.push(ui.truncatedSqlBlock(scorecard.entity_filter_sql));
     } else {
       blocks.push(ui.p(ui.dim("(No SQL provided)")));
     }
@@ -293,7 +293,7 @@ function checkContent(
 
   // Query
   blocks.push(ui.p(ui.bold("Query:")));
-  blocks.push(truncatedSqlBlock(check.sql));
+  blocks.push(ui.truncatedSqlBlock(check.sql));
 
   // Output settings
   if (check.output_enabled) {
@@ -307,7 +307,7 @@ function checkContent(
   // Entity filter
   if (check.filter_sql) {
     blocks.push(ui.p(ui.bold("Entity filter:")));
-    blocks.push(truncatedSqlBlock(check.filter_sql));
+    blocks.push(ui.truncatedSqlBlock(check.filter_sql));
     if (check.filter_message) {
       blocks.push(
         ui.p(`Excluded message: ${ui.dim(check.filter_message)}`, false),
@@ -316,13 +316,4 @@ function checkContent(
   }
 
   return blocks;
-}
-
-function truncatedSqlBlock(sql: string): ui.Block {
-  const lines = sql.split("\n");
-  const firstLine = lines[0];
-  const isLong = firstLine.length > 80 || lines.length > 1;
-  const truncated = firstLine.length > 80 ? firstLine.slice(0, 80) : firstLine;
-  const display = isLong ? truncated + ui.dim(" …") : truncated;
-  return ui.p(ui.code(display));
 }
