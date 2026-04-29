@@ -84,38 +84,28 @@ function coreContent(
   return [
     ui.dl(
       [
-        ui.dli("Name", [ui.p(entityType.name ?? ui.dim("(None)"), false)]),
-        ui.dli("Identifier", [ui.p(ui.code(entityType.identifier!), false)]),
-        ui.dli("Description", [
-          ui.p(entityType.description || ui.dim("(None)"), false),
-        ]),
-        ui.dli("Icon", [ui.p(entityType.icon ?? ui.dim("(None)"), false)]),
-        ui.dli("Ordering", [
-          ui.p(entityType.ordering?.toString() ?? ui.dim("(None)"), false),
-        ]),
-        ui.dli("Created", [
-          ui.p(ui.timestampSummary(entityType.created_at!), false),
-        ]),
-        ui.dli("Last updated", [
-          ui.p(ui.timestampSummary(entityType.updated_at!), false),
-        ]),
-        ui.dli("Entities link", [
-          ui.p(
-            ui.link(
-              ui.webLink(`/catalog?type=${entityType.identifier}`, runtime),
+        ui.dli("Name", entityType.name ?? ui.dim("(None)")),
+        ui.dli("Identifier", ui.code(entityType.identifier!)),
+        ui.dli("Description", entityType.description || ui.dim("(None)")),
+        ui.dli("Icon", entityType.icon ?? ui.dim("(None)")),
+        ui.dli("Ordering", entityType.ordering?.toString() ?? ui.dim("(None)")),
+        ui.dli("Created", ui.timestampSummary(entityType.created_at!)),
+        ui.dli("Last updated", ui.timestampSummary(entityType.updated_at!)),
+        ui.dli(
+          "Entities link",
+          ui.link(
+            ui.webLink(`/catalog?type=${entityType.identifier}`, runtime),
+          ),
+        ),
+        ui.dli(
+          "Settings link",
+          ui.link(
+            ui.webLink(
+              `/catalog/manage/entitytypes/${entityType.identifier}`,
+              runtime,
             ),
           ),
-        ]),
-        ui.dli("Settings link", [
-          ui.p(
-            ui.link(
-              ui.webLink(
-                `/catalog/manage/entitytypes/${entityType.identifier}`,
-                runtime,
-              ),
-            ),
-          ),
-        ]),
+        ),
       ],
       { termWidth: 15 },
     ),
