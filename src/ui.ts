@@ -95,6 +95,15 @@ export function blankLine(): Block {
   return new ParagraphBlock("", false);
 }
 
+export function truncatedSqlBlock(sql: string): Block {
+  const lines = sql.split("\n");
+  const firstLine = lines[0];
+  const isLong = firstLine.length > 80 || lines.length > 1;
+  const truncated = firstLine.length > 80 ? firstLine.slice(0, 80) : firstLine;
+  const display = isLong ? truncated + dim(" …") : truncated;
+  return p(code(display));
+}
+
 // Inline elements
 
 export function bold(text: string): string {

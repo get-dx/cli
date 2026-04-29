@@ -50,6 +50,12 @@ export function entitiesCommand() {
       (val: string, prev: string[]) => [...prev, val],
       [] as string[],
     )
+    .option(
+      "--alias <kv>",
+      "Set an alias value as key=value. Repeat for multiple aliases.",
+      (val: string, prev: string[]) => [...prev, val],
+      [] as string[],
+    )
     .addHelpText(
       "afterAll",
       createExampleText([
@@ -73,6 +79,11 @@ export function entitiesCommand() {
           command:
             'dx catalog entities create --type service --identifier my-service --property tier=Tier-1 --property "languages=Ruby,TypeScript"',
         },
+        {
+          label: "Create with aliases",
+          command:
+            "dx catalog entities create --type service --identifier my-service --alias github_repo=12345",
+        },
       ]),
     )
     .action(
@@ -88,10 +99,11 @@ export function entitiesCommand() {
         }
         const runtime = buildRuntime(getContext(command));
 
-        const properties = await resolvePropertiesForEntityType(
+        const resolvedValues = await resolveValuesForEntityType(
           runtime,
           options.type as string,
           options.property as string[],
+          options.alias as string[],
         );
 
         const response = await createEntity(
@@ -107,7 +119,7 @@ export function entitiesCommand() {
             owner_user_ids: options.ownerUserIds
               ?.split(",")
               .map((s: string) => s.trim()),
-            properties,
+            ...resolvedValues,
           },
         );
 
@@ -163,6 +175,12 @@ export function entitiesCommand() {
       (val: string, prev: string[]) => [...prev, val],
       [] as string[],
     )
+    .option(
+      "--alias <kv>",
+      "Set an alias value as key=value. Repeat for multiple aliases. Use value null to remove an alias.",
+      (val: string, prev: string[]) => [...prev, val],
+      [] as string[],
+    )
     .addHelpText(
       "afterAll",
       createExampleText([
@@ -180,21 +198,27 @@ export function entitiesCommand() {
           command:
             'dx catalog entities update my-service --property tier=Tier-1 --property "languages=Ruby,TypeScript"',
         },
+        {
+          label: "Update aliases",
+          command:
+            "dx catalog entities update my-service --alias github_repo=12345",
+        },
       ]),
     )
     .action(
       wrapAction(async (identifier, options, command) => {
         const runtime = buildRuntime(getContext(command));
 
-        const properties = await resolvePropertiesForExistingEntity(
+        const resolvedValues = await resolveValuesForExistingEntity(
           runtime,
           identifier as string,
           options.property as string[],
+          options.alias as string[],
         );
 
         const response = await updateEntity(runtime, identifier as string, {
           ...getEntityMutationOptionValues(options),
-          properties,
+          ...resolvedValues,
         });
 
         if (runtime.context.json) {
@@ -229,6 +253,12 @@ export function entitiesCommand() {
       (val: string, prev: string[]) => [...prev, val],
       [] as string[],
     )
+    .option(
+      "--alias <kv>",
+      "Set an alias value as key=value. Repeat for multiple aliases. Use value null to remove an alias.",
+      (val: string, prev: string[]) => [...prev, val],
+      [] as string[],
+    )
     .addHelpText(
       "afterAll",
       createExampleText([
@@ -247,6 +277,11 @@ export function entitiesCommand() {
           command:
             'dx catalog entities upsert --type service --identifier my-service --property tier=Tier-1 --property "languages=Ruby,TypeScript"',
         },
+        {
+          label: "Set aliases while preserving omitted fields",
+          command:
+            "dx catalog entities upsert --type service --identifier my-service --alias github_repo=12345",
+        },
       ]),
     )
     .action(
@@ -262,10 +297,11 @@ export function entitiesCommand() {
         }
 
         const runtime = buildRuntime(getContext(command));
-        const properties = await resolvePropertiesForEntityType(
+        const resolvedValues = await resolveValuesForEntityType(
           runtime,
           options.type as string,
           options.property as string[],
+          options.alias as string[],
         );
 
         const response = await upsertEntity(
@@ -274,7 +310,7 @@ export function entitiesCommand() {
           {
             type: options.type as string,
             ...getEntityMutationOptionValues(options),
-            properties,
+            ...resolvedValues,
           },
         );
 
@@ -567,6 +603,7 @@ type CreateEntityParams = {
   owner_team_ids?: string[];
   owner_user_ids?: string[];
   properties?: Record<string, unknown>;
+  aliases?: EntityMutationAliases;
 };
 
 type EntityMutationOptionValues = {
@@ -575,7 +612,11 @@ type EntityMutationOptionValues = {
   owner_team_ids?: string[];
   owner_user_ids?: string[];
   properties?: Record<string, unknown>;
+  aliases?: EntityMutationAliases;
 };
+
+type EntityMutationAlias = { identifier: string };
+type EntityMutationAliases = Record<string, EntityMutationAlias[]>;
 
 async function createEntity(
   runtime: Runtime,
@@ -894,6 +935,50 @@ export function parsePropertyValue(prop: Property, rawValue: string): unknown {
   }
 }
 
+function parseEntityAliases(
+  entityTypeIdentifier: string,
+  rawAliases: string[],
+  knownAliases: Record<string, unknown[]>,
+): EntityMutationAliases {
+  const aliasKeys = Object.keys(knownAliases);
+  const aliasSet = new Set(aliasKeys);
+  const result: EntityMutationAliases = {};
+
+  for (const kv of rawAliases) {
+    const eqIndex = kv.indexOf("=");
+    if (eqIndex === -1) {
+      throw new CliError(
+        `Invalid --alias "${kv}": expected format key=value`,
+        EXIT_CODES.ARGUMENT_ERROR,
+      );
+    }
+    const key = kv.slice(0, eqIndex);
+    const rawValue = kv.slice(eqIndex + 1);
+
+    if (!aliasSet.has(key)) {
+      const availableAliases = aliasKeys
+        .sort()
+        .map((k) => `\`${k}\``)
+        .join(", ");
+      const availableAliasesText =
+        availableAliases.length > 0 ? availableAliases : "(none)";
+      throw new CliError(
+        `Unknown alias \`${key}\` for entity type \`${entityTypeIdentifier}\`. Available aliases: ${availableAliasesText}`,
+        EXIT_CODES.ARGUMENT_ERROR,
+      );
+    }
+
+    if (rawValue === "null") {
+      result[key] = [];
+      continue;
+    }
+
+    result[key] = [...(result[key] ?? []), { identifier: rawValue }];
+  }
+
+  return result;
+}
+
 // --- Include helpers ---
 
 const ENTITY_INCLUDE_SECTIONS = [
@@ -940,36 +1025,56 @@ function parseIncludeSections(include?: string): EntityIncludeSection[] {
   return results as EntityIncludeSection[];
 }
 
-async function resolvePropertiesForEntityType(
+async function resolveValuesForEntityType(
   runtime: Runtime,
   entityTypeIdentifier: string,
   rawProperties: string[],
-): Promise<Record<string, unknown> | undefined> {
-  if (rawProperties.length === 0) {
-    return undefined;
+  rawAliases: string[],
+): Promise<Pick<EntityMutationOptionValues, "properties" | "aliases">> {
+  if (rawProperties.length === 0 && rawAliases.length === 0) {
+    return {};
   }
 
   let entityTypeResponse;
   try {
     entityTypeResponse = await getEntityType(runtime, entityTypeIdentifier);
   } catch (err) {
-    throw wrapEntityTypeLookupError(entityTypeIdentifier, err);
+    throw wrapEntityTypeLookupError(
+      entityTypeIdentifier,
+      err,
+      rawAliases.length > 0
+        ? "resolve property and alias values"
+        : "resolve property types",
+    );
   }
 
-  return parseEntityProperties(
-    entityTypeIdentifier,
-    rawProperties,
-    entityTypeResponse.entity_type.properties,
-  );
+  const values: Pick<EntityMutationOptionValues, "properties" | "aliases"> = {};
+  if (rawProperties.length > 0) {
+    values.properties = parseEntityProperties(
+      entityTypeIdentifier,
+      rawProperties,
+      entityTypeResponse.entity_type.properties,
+    );
+  }
+  if (rawAliases.length > 0) {
+    values.aliases = parseEntityAliases(
+      entityTypeIdentifier,
+      rawAliases,
+      entityTypeResponse.entity_type.aliases,
+    );
+  }
+
+  return values;
 }
 
-async function resolvePropertiesForExistingEntity(
+async function resolveValuesForExistingEntity(
   runtime: Runtime,
   identifier: string,
   rawProperties: string[],
-): Promise<Record<string, unknown> | undefined> {
-  if (rawProperties.length === 0) {
-    return undefined;
+  rawAliases: string[],
+): Promise<Pick<EntityMutationOptionValues, "properties" | "aliases">> {
+  if (rawProperties.length === 0 && rawAliases.length === 0) {
+    return {};
   }
 
   let entityResponse;
@@ -981,16 +1086,42 @@ async function resolvePropertiesForExistingEntity(
         ? EXIT_CODES.ARGUMENT_ERROR
         : EXIT_CODES.RETRY_RECOMMENDED;
     throw new CliError(
-      `Failed to fetch entity "${identifier}" to resolve property types: ${err instanceof Error ? err.message : String(err)}`,
+      `Failed to fetch entity "${identifier}" to resolve property and alias values: ${err instanceof Error ? err.message : String(err)}`,
       exitCode,
     );
   }
 
-  return resolvePropertiesForEntityType(
-    runtime,
-    entityResponse.entity.type,
-    rawProperties,
-  );
+  let entityTypeResponse;
+  try {
+    entityTypeResponse = await getEntityType(
+      runtime,
+      entityResponse.entity.type,
+    );
+  } catch (err) {
+    throw wrapEntityTypeLookupError(
+      entityResponse.entity.type,
+      err,
+      "resolve property and alias values",
+    );
+  }
+
+  const values: Pick<EntityMutationOptionValues, "properties" | "aliases"> = {};
+  if (rawProperties.length > 0) {
+    values.properties = parseEntityProperties(
+      entityResponse.entity.type,
+      rawProperties,
+      entityTypeResponse.entity_type.properties,
+    );
+  }
+  if (rawAliases.length > 0) {
+    values.aliases = parseEntityAliases(
+      entityResponse.entity.type,
+      rawAliases,
+      entityTypeResponse.entity_type.aliases,
+    );
+  }
+
+  return values;
 }
 
 function getEntityMutationOptionValues(options: {
@@ -1036,6 +1167,7 @@ function buildEntityMutationBody(
   if (params.owner_user_ids?.length)
     body.owner_user_ids = params.owner_user_ids;
   if (params.properties !== undefined) body.properties = params.properties;
+  if (params.aliases !== undefined) body.aliases = params.aliases;
 
   return body;
 }
@@ -1043,6 +1175,7 @@ function buildEntityMutationBody(
 function wrapEntityTypeLookupError(
   entityTypeIdentifier: string,
   err: unknown,
+  purpose = "resolve property types",
 ): CliError {
   const exitCode =
     err instanceof HttpError && err.status !== undefined && err.status < 500
@@ -1050,7 +1183,7 @@ function wrapEntityTypeLookupError(
       : EXIT_CODES.RETRY_RECOMMENDED;
 
   return new CliError(
-    `Failed to fetch entity type "${entityTypeIdentifier}" to resolve property types: ${err instanceof Error ? err.message : String(err)}`,
+    `Failed to fetch entity type "${entityTypeIdentifier}" to ${purpose}: ${err instanceof Error ? err.message : String(err)}`,
     exitCode,
   );
 }
