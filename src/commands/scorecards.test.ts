@@ -31,6 +31,30 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// TODO: the runtime reading of the YAML templates is leading to maintainability problems during development.
+// This extra complexity around mocking `fs.readFileSync` is risky.
+// Let's find a different approach to ship the YAML templates.
+
+/** Only stub fixture paths; `readConfig()` and others still need real file reads. */
+function stubReadFileSyncForFixturePath(
+  fixturePathSubstring: string,
+  content: string,
+) {
+  const realReadFileSync = fs.readFileSync.bind(fs);
+  return vi.spyOn(fs, "readFileSync").mockImplementation((path, options) => {
+    const resolved =
+      path instanceof URL
+        ? path.toString()
+        : path instanceof Buffer
+          ? path.toString("utf8")
+          : String(path);
+    if (resolved.includes(fixturePathSubstring)) {
+      return content;
+    }
+    return realReadFileSync(path, options as never);
+  });
+}
+
 const MOCK_SCORECARD: Scorecard = {
   id: "qjfj1a6cmit4",
   name: "My custom scorecard",
@@ -179,7 +203,8 @@ describe("scorecards commands", () => {
       // blank template from disk via fs.readFileSync; mocking it beforehand would
       // intercept Node's own CJS loader and cause a SyntaxError.
       const { run } = await import("../cli.js");
-      vi.spyOn(fs, "readFileSync").mockImplementation(() =>
+      stubReadFileSyncForFixturePath(
+        "my-scorecard.yaml",
         JSON.stringify({ ...MOCK_SCORECARD_PAYLOAD, name: "New Scorecard" }),
       );
 
@@ -225,9 +250,9 @@ describe("scorecards commands", () => {
       );
 
       const { run } = await import("../cli.js");
-      // File includes an id — it should be stripped before posting to scorecards.create
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "id: qjfj1a6cmit4\nname: New Scorecard\n",
+      stubReadFileSyncForFixturePath(
+        "my-scorecard.yaml",
+        "id: qjfj1a6cmit4\nname: New Scorecard\n",
       );
 
       await run([
@@ -273,8 +298,9 @@ describe("scorecards commands", () => {
       );
 
       const { run } = await import("../cli.js");
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "name: New Scorecard\n",
+      stubReadFileSyncForFixturePath(
+        "my-scorecard.yaml",
+        "name: New Scorecard\n",
       );
 
       await run([
@@ -320,8 +346,9 @@ describe("scorecards commands", () => {
       );
 
       const { run } = await import("../cli.js");
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "name: Bad Scorecard\n",
+      stubReadFileSyncForFixturePath(
+        "my-scorecard.yaml",
+        "name: Bad Scorecard\n",
       );
 
       await run([
@@ -455,9 +482,7 @@ describe("scorecards commands", () => {
       getToken.mockReturnValue("token-123");
 
       const { run } = await import("../cli.js");
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "- item1\n- item2\n",
-      );
+      stubReadFileSyncForFixturePath("my-scorecard.yaml", "- item1\n- item2\n");
 
       await run([
         "node",
@@ -1215,15 +1240,16 @@ describe("scorecards commands", () => {
           ),
       );
 
+      const { run } = await import("../cli.js");
       // JSON is valid YAML — use the payload mock so the full shape is exercised
-      vi.spyOn(fs, "readFileSync").mockImplementation(() =>
+      stubReadFileSyncForFixturePath(
+        "my-scorecard.yaml",
         JSON.stringify({
           ...MOCK_SCORECARD_PAYLOAD,
           name: "Updated Scorecard",
         }),
       );
 
-      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -1267,11 +1293,12 @@ describe("scorecards commands", () => {
       );
 
       // YAML omits the id — it should still be sent from the CLI argument
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "name: Updated Scorecard\n",
+      const { run } = await import("../cli.js");
+      stubReadFileSyncForFixturePath(
+        "my-scorecard.yaml",
+        "name: Updated Scorecard\n",
       );
 
-      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -1316,11 +1343,12 @@ describe("scorecards commands", () => {
           ),
       );
 
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "id: qjfj1a6cmit4\nname: Updated Scorecard\n",
+      const { run } = await import("../cli.js");
+      stubReadFileSyncForFixturePath(
+        "my-scorecard.yaml",
+        "id: qjfj1a6cmit4\nname: Updated Scorecard\n",
       );
 
-      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -1364,11 +1392,12 @@ describe("scorecards commands", () => {
           ),
       );
 
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "id: qjfj1a6cmit4\nname: Bad Scorecard\n",
+      const { run } = await import("../cli.js");
+      stubReadFileSyncForFixturePath(
+        "my-scorecard.yaml",
+        "id: qjfj1a6cmit4\nname: Bad Scorecard\n",
       );
 
-      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -1511,11 +1540,9 @@ describe("scorecards commands", () => {
       process.env.DX_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "- item1\n- item2\n",
-      );
-
       const { run } = await import("../cli.js");
+      stubReadFileSyncForFixturePath("my-scorecard.yaml", "- item1\n- item2\n");
+
       await run([
         "node",
         "dx",
