@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `dx workflows list`: Add support for listing Self-service workflow definitions.
+- `dx catalog entities create/update/upsert`: These commands now support a `--alias` flag to set aliases for an entity.
 
 ## 0.2.0 - 2026-04-27
 
