@@ -7,9 +7,9 @@ import { renderAuthInfo, renderLoggedOut } from "./authRendering.js";
 import { getContext, wrapAction } from "../commandHelpers.js";
 import {
   persistBaseUrls,
-  resolveBaseUrl,
-  resolveUiUrl,
-  normalizeBaseUrl,
+  resolveApiBaseUrl,
+  inferWebAppUrlFromApiBaseUrl,
+  normalizeUrl,
   isDedicatedOrCloudApiHost,
 } from "../config.js";
 import { CliError, EXIT_CODES } from "../errors.js";
@@ -33,9 +33,9 @@ export function authCommand(): Command {
     .action(
       wrapAction(async (commandOptions: { token?: string }, command) => {
         const context = getContext(command);
-        const baseUrl = resolveBaseUrl();
+        const apiBaseUrl = resolveApiBaseUrl();
 
-        ensureLoginUiOriginResolvable(baseUrl);
+        ensureLoginWebAppUrlResolvable(apiBaseUrl);
 
         let token = commandOptions.token;
         if (!token) {
@@ -56,8 +56,8 @@ export function authCommand(): Command {
           if (method === "browser") {
             token = await loginViaBrowser(
               process.env.DX_UI_BASE_URL
-                ? normalizeBaseUrl(process.env.DX_UI_BASE_URL)
-                : resolveUiUrl(baseUrl),
+                ? normalizeUrl(process.env.DX_UI_BASE_URL)
+                : inferWebAppUrlFromApiBaseUrl(apiBaseUrl),
             );
           } else {
             token = await password({
@@ -73,39 +73,40 @@ export function authCommand(): Command {
           }
         }
 
-        const uiBaseUrlForPersist = resolveUiOriginForLoginPersist(baseUrl);
+        const webBaseUrlForPersist =
+          resolveWebBaseUrlForLoginPersist(apiBaseUrl);
 
         const runtime = buildRuntime(context, {
-          apiBaseUrl: baseUrl,
+          apiBaseUrl,
           token,
-          uiBaseUrl: uiBaseUrlForPersist,
+          webBaseUrl: webBaseUrlForPersist,
         });
 
         const response = await getAuthInfo(runtime);
-        persistBaseUrls(baseUrl, uiBaseUrlForPersist);
-        setToken(baseUrl, token);
+        persistBaseUrls(apiBaseUrl, webBaseUrlForPersist);
+        setToken(apiBaseUrl, token);
         if (context.json) {
           renderJson({
             ...response,
-            base_url: baseUrl,
-            ui_base_url: uiBaseUrlForPersist,
+            base_url: apiBaseUrl,
+            web_base_url: webBaseUrlForPersist,
           });
           return;
         }
-        renderAuthInfo(response, token, baseUrl);
+        renderAuthInfo(response, token, apiBaseUrl);
       }),
     );
 
   auth.command("logout").action(
     wrapAction(async (_options, command) => {
       const context = getContext(command);
-      const baseUrl = resolveBaseUrl();
-      deleteToken(baseUrl);
+      const apiBaseUrl = resolveApiBaseUrl();
+      deleteToken(apiBaseUrl);
 
       if (context.json) {
-        renderJson({ ok: true, base_url: baseUrl, logged_out: true });
+        renderJson({ ok: true, base_url: apiBaseUrl, logged_out: true });
       } else {
-        renderLoggedOut(baseUrl);
+        renderLoggedOut(apiBaseUrl);
       }
     }),
   );
@@ -120,7 +121,7 @@ export function authCommand(): Command {
           ...response,
           token: maskToken(runtime.token),
           base_url: runtime.apiBaseUrl,
-          ui_base_url: runtime.uiBaseUrl,
+          web_base_url: runtime.webBaseUrl,
         });
       } else {
         renderAuthInfo(response, runtime.token, runtime.apiBaseUrl);
@@ -131,23 +132,23 @@ export function authCommand(): Command {
   return auth;
 }
 
-function ensureLoginUiOriginResolvable(baseUrl: string): void {
+function ensureLoginWebAppUrlResolvable(apiBaseUrl: string): void {
   if (process.env.DX_UI_BASE_URL) {
     return;
   }
-  if (!isDedicatedOrCloudApiHost(baseUrl)) {
+  if (!isDedicatedOrCloudApiHost(apiBaseUrl)) {
     throw new CliError(
-      "This API host does not have a default web app URL. Set the DX_UI_BASE_URL environment variable to your DX web app origin, then retry.",
+      "This API host does not have a default web app URL. Set the DX_UI_BASE_URL environment variable to your DX web app URL, then retry.",
       EXIT_CODES.ARGUMENT_ERROR,
     );
   }
 }
 
-function resolveUiOriginForLoginPersist(baseUrl: string): string {
+function resolveWebBaseUrlForLoginPersist(apiBaseUrl: string): string {
   if (process.env.DX_UI_BASE_URL) {
-    return normalizeBaseUrl(process.env.DX_UI_BASE_URL);
+    return normalizeUrl(process.env.DX_UI_BASE_URL);
   }
-  return resolveUiUrl(baseUrl);
+  return inferWebAppUrlFromApiBaseUrl(apiBaseUrl);
 }
 
 export type TokenType = "account_web_api_token" | "personal_access_token";

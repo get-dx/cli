@@ -4,13 +4,13 @@ import path from "node:path";
 
 import type { StoredConfig } from "./types.js";
 
-const DEFAULT_BASE_URL = "https://api.getdx.com";
+// --- Config file I/O ---------------------------------------------------------
 
 type ParsedConfigFile = {
   apiBaseUrl?: unknown;
   /** @deprecated */
   baseUrl?: unknown;
-  uiBaseUrl?: unknown;
+  webBaseUrl?: unknown;
 };
 
 function pickConfigString(value: unknown): string | undefined {
@@ -39,9 +39,9 @@ export function readConfig(): StoredConfig {
   const content = fs.readFileSync(configPath, "utf8");
   const raw = JSON.parse(content) as ParsedConfigFile;
   const stored: StoredConfig = {};
-  const ui = pickConfigString(raw.uiBaseUrl);
-  if (ui) {
-    stored.uiBaseUrl = ui;
+  const web = pickConfigString(raw.webBaseUrl);
+  if (web) {
+    stored.webBaseUrl = web;
   }
   const api = pickConfigString(raw.apiBaseUrl) ?? pickConfigString(raw.baseUrl);
   if (api) {
@@ -59,20 +59,43 @@ export function writeConfig(config: StoredConfig): void {
   );
 }
 
-export function resolveBaseUrl(): string {
-  if (process.env.DX_BASE_URL) {
-    return normalizeBaseUrl(process.env.DX_BASE_URL);
-  }
-
-  return normalizeBaseUrl(readConfig().apiBaseUrl || DEFAULT_BASE_URL);
+export function persistBaseUrls(apiBaseUrl: string, webBaseUrl: string): void {
+  writeConfig({
+    ...readConfig(),
+    apiBaseUrl: normalizeUrl(apiBaseUrl),
+    webBaseUrl: normalizeUrl(webBaseUrl),
+  });
 }
 
+/** Strips trailing slashes from an HTTP(S) base URL string. */
+export function normalizeUrl(url: string): string {
+  return url.replace(/\/+$/, "");
+}
+
+// --- API URL resolution ------------------------------------------------------
+
+const DEFAULT_API_BASE_URL = "https://api.getdx.com";
+
 /**
- * Web UI origin for browser OAuth (`/cli/auth`), inferred from the API base URL.
- * Dedicated and cloud hostnames map to their app origins; otherwise the API URL origin is used.
+ * Resolved API base URL for HTTP requests.
+ * Precedence: `DX_BASE_URL`, then persisted `apiBaseUrl` (legacy on-disk `baseUrl` is read in `readConfig`), then DX Cloud default.
  */
-export function resolveUiUrl(apiBaseUrl: string): string {
-  const normalized = normalizeBaseUrl(apiBaseUrl);
+export function resolveApiBaseUrl(): string {
+  if (process.env.DX_BASE_URL) {
+    return normalizeUrl(process.env.DX_BASE_URL);
+  }
+
+  return normalizeUrl(readConfig().apiBaseUrl || DEFAULT_API_BASE_URL);
+}
+
+// --- Web-app URL (browser / deep links) -------------------------------------
+
+/**
+ * Infers the default web-app base URL from the API base URL only (no env or file).
+ * DX Cloud and dedicated hosts map to their app; otherwise uses `new URL(apiBaseUrl).origin`.
+ */
+export function inferWebAppUrlFromApiBaseUrl(apiBaseUrl: string): string {
+  const normalized = normalizeUrl(apiBaseUrl);
   const url = new URL(normalized);
   const host = url.hostname;
 
@@ -90,11 +113,11 @@ export function resolveUiUrl(apiBaseUrl: string): string {
 
 /**
  * True when the API host is DX Cloud (`api.getdx.com`) or a dedicated
- * `api.<account>.getdx.io` deployment. For those hosts the web app origin can be
- * derived without `DX_UI_BASE_URL`. Custom / managed API hosts return false.
+ * `api.<account>.getdx.io` deployment. For those hosts the web app URL can be
+ * inferred without `DX_UI_BASE_URL`. Custom / managed API hosts return false.
  */
 export function isDedicatedOrCloudApiHost(apiBaseUrl: string): boolean {
-  const normalized = normalizeBaseUrl(apiBaseUrl);
+  const normalized = normalizeUrl(apiBaseUrl);
   const url = new URL(normalized);
   const host = url.hostname;
 
@@ -106,30 +129,18 @@ export function isDedicatedOrCloudApiHost(apiBaseUrl: string): boolean {
 }
 
 /**
- * Web app origin for CLI deep links and browser OAuth.
- * Precedence: DX_UI_BASE_URL, persisted config, then inference from the API base URL.
+ * Resolved web-app base URL for CLI deep links and browser OAuth.
+ * Precedence: `DX_UI_BASE_URL`, persisted `webBaseUrl`, then `inferWebAppUrlFromApiBaseUrl(apiBaseUrl)`.
  */
-export function resolveUiBaseUrl(apiBaseUrl: string): string {
+export function resolveWebBaseUrl(apiBaseUrl: string): string {
   if (process.env.DX_UI_BASE_URL) {
-    return normalizeBaseUrl(process.env.DX_UI_BASE_URL);
+    return normalizeUrl(process.env.DX_UI_BASE_URL);
   }
 
-  const stored = readConfig().uiBaseUrl;
+  const stored = readConfig().webBaseUrl;
   if (stored) {
-    return normalizeBaseUrl(stored);
+    return normalizeUrl(stored);
   }
 
-  return resolveUiUrl(apiBaseUrl);
-}
-
-export function persistBaseUrls(apiBaseUrl: string, uiBaseUrl: string): void {
-  writeConfig({
-    ...readConfig(),
-    apiBaseUrl: normalizeBaseUrl(apiBaseUrl),
-    uiBaseUrl: normalizeBaseUrl(uiBaseUrl),
-  });
-}
-
-export function normalizeBaseUrl(baseUrl: string): string {
-  return baseUrl.replace(/\/+$/, "");
+  return inferWebAppUrlFromApiBaseUrl(apiBaseUrl);
 }

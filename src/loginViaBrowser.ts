@@ -11,7 +11,7 @@ import { CliError } from "./errors.js";
 import { renderRichText } from "./renderers.js";
 import * as ui from "./ui.js";
 
-export async function loginViaBrowser(uiBaseUrl: string): Promise<string> {
+export async function loginViaBrowser(webBaseUrl: string): Promise<string> {
   const server = new AuthCodeCallbackServer();
   await server.start();
 
@@ -27,7 +27,7 @@ export async function loginViaBrowser(uiBaseUrl: string): Promise<string> {
     code_challenge_method: "S256",
   });
 
-  const authUrl = `${uiBaseUrl}/cli/auth?${params.toString()}`;
+  const authUrl = `${webBaseUrl}/cli/auth?${params.toString()}`;
 
   renderRichText([
     ui.p(`Opening your browser to complete authentication...`),
@@ -60,7 +60,7 @@ export async function loginViaBrowser(uiBaseUrl: string): Promise<string> {
     }
 
     const tokenExchangeResponse = await exchangeCodeForToken(
-      uiBaseUrl,
+      webBaseUrl,
       code,
       codeVerifier,
     );
@@ -100,11 +100,11 @@ function validateState(
 }
 
 async function exchangeCodeForToken(
-  baseUrl: string,
+  webBaseUrl: string,
   code: string,
   codeVerifier: string,
 ): Promise<Response> {
-  return fetch(`${baseUrl}/cli/token`, {
+  return fetch(`${webBaseUrl}/cli/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ code, code_verifier: codeVerifier }),

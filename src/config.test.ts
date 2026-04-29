@@ -6,9 +6,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   getConfigPath,
   readConfig,
-  resolveBaseUrl,
-  resolveUiUrl,
-  resolveUiBaseUrl,
+  resolveApiBaseUrl,
+  inferWebAppUrlFromApiBaseUrl,
+  resolveWebBaseUrl,
   writeConfig,
   isDedicatedOrCloudApiHost,
 } from "./config.js";
@@ -17,7 +17,7 @@ const originalEnv = { ...process.env };
 
 beforeEach(() => {
   process.env = { ...originalEnv };
-  process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-resolve-ui-base-url";
+  process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-resolve-web-base-url";
   writeConfig({});
 });
 
@@ -25,47 +25,49 @@ afterEach(() => {
   process.env = { ...originalEnv };
 });
 
-describe("resolveUiUrl", () => {
+describe("inferWebAppUrlFromApiBaseUrl", () => {
   it("maps DX cloud API host to app.getdx.com", () => {
-    expect(resolveUiUrl("https://api.getdx.com")).toBe("https://app.getdx.com");
-    expect(resolveUiUrl("https://api.getdx.com/")).toBe(
+    expect(inferWebAppUrlFromApiBaseUrl("https://api.getdx.com")).toBe(
+      "https://app.getdx.com",
+    );
+    expect(inferWebAppUrlFromApiBaseUrl("https://api.getdx.com/")).toBe(
       "https://app.getdx.com",
     );
   });
 
-  it("maps dedicated API host to the matching app origin", () => {
-    expect(resolveUiUrl("https://api.acme.getdx.io")).toBe(
+  it("maps dedicated API host to the matching app URL", () => {
+    expect(inferWebAppUrlFromApiBaseUrl("https://api.acme.getdx.io")).toBe(
       "https://acme.getdx.io",
     );
   });
 
-  it("falls back to the API URL origin for other hosts", () => {
-    expect(resolveUiUrl("https://api.example.com/v1/")).toBe(
+  it("falls back to the API URL's origin for other hosts", () => {
+    expect(inferWebAppUrlFromApiBaseUrl("https://api.example.com/v1/")).toBe(
       "https://api.example.com",
     );
   });
 });
 
-describe("resolveUiBaseUrl", () => {
+describe("resolveWebBaseUrl", () => {
   it("prefers DX_UI_BASE_URL over persisted config and inference", () => {
     process.env.DX_UI_BASE_URL = "https://custom.example.com/";
-    writeConfig({ uiBaseUrl: "https://wrong.example.com" });
+    writeConfig({ webBaseUrl: "https://wrong.example.com" });
 
-    expect(resolveUiBaseUrl("https://api.getdx.com")).toBe(
+    expect(resolveWebBaseUrl("https://api.getdx.com")).toBe(
       "https://custom.example.com",
     );
   });
 
-  it("uses persisted uiBaseUrl when DX_UI_BASE_URL is unset", () => {
-    writeConfig({ uiBaseUrl: "https://stored.example.com" });
+  it("uses persisted webBaseUrl when DX_UI_BASE_URL is unset", () => {
+    writeConfig({ webBaseUrl: "https://stored.example.com" });
 
-    expect(resolveUiBaseUrl("https://api.getdx.com")).toBe(
+    expect(resolveWebBaseUrl("https://api.getdx.com")).toBe(
       "https://stored.example.com",
     );
   });
 
-  it("falls back to resolveUiUrl when nothing else is set", () => {
-    expect(resolveUiBaseUrl("https://api.getdx.com")).toBe(
+  it("falls back to inferWebAppUrlFromApiBaseUrl when nothing else is set", () => {
+    expect(resolveWebBaseUrl("https://api.getdx.com")).toBe(
       "https://app.getdx.com",
     );
   });
@@ -99,7 +101,7 @@ describe("readConfig", () => {
     expect(readConfig().apiBaseUrl).toBe("https://new.example.com");
   });
 
-  it("lets resolveBaseUrl use legacy baseUrl when env is unset", () => {
+  it("lets resolveApiBaseUrl use legacy baseUrl when env is unset", () => {
     delete process.env.DX_BASE_URL;
     const configPath = getConfigPath();
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
@@ -108,7 +110,7 @@ describe("readConfig", () => {
       JSON.stringify({ baseUrl: "https://from-legacy-file.example.com" }),
     );
 
-    expect(resolveBaseUrl()).toBe("https://from-legacy-file.example.com");
+    expect(resolveApiBaseUrl()).toBe("https://from-legacy-file.example.com");
   });
 });
 

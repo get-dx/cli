@@ -8,7 +8,7 @@ const originalEnv = { ...process.env };
 
 const runtime: Runtime = {
   apiBaseUrl: "https://api.example.com",
-  uiBaseUrl: "https://app.example.com",
+  webBaseUrl: "https://app.example.com",
   token: "token-123",
   context: { json: false },
   version: "0.1.0",
@@ -111,7 +111,7 @@ describe("http logging", () => {
 
     const loggingRuntime: Runtime = {
       apiBaseUrl: "https://api.example.com",
-      uiBaseUrl: "https://app.example.com",
+      webBaseUrl: "https://app.example.com",
       token: "secret-token",
       context: { json: false },
       version: "test",
@@ -155,7 +155,7 @@ describe("http logging", () => {
 
     const loggingRuntime: Runtime = {
       apiBaseUrl: "https://api.example.com",
-      uiBaseUrl: "https://app.example.com",
+      webBaseUrl: "https://app.example.com",
       token: "secret-token",
       context: { json: false },
       version: "test",

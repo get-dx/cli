@@ -20,7 +20,7 @@ import { setToken } from "../secrets.js";
 type ParsedHostname =
   | { type: "cloud" }
   | { type: "dedicated"; accountName: string }
-  | { type: "managed"; uiBaseUrl: string }
+  | { type: "managed"; webAppUrl: string }
   | { type: "invalid" };
 
 function parseHostname(raw: string): ParsedHostname {
@@ -42,7 +42,7 @@ function parseHostname(raw: string): ParsedHostname {
     }
 
     if (host) {
-      return { type: "managed", uiBaseUrl: url.origin };
+      return { type: "managed", webAppUrl: url.origin };
     }
   } catch {
     // fall through to invalid
@@ -161,14 +161,14 @@ async function ensureLoggedIn(
       if (!apiBaseUrl) {
         throw new CliError("API base URL is required");
       }
-      return await attemptLogin(apiBaseUrl, parsed.uiBaseUrl);
+      return await attemptLogin(apiBaseUrl, parsed.webAppUrl);
     }
   }
 }
 
 async function attemptLogin(
   apiBaseUrl: string,
-  uiBaseUrl: string,
+  webBaseUrl: string,
 ): Promise<Runtime> {
   const method = await select({
     message: "How would you like to log in?",
@@ -181,7 +181,7 @@ async function attemptLogin(
   let token: string;
 
   if (method === "browser") {
-    token = await loginViaBrowser(uiBaseUrl);
+    token = await loginViaBrowser(webBaseUrl);
   } else {
     token = await password({
       message: "Paste your account web API token here:",
@@ -197,7 +197,7 @@ async function attemptLogin(
   const runtime = buildRuntime(context, {
     apiBaseUrl,
     token,
-    uiBaseUrl,
+    webBaseUrl,
   });
 
   renderRichText([ui.blankLine(), ui.p(`Attempting login...`), ui.blankLine()]);
@@ -207,7 +207,7 @@ async function attemptLogin(
     throw new CliError(`Login failed`);
   }
 
-  persistBaseUrls(apiBaseUrl, uiBaseUrl);
+  persistBaseUrls(apiBaseUrl, webBaseUrl);
   setToken(apiBaseUrl, token);
 
   renderAuthInfo(response, token, apiBaseUrl);

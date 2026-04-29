@@ -2,7 +2,7 @@ import type { Logger } from "./logger.js";
 
 export interface Runtime {
   apiBaseUrl: string;
-  uiBaseUrl: string;
+  webBaseUrl: string;
   token: string;
   context: CliContext;
   version: string;
@@ -23,5 +23,5 @@ export interface RequestOptions {
 
 export interface StoredConfig {
   apiBaseUrl?: string;
-  uiBaseUrl?: string;
+  webBaseUrl?: string;
 }

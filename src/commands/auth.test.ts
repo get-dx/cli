@@ -119,7 +119,7 @@ describe("auth commands", () => {
       );
       expect(writes.join("")).toContain('"base_url": "https://api.getdx.com"');
       expect(writes.join("")).toContain(
-        '"ui_base_url": "https://app.getdx.com"',
+        '"web_base_url": "https://app.getdx.com"',
       );
       expect(writes.join("")).toContain('"token_name": "cli"');
     });
@@ -436,7 +436,7 @@ describe("auth commands", () => {
         expect.objectContaining({ method: "GET" }),
       );
       expect(writes.join("")).toContain(
-        '"ui_base_url": "https://app.corp.example.com"',
+        '"web_base_url": "https://app.corp.example.com"',
       );
     });
   });
@@ -483,7 +483,7 @@ describe("auth commands", () => {
       expect(writes.join("")).toContain('"token_name": "cli"');
       expect(writes.join("")).toContain('"token": "toke**1234"');
       expect(writes.join("")).toContain(
-        '"ui_base_url": "https://api.example.com"',
+        '"web_base_url": "https://api.example.com"',
       );
     });
 
