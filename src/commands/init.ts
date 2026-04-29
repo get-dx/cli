@@ -14,7 +14,7 @@ import { renderRichText } from "../renderers.js";
 import * as ui from "../ui.js";
 import { CliError } from "../errors.js";
 import { CliContext, Runtime } from "../types.js";
-import { persistBaseUrl } from "../config.js";
+import { persistBaseUrls } from "../config.js";
 import { setToken } from "../secrets.js";
 
 type ParsedHostname =
@@ -197,6 +197,7 @@ async function attemptLogin(
   const runtime = buildRuntime(context, {
     baseUrl: apiBaseUrl,
     token,
+    uiBaseUrl,
   });
 
   renderRichText([ui.blankLine(), ui.p(`Attempting login...`), ui.blankLine()]);
@@ -206,7 +207,7 @@ async function attemptLogin(
     throw new CliError(`Login failed`);
   }
 
-  persistBaseUrl(apiBaseUrl);
+  persistBaseUrls(apiBaseUrl, uiBaseUrl);
   setToken(apiBaseUrl, token);
 
   renderAuthInfo(response, token, apiBaseUrl);

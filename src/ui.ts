@@ -165,5 +165,5 @@ export function maskToken(token: string | null): string | null {
 }
 
 export function webLink(path: string, runtime: Runtime): string {
-  return `${runtime.baseUrl}${path}`;
+  return `${runtime.uiBaseUrl}${path}`;
 }

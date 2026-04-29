@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { EXIT_CODES } from "../errors.js";
+
 const setToken = vi.fn();
 const deleteToken = vi.fn();
 const getToken = vi.fn();
@@ -67,7 +69,7 @@ describe("auth commands", () => {
   describe("login", () => {
     it("validates the token and stores it", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_BASE_URL = "https://api.getdx.com";
 
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
@@ -108,22 +110,23 @@ describe("auth commands", () => {
       ]);
 
       expect(fetch).toHaveBeenCalledWith(
-        "https://api.example.com/auth.info",
+        "https://api.getdx.com/auth.info",
         expect.objectContaining({ method: "GET" }),
       );
       expect(setToken).toHaveBeenCalledWith(
-        "https://api.example.com",
+        "https://api.getdx.com",
         "secret-token",
       );
+      expect(writes.join("")).toContain('"base_url": "https://api.getdx.com"');
       expect(writes.join("")).toContain(
-        '"base_url": "https://api.example.com"',
+        '"ui_base_url": "https://app.getdx.com"',
       );
       expect(writes.join("")).toContain('"token_name": "cli"');
     });
 
     it("accepts personal access tokens", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_BASE_URL = "https://api.getdx.com";
 
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
@@ -164,11 +167,11 @@ describe("auth commands", () => {
       ]);
 
       expect(fetch).toHaveBeenCalledWith(
-        "https://api.example.com/auth.info",
+        "https://api.getdx.com/auth.info",
         expect.objectContaining({ method: "GET" }),
       );
       expect(setToken).toHaveBeenCalledWith(
-        "https://api.example.com",
+        "https://api.getdx.com",
         "secret-token",
       );
       expect(writes.join("")).toContain(
@@ -179,7 +182,7 @@ describe("auth commands", () => {
 
     it("fails without --token when stdin is not a tty", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_BASE_URL = "https://api.getdx.com";
 
       const stderrWrites: string[] = [];
       vi.spyOn(process.stderr, "write").mockImplementation(((
@@ -286,7 +289,7 @@ describe("auth commands", () => {
 
     it("logs in with a pasted token when chosen interactively", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_BASE_URL = "https://api.getdx.com";
 
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
@@ -348,10 +351,93 @@ describe("auth commands", () => {
 
       expect(mockPassword).toHaveBeenCalled();
       expect(setToken).toHaveBeenCalledWith(
-        "https://api.example.com",
+        "https://api.getdx.com",
         "pasted-secret",
       );
       expect(writes.join("")).toContain('"token_name": "cli"');
+    });
+
+    it("requires DX_UI_BASE_URL when the API host is not cloud or dedicated", async () => {
+      process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
+      process.env.DX_BASE_URL = "https://api.corp.example.com";
+      delete process.env.DX_UI_BASE_URL;
+
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+
+      const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
+        throw new Error("blocked process.exit");
+      }) as typeof process.exit);
+
+      vi.stubGlobal("fetch", vi.fn());
+
+      const { run } = await import("../cli.js");
+      await expect(
+        run(["node", "dx", "auth", "login", "--token", "secret-token"]),
+      ).rejects.toThrow("blocked process.exit");
+
+      expect(fetch).not.toHaveBeenCalled();
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+      expect(stderrWrites.join("")).toContain(
+        "Set the DX_UI_BASE_URL environment variable",
+      );
+    });
+
+    it("allows custom API hosts when DX_UI_BASE_URL is set", async () => {
+      process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
+      process.env.DX_BASE_URL = "https://api.corp.example.com";
+      process.env.DX_UI_BASE_URL = "https://app.corp.example.com";
+
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              auth: {
+                token_type: "account_web_api_token",
+                token_name: "cli",
+                scopes: ["entities:read"],
+                created_at: "2026-03-31T12:00:00Z",
+              },
+              account: { name: "DX" },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "auth",
+        "login",
+        "--token",
+        "secret-token",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.corp.example.com/auth.info",
+        expect.objectContaining({ method: "GET" }),
+      );
+      expect(writes.join("")).toContain(
+        '"ui_base_url": "https://app.corp.example.com"',
+      );
     });
   });
 
@@ -396,6 +482,9 @@ describe("auth commands", () => {
       );
       expect(writes.join("")).toContain('"token_name": "cli"');
       expect(writes.join("")).toContain('"token": "toke**1234"');
+      expect(writes.join("")).toContain(
+        '"ui_base_url": "https://api.example.com"',
+      );
     });
 
     it("is human-readable by default", async () => {

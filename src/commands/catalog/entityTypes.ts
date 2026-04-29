@@ -168,10 +168,7 @@ export function entityTypesCommand() {
         if (runtime.context.json) {
           renderJson(processedEntityType);
         } else {
-          renderEntityType(
-            processedEntityType as Partial<EntityType>,
-            runtime,
-          );
+          renderEntityType(processedEntityType as Partial<EntityType>, runtime);
         }
       }),
     );

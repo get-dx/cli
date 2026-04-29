@@ -67,10 +67,48 @@ export function resolveUiUrl(apiBaseUrl: string): string {
   return url.origin;
 }
 
-export function persistBaseUrl(baseUrl: string): void {
-  writeConfig({ ...readConfig(), baseUrl: normalizeBaseUrl(baseUrl) });
+/**
+ * True when the API host is DX Cloud (`api.getdx.com`) or a dedicated
+ * `api.<account>.getdx.io` deployment. For those hosts the web app origin can be
+ * derived without `DX_UI_BASE_URL`. Custom / managed API hosts return false.
+ */
+export function isDedicatedOrCloudApiHost(apiBaseUrl: string): boolean {
+  const normalized = normalizeBaseUrl(apiBaseUrl);
+  const url = new URL(normalized);
+  const host = url.hostname;
+
+  if (host === "api.getdx.com") {
+    return true;
+  }
+
+  return /^api\.(.+)\.getdx\.io$/.test(host);
 }
 
-function normalizeBaseUrl(baseUrl: string): string {
+/**
+ * Web app origin for CLI deep links and browser OAuth.
+ * Precedence: DX_UI_BASE_URL, persisted config, then inference from the API base URL.
+ */
+export function resolveUiBaseUrl(apiBaseUrl: string): string {
+  if (process.env.DX_UI_BASE_URL) {
+    return normalizeBaseUrl(process.env.DX_UI_BASE_URL);
+  }
+
+  const stored = readConfig().uiBaseUrl;
+  if (stored) {
+    return normalizeBaseUrl(stored);
+  }
+
+  return resolveUiUrl(apiBaseUrl);
+}
+
+export function persistBaseUrls(apiBaseUrl: string, uiBaseUrl: string): void {
+  writeConfig({
+    ...readConfig(),
+    baseUrl: normalizeBaseUrl(apiBaseUrl),
+    uiBaseUrl: normalizeBaseUrl(uiBaseUrl),
+  });
+}
+
+export function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.replace(/\/+$/, "");
 }
