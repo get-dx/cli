@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import relativeTimePlugin from "dayjs/plugin/relativeTime.js";
 import pc from "picocolors";
 
+import type { Runtime } from "./types.js";
 export { GLYPHS } from "./ui/glyphs.js";
 import {
   DescriptionListBlock,
@@ -161,4 +162,8 @@ export function maskToken(token: string | null): string | null {
   }
 
   return `${token.slice(0, 4)}${"*".repeat(token.length - 8)}${token.slice(-4)}`;
+}
+
+export function webLink(path: string, runtime: Runtime): string {
+  return `${runtime.baseUrl}${path}`;
 }

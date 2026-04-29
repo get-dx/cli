@@ -130,10 +130,6 @@ export function renderEntityTaskList(tasks: Task[], nextCursor: string | null) {
   renderRichText(blocks);
 }
 
-function webLink(path: string, runtime: Runtime): string {
-  return `${runtime.baseUrl}${path}`;
-}
-
 function scorecardReportContent(
   scorecard: ScorecardReport,
   entityIdentifier: string,
@@ -144,7 +140,7 @@ function scorecardReportContent(
   blocks.push(
     ui.p(
       ui.link(
-        webLink(
+        ui.webLink(
           `/catalog/${entityIdentifier}/scorecards?expanded=${scorecard.id}`,
           runtime,
         ),
@@ -286,7 +282,7 @@ function coreContent(entity: Partial<Entity>, runtime: Runtime): ui.Block[] {
         ]),
         ui.dli("Last updated", ui.timestampSummary(entity.updated_at!)),
         ui.dli("Web link", [
-          ui.p(ui.link(webLink(`/catalog/${entity.identifier}`, runtime))),
+          ui.p(ui.link(ui.webLink(`/catalog/${entity.identifier}`, runtime))),
         ]),
         ui.dli("Description", [
           ui.p(entity.description ?? ui.dim("(None)"), false),
