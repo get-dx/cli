@@ -11,15 +11,15 @@ import {
 } from "../../commandHelpers.js";
 import { CliError, EXIT_CODES, HttpError } from "../../errors.js";
 import { request } from "../../http.js";
-import { renderJson } from "../../renderers.js";
+import {
+  AsyncProgressReporter,
+  renderJson,
+  renderRichText,
+} from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
-import {
-  QueryProgressReporter,
-  renderCsvSaved,
-  renderQueryResultsTable,
-} from "./queryRendering.js";
+import { renderCsvSaved, renderQueryResultsTable } from "./queryRendering.js";
 
 const DEFAULT_RETRY_AFTER_MS = 1000;
 const PENDING_QUERY_RUN_STATUSES = new Set<StudioQueryRunStatus>([
@@ -81,7 +81,7 @@ export function queryCommand() {
 
         const variables = parseVariables(options.variable as string[]);
         const runtime = buildRuntime(context);
-        const progress = new QueryProgressReporter();
+        const progress = new AsyncProgressReporter();
 
         const queryRun = await executeQuery(runtime, progress, sql, variables);
         await waitForQuery(runtime, progress, queryRun.id);
@@ -145,12 +145,14 @@ type GetStudioQueryResultsResponse = {
 
 async function executeQuery(
   runtime: Runtime,
-  progress: QueryProgressReporter,
+  progress: AsyncProgressReporter,
   sql: string,
   variables?: Record<string, string | number | string[] | number[]>,
 ): Promise<StudioQueryRun> {
   try {
-    renderRunningQuery(sql);
+    renderRichText([ui.p(`${ui.bold("Running:")} ${ui.code(sql)}`)], {
+      useStderr: true,
+    });
     progress.start(ui.bold("Submitting query"));
     const executeResponse = await executeStudioQuery(runtime, sql, variables);
     const queryRun = executeResponse.body.query_run;
@@ -164,7 +166,7 @@ async function executeQuery(
 
 async function waitForQuery(
   runtime: Runtime,
-  progress: QueryProgressReporter,
+  progress: AsyncProgressReporter,
   queryRunId: string,
 ): Promise<StudioQueryRun> {
   while (true) {
@@ -212,10 +214,6 @@ async function waitForQuery(
       throw error;
     }
   }
-}
-
-function renderRunningQuery(sql: string): void {
-  process.stderr.write(`${ui.bold("Running:")} ${ui.code(sql)}\n`);
 }
 
 function renderPendingQueryStatus(queryRunId: string): string {

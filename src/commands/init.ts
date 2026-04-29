@@ -1,13 +1,13 @@
 import { access } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { input, password, confirm } from "@inquirer/prompts";
+import { input, password, confirm, select } from "@inquirer/prompts";
 import { Command } from "commander";
 import { execa } from "execa";
-
 import { buildRuntime, buildRuntimeSafe } from "../runtime.js";
 import { getAuthInfo, type AuthInfoResponse } from "./auth.js";
 import { renderAuthInfo } from "./authRendering.js";
+import { loginViaBrowser } from "../loginViaBrowser.js";
 import { getContext } from "../commandHelpers.js";
 import { wrapAction } from "../commandHelpers.js";
 import { renderRichText } from "../renderers.js";
@@ -168,12 +168,26 @@ async function ensureLoggedIn(
 
 async function attemptLogin(
   apiBaseUrl: string,
-  _uiBaseUrl: string,
+  uiBaseUrl: string,
 ): Promise<Runtime> {
-  const token = await password({
-    message: "Paste your account web API token here:",
-    mask: true,
+  const method = await select({
+    message: "How would you like to log in?",
+    choices: [
+      { name: "Open browser", value: "browser" },
+      { name: "Paste API token", value: "token" },
+    ],
   });
+
+  let token: string;
+
+  if (method === "browser") {
+    token = await loginViaBrowser(uiBaseUrl);
+  } else {
+    token = await password({
+      message: "Paste your account web API token here:",
+      mask: true,
+    });
+  }
 
   if (!token) {
     throw new CliError("Account web API token is required");

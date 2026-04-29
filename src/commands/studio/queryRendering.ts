@@ -1,5 +1,3 @@
-import { clearLine, cursorTo } from "node:readline";
-
 import { renderRichText } from "../../renderers.js";
 import * as ui from "../../ui.js";
 
@@ -14,76 +12,6 @@ export function renderQueryResultsTable(results: QueryResults): void {
 
 export function renderCsvSaved(filename: string): void {
   renderRichText([ui.p(`Saved CSV results to ${ui.code(filename)}.`)]);
-}
-
-export class QueryProgressReporter {
-  private readonly enabled = Boolean(process.stderr.isTTY);
-  private readonly frames = [
-    "⠋",
-    "⠙",
-    "⠹",
-    "⠸",
-    "⠼",
-    "⠴",
-    "⠦",
-    "⠧",
-    "⠇",
-    "⠏",
-  ].map((frame) => ui.dim(frame));
-  private timer?: ReturnType<typeof setInterval>;
-  private frameIndex = 0;
-  private currentMessage = "";
-
-  start(message: string): void {
-    if (!this.enabled) {
-      return;
-    }
-
-    this.currentMessage = message;
-    this.render();
-    this.timer = setInterval(() => this.render(), 80);
-    this.timer.unref?.();
-  }
-
-  update(message: string): void {
-    if (!this.enabled) {
-      return;
-    }
-
-    this.currentMessage = message;
-    this.render();
-  }
-
-  stop(finalMessage?: string): void {
-    if (!this.enabled) {
-      return;
-    }
-
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = undefined;
-    }
-
-    if (finalMessage) {
-      this.clearCurrentLine();
-      process.stderr.write(`${finalMessage}\n`);
-      return;
-    }
-
-    this.clearCurrentLine();
-  }
-
-  private render(): void {
-    const frame = this.frames[this.frameIndex % this.frames.length];
-    this.frameIndex += 1;
-    this.clearCurrentLine();
-    process.stderr.write(`${frame} ${this.currentMessage}`);
-  }
-
-  private clearCurrentLine(): void {
-    clearLine(process.stderr, 0);
-    cursorTo(process.stderr, 0);
-  }
 }
 
 function formatAsciiTable(columns: string[], rows: unknown[][]): string {

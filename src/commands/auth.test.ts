@@ -10,6 +10,24 @@ vi.mock("../secrets.js", () => ({
   getToken,
 }));
 
+const mockSelect = vi.fn();
+const mockPassword = vi.fn();
+
+vi.mock("@inquirer/prompts", () => ({
+  select: (...args: unknown[]) => mockSelect(...args),
+  password: (...args: unknown[]) => mockPassword(...args),
+}));
+
+vi.mock("../loginViaBrowser.js", async () => {
+  const actual = await vi.importActual<typeof import("../loginViaBrowser.js")>(
+    "../loginViaBrowser.js",
+  );
+  return {
+    ...actual,
+    loginViaBrowser: vi.fn(),
+  };
+});
+
 vi.mock("picocolors", () => ({
   default: {
     bold: (s: string) => (process.stdout.isTTY ? `\u001b[1m${s}\u001b[22m` : s),
@@ -28,11 +46,15 @@ vi.mock("picocolors", () => ({
 
 const originalEnv = { ...process.env };
 
-beforeEach(() => {
+beforeEach(async () => {
   process.env = { ...originalEnv };
   getToken.mockReset();
   setToken.mockReset();
   deleteToken.mockReset();
+  mockSelect.mockReset();
+  mockPassword.mockReset();
+  const { loginViaBrowser } = await import("../loginViaBrowser.js");
+  vi.mocked(loginViaBrowser).mockReset();
   vi.restoreAllMocks();
 });
 
@@ -153,6 +175,183 @@ describe("auth commands", () => {
         '"token_type": "personal_access_token"',
       );
       expect(writes.join("")).toContain('"token_name": "pat"');
+    });
+
+    it("fails without --token when stdin is not a tty", async () => {
+      process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
+      process.env.DX_BASE_URL = "https://api.example.com";
+
+      const stderrWrites: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+
+      const stdinDesc = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
+      Object.defineProperty(process.stdin, "isTTY", {
+        configurable: true,
+        value: false,
+      });
+
+      vi.spyOn(process, "exit").mockImplementation((() => {
+        throw new Error("blocked process.exit");
+      }) as typeof process.exit);
+
+      const { run } = await import("../cli.js");
+      await expect(run(["node", "dx", "auth", "login"])).rejects.toThrow(
+        "blocked process.exit",
+      );
+
+      if (stdinDesc) {
+        Object.defineProperty(process.stdin, "isTTY", stdinDesc);
+      } else {
+        delete (process.stdin as { isTTY?: boolean }).isTTY;
+      }
+
+      expect(stderrWrites.join("")).toContain("--token");
+    });
+
+    it("logs in via browser when chosen interactively", async () => {
+      process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
+      process.env.DX_BASE_URL = "https://api.getdx.com";
+
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      const stdinDesc = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
+      const stderrDesc = Object.getOwnPropertyDescriptor(
+        process.stderr,
+        "isTTY",
+      );
+      Object.defineProperty(process.stdin, "isTTY", {
+        configurable: true,
+        value: true,
+      });
+      Object.defineProperty(process.stderr, "isTTY", {
+        configurable: true,
+        value: true,
+      });
+
+      mockSelect.mockResolvedValue("browser");
+      const { loginViaBrowser } = await import("../loginViaBrowser.js");
+      vi.mocked(loginViaBrowser).mockResolvedValue("oauth-token");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              auth: {
+                token_type: "account_web_api_token",
+                token_name: "cli",
+                scopes: ["entities:read"],
+                created_at: "2026-03-31T12:00:00Z",
+              },
+              account: { name: "DX" },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "--json", "auth", "login"]);
+
+      if (stdinDesc) {
+        Object.defineProperty(process.stdin, "isTTY", stdinDesc);
+      } else {
+        delete (process.stdin as { isTTY?: boolean }).isTTY;
+      }
+      if (stderrDesc) {
+        Object.defineProperty(process.stderr, "isTTY", stderrDesc);
+      } else {
+        delete (process.stderr as { isTTY?: boolean }).isTTY;
+      }
+
+      expect(loginViaBrowser).toHaveBeenCalledWith("https://app.getdx.com");
+      expect(setToken).toHaveBeenCalledWith(
+        "https://api.getdx.com",
+        "oauth-token",
+      );
+      expect(writes.join("")).toContain('"token_name": "cli"');
+    });
+
+    it("logs in with a pasted token when chosen interactively", async () => {
+      process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
+      process.env.DX_BASE_URL = "https://api.example.com";
+
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      const stdinDesc = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
+      const stderrDesc = Object.getOwnPropertyDescriptor(
+        process.stderr,
+        "isTTY",
+      );
+      Object.defineProperty(process.stdin, "isTTY", {
+        configurable: true,
+        value: true,
+      });
+      Object.defineProperty(process.stderr, "isTTY", {
+        configurable: true,
+        value: true,
+      });
+
+      mockSelect.mockResolvedValue("token");
+      mockPassword.mockResolvedValue("pasted-secret");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              auth: {
+                token_type: "account_web_api_token",
+                token_name: "cli",
+                scopes: ["entities:read"],
+                created_at: "2026-03-31T12:00:00Z",
+              },
+              account: { name: "DX" },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "--json", "auth", "login"]);
+
+      if (stdinDesc) {
+        Object.defineProperty(process.stdin, "isTTY", stdinDesc);
+      } else {
+        delete (process.stdin as { isTTY?: boolean }).isTTY;
+      }
+      if (stderrDesc) {
+        Object.defineProperty(process.stderr, "isTTY", stderrDesc);
+      } else {
+        delete (process.stderr as { isTTY?: boolean }).isTTY;
+      }
+
+      expect(mockPassword).toHaveBeenCalled();
+      expect(setToken).toHaveBeenCalledWith(
+        "https://api.example.com",
+        "pasted-secret",
+      );
+      expect(writes.join("")).toContain('"token_name": "cli"');
     });
   });
 

@@ -46,6 +46,27 @@ export function resolveBaseUrl(): string {
   return normalizeBaseUrl(readConfig().baseUrl || DEFAULT_BASE_URL);
 }
 
+/**
+ * Web UI origin for browser OAuth (`/cli/auth`), inferred from the API base URL.
+ * Dedicated and cloud hostnames map to their app origins; otherwise the API URL origin is used.
+ */
+export function resolveUiUrl(apiBaseUrl: string): string {
+  const normalized = normalizeBaseUrl(apiBaseUrl);
+  const url = new URL(normalized);
+  const host = url.hostname;
+
+  if (host === "api.getdx.com") {
+    return "https://app.getdx.com";
+  }
+
+  const dedicated = host.match(/^api\.(.+)\.getdx\.io$/);
+  if (dedicated) {
+    return `https://${dedicated[1]}.getdx.io`;
+  }
+
+  return url.origin;
+}
+
 export function persistBaseUrl(baseUrl: string): void {
   writeConfig({ ...readConfig(), baseUrl: normalizeBaseUrl(baseUrl) });
 }

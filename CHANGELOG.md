@@ -16,6 +16,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 New Skill! A new snapshot-analysis skill is available.
 
+## 0.2.1 - 2026-04-29
+
+### Added
+
+- `dx workflows list`: Add support for listing Self-service workflow definitions.
+- `dx catalog entities create/update/upsert`: These commands now support a `--alias` flag to set aliases for an entity.
+
+## 0.2.0 - 2026-04-27
+
+### Added
+
+- Added ability to log in via browser from both the `dx init` and `dx auth login` commands
+
 ## 0.1.7 - 2026-04-24
 
 ### Added

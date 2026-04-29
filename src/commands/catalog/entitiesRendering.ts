@@ -335,6 +335,8 @@ function propertyValueContent(
   if (isFileMatchingRule(value)) {
     const matchText = value.match_count === 1 ? "match" : "matches";
     return `File matching rule: ${ui.code(value.status)} (${value.match_count} ${matchText})`;
+  } else if (isOpenApiSpec(value)) {
+    return `OpenAPI spec`;
   } else if (isUrl(value)) {
     return ui.link(value);
   }
@@ -392,5 +394,28 @@ function isFileMatchingRule(value: unknown): value is FileMatchingRule {
     "status" in value &&
     typeof value.status === "string" &&
     ["FOUND_MATCHES", "NO_MATCHES", "FILE_NOT_FOUND"].includes(value.status)
+  );
+}
+
+type OpenApiSpec = {
+  info: {
+    title: string;
+    version: string;
+  };
+  tags?: {
+    name: string;
+    description: string;
+  }[];
+  paths: Record<string, unknown>;
+};
+
+function isOpenApiSpec(value: unknown): value is OpenApiSpec {
+  // TODO: consider switching to zod
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof value === "object" &&
+    "info" in value &&
+    "paths" in value
   );
 }
