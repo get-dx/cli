@@ -21,7 +21,7 @@ describe("runtime", () => {
       json: true,
     });
 
-    expect(runtime.baseUrl).toBe("https://api.example.com");
+    expect(runtime.apiBaseUrl).toBe("https://api.example.com");
     expect(runtime.uiBaseUrl).toBe("https://api.example.com");
     expect(runtime.token).toBe("abcd1234wxyz");
   });
@@ -56,14 +56,14 @@ describe("runtime", () => {
   it("reads persisted base URL when env is absent", () => {
     const tmp = vi.fn();
     process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-    writeConfig({ baseUrl: "https://api.persisted.example.com" });
+    writeConfig({ apiBaseUrl: "https://api.persisted.example.com" });
     process.env.DX_API_TOKEN = "persisted-token";
 
     const runtime = buildRuntime({
       json: false,
     });
 
-    expect(runtime.baseUrl).toBe("https://api.persisted.example.com");
+    expect(runtime.apiBaseUrl).toBe("https://api.persisted.example.com");
     expect(runtime.uiBaseUrl).toBe("https://api.persisted.example.com");
     expect(runtime.token).toBe("persisted-token");
     expect(tmp).not.toHaveBeenCalled();

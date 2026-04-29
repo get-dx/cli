@@ -75,7 +75,11 @@ export function authCommand(): Command {
 
         const uiBaseUrlForPersist = resolveUiOriginForLoginPersist(baseUrl);
 
-        const runtime = buildRuntime(context, { baseUrl, token });
+        const runtime = buildRuntime(context, {
+          apiBaseUrl: baseUrl,
+          token,
+          uiBaseUrl: uiBaseUrlForPersist,
+        });
 
         const response = await getAuthInfo(runtime);
         persistBaseUrls(baseUrl, uiBaseUrlForPersist);
@@ -115,11 +119,11 @@ export function authCommand(): Command {
         renderJson({
           ...response,
           token: maskToken(runtime.token),
-          base_url: runtime.baseUrl,
+          base_url: runtime.apiBaseUrl,
           ui_base_url: runtime.uiBaseUrl,
         });
       } else {
-        renderAuthInfo(response, runtime.token, runtime.baseUrl);
+        renderAuthInfo(response, runtime.token, runtime.apiBaseUrl);
       }
     }),
   );

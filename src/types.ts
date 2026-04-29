@@ -1,8 +1,7 @@
 import type { Logger } from "./logger.js";
 
 export interface Runtime {
-  baseUrl: string;
-  /** Web app origin for deep links (distinct from API `baseUrl`). */
+  apiBaseUrl: string;
   uiBaseUrl: string;
   token: string;
   context: CliContext;
@@ -23,6 +22,6 @@ export interface RequestOptions {
 }
 
 export interface StoredConfig {
-  baseUrl?: string;
+  apiBaseUrl?: string;
   uiBaseUrl?: string;
 }

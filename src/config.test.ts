@@ -1,6 +1,12 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  getConfigPath,
+  readConfig,
+  resolveBaseUrl,
   resolveUiUrl,
   resolveUiBaseUrl,
   writeConfig,
@@ -62,6 +68,47 @@ describe("resolveUiBaseUrl", () => {
     expect(resolveUiBaseUrl("https://api.getdx.com")).toBe(
       "https://app.getdx.com",
     );
+  });
+});
+
+describe("readConfig", () => {
+  it("maps legacy baseUrl on disk to apiBaseUrl", () => {
+    const configPath = getConfigPath();
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({ baseUrl: "https://legacy.example.com" }),
+    );
+
+    expect(readConfig()).toEqual({
+      apiBaseUrl: "https://legacy.example.com",
+    });
+  });
+
+  it("prefers apiBaseUrl when both apiBaseUrl and legacy baseUrl are present", () => {
+    const configPath = getConfigPath();
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        apiBaseUrl: "https://new.example.com",
+        baseUrl: "https://old.example.com",
+      }),
+    );
+
+    expect(readConfig().apiBaseUrl).toBe("https://new.example.com");
+  });
+
+  it("lets resolveBaseUrl use legacy baseUrl when env is unset", () => {
+    delete process.env.DX_BASE_URL;
+    const configPath = getConfigPath();
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({ baseUrl: "https://from-legacy-file.example.com" }),
+    );
+
+    expect(resolveBaseUrl()).toBe("https://from-legacy-file.example.com");
   });
 });
 

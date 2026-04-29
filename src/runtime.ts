@@ -15,9 +15,9 @@ export function buildRuntime(
   context: CliContext,
   overrides?: Partial<Runtime>,
 ): Runtime {
-  const baseUrl = overrides?.baseUrl ?? resolveBaseUrl();
-  const uiBaseUrl = overrides?.uiBaseUrl ?? resolveUiBaseUrl(baseUrl);
-  const token = overrides?.token ?? getToken(baseUrl);
+  const apiBaseUrl = overrides?.apiBaseUrl ?? resolveBaseUrl();
+  const uiBaseUrl = overrides?.uiBaseUrl ?? resolveUiBaseUrl(apiBaseUrl);
+  const token = overrides?.token ?? getToken(apiBaseUrl);
 
   if (!token) {
     throw new CliError(
@@ -26,7 +26,7 @@ export function buildRuntime(
   }
 
   return {
-    baseUrl,
+    apiBaseUrl,
     uiBaseUrl,
     token,
     context,
@@ -39,16 +39,16 @@ export function buildRuntimeSafe(
   context: CliContext,
   overrides?: Partial<Runtime>,
 ): Runtime | null {
-  const baseUrl = overrides?.baseUrl ?? resolveBaseUrl();
-  const uiBaseUrl = overrides?.uiBaseUrl ?? resolveUiBaseUrl(baseUrl);
-  const token = overrides?.token ?? getToken(baseUrl);
+  const apiBaseUrl = overrides?.apiBaseUrl ?? resolveBaseUrl();
+  const uiBaseUrl = overrides?.uiBaseUrl ?? resolveUiBaseUrl(apiBaseUrl);
+  const token = overrides?.token ?? getToken(apiBaseUrl);
 
   if (!token) {
     return null;
   }
 
   return {
-    baseUrl,
+    apiBaseUrl,
     uiBaseUrl,
     token,
     context,

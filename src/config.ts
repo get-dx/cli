@@ -6,6 +6,17 @@ import type { StoredConfig } from "./types.js";
 
 const DEFAULT_BASE_URL = "https://api.getdx.com";
 
+type ParsedConfigFile = {
+  apiBaseUrl?: unknown;
+  /** @deprecated */
+  baseUrl?: unknown;
+  uiBaseUrl?: unknown;
+};
+
+function pickConfigString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
 export function getConfigDir(): string {
   const xdg = process.env.XDG_CONFIG_HOME;
   if (xdg) {
@@ -26,7 +37,17 @@ export function readConfig(): StoredConfig {
   }
 
   const content = fs.readFileSync(configPath, "utf8");
-  return JSON.parse(content) as StoredConfig;
+  const raw = JSON.parse(content) as ParsedConfigFile;
+  const stored: StoredConfig = {};
+  const ui = pickConfigString(raw.uiBaseUrl);
+  if (ui) {
+    stored.uiBaseUrl = ui;
+  }
+  const api = pickConfigString(raw.apiBaseUrl) ?? pickConfigString(raw.baseUrl);
+  if (api) {
+    stored.apiBaseUrl = api;
+  }
+  return stored;
 }
 
 export function writeConfig(config: StoredConfig): void {
@@ -43,7 +64,7 @@ export function resolveBaseUrl(): string {
     return normalizeBaseUrl(process.env.DX_BASE_URL);
   }
 
-  return normalizeBaseUrl(readConfig().baseUrl || DEFAULT_BASE_URL);
+  return normalizeBaseUrl(readConfig().apiBaseUrl || DEFAULT_BASE_URL);
 }
 
 /**
@@ -104,7 +125,7 @@ export function resolveUiBaseUrl(apiBaseUrl: string): string {
 export function persistBaseUrls(apiBaseUrl: string, uiBaseUrl: string): void {
   writeConfig({
     ...readConfig(),
-    baseUrl: normalizeBaseUrl(apiBaseUrl),
+    apiBaseUrl: normalizeBaseUrl(apiBaseUrl),
     uiBaseUrl: normalizeBaseUrl(uiBaseUrl),
   });
 }

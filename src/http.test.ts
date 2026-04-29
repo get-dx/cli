@@ -7,7 +7,7 @@ import type { Runtime } from "./types.js";
 const originalEnv = { ...process.env };
 
 const runtime: Runtime = {
-  baseUrl: "https://api.example.com",
+  apiBaseUrl: "https://api.example.com",
   uiBaseUrl: "https://app.example.com",
   token: "token-123",
   context: { json: false },
@@ -110,7 +110,7 @@ describe("http logging", () => {
     );
 
     const loggingRuntime: Runtime = {
-      baseUrl: "https://api.example.com",
+      apiBaseUrl: "https://api.example.com",
       uiBaseUrl: "https://app.example.com",
       token: "secret-token",
       context: { json: false },
@@ -154,7 +154,7 @@ describe("http logging", () => {
     );
 
     const loggingRuntime: Runtime = {
-      baseUrl: "https://api.example.com",
+      apiBaseUrl: "https://api.example.com",
       uiBaseUrl: "https://app.example.com",
       token: "secret-token",
       context: { json: false },

@@ -125,7 +125,7 @@ async function ensureLoggedIn(
     }
 
     if (authInfo) {
-      renderAuthInfo(authInfo, runtime.token, runtime.baseUrl);
+      renderAuthInfo(authInfo, runtime.token, runtime.apiBaseUrl);
 
       return runtime;
     }
@@ -195,7 +195,7 @@ async function attemptLogin(
 
   const context = createEmptyContext();
   const runtime = buildRuntime(context, {
-    baseUrl: apiBaseUrl,
+    apiBaseUrl,
     token,
     uiBaseUrl,
   });
