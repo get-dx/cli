@@ -35,9 +35,10 @@ dx catalog entities create --type service --identifier my-service
 dx catalog entities create --type service --identifier my-service --name "My Service" --description "Handles payments"
 dx catalog entities create --type service --identifier my-service --owner-team-ids MzI1NTA,MzI1NTk
 dx catalog entities create --type service --identifier my-service --property tier=Tier-1 --property "languages=Ruby,TypeScript"
+dx catalog entities create --type service --identifier my-service --alias github_repo=12345
 ```
 
-`--type` and `--identifier` are required. Properties are passed as `key=value` pairs; repeat `--property` for multiple. For `multi_select` and `list` types, separate values with commas.
+`--type` and `--identifier` are required. Properties and aliases are passed as `key=value` pairs; repeat `--property` or `--alias` for multiple. For `multi_select` and `list` property types, separate values with commas. Alias values must be the external/source identifier, not the human-readable name.
 
 ### Update an entity
 
@@ -46,6 +47,8 @@ dx catalog entities update my-service --name "My Service"
 dx catalog entities update my-service --owner-team-ids MzI1NTA,MzI1NTk --json
 dx catalog entities update my-service --property tier=Tier-1 --property "languages=Ruby,TypeScript"
 dx catalog entities update my-service --property tier=null   # removes the property value
+dx catalog entities update my-service --alias github_repo=12345
+dx catalog entities update my-service --alias github_repo=null   # removes the alias
 ```
 
 Only the fields you pass are changed; omitted fields are left untouched.
@@ -55,9 +58,10 @@ Only the fields you pass are changed; omitted fields are left untouched.
 ```
 dx catalog entities upsert --type service --identifier my-service --name "My Service"
 dx catalog entities upsert --type service --identifier my-service --owner-team-ids MzI1NTA,MzI1NTk --json
+dx catalog entities upsert --type service --identifier my-service --alias github_repo=12345
 ```
 
-Creates the entity if it does not exist, or updates it if it does. `--type` and `--identifier` are required. JSON output includes a `result` field: `"created_new_entity"` or `"updated_existing_entity"`.
+Creates the entity if it does not exist, or updates it if it does. `--type` and `--identifier` are required. JSON output includes a `result` field: `"created_new_entity"` or `"updated_existing_entity"`. Omitted fields, properties, and aliases are left untouched when updating an existing entity.
 
 ### Delete an entity
 
@@ -169,3 +173,34 @@ For exhaustive documentation on Properties, see the following pages on the DX do
 
 - [Properties](https://docs.getdx.com/webapi/types/property/): Lists each available property type and its `definition` schema.
 - [Entity Properties](https://docs.getdx.com/webapi/types/properties/): Describes valid **values** an entity can contain for each property type.
+
+---
+
+## Working with Aliases
+
+An entity alias links a DX catalog entity to an external system entity, such as a GitHub repository, PagerDuty service, Datadog service, or Jira project.
+
+Important: the value after `=` must be the alias entry `identifier` / external source ID. Do not use the external object's display name, repo slug, or path. For GitHub repository aliases, use the repository source ID, not a repo name like `get-dx/cli`.
+
+Alias keys are configured per entity type. To discover which alias keys are available, inspect entity types:
+
+```
+dx catalog entityTypes list --json
+dx catalog entityTypes info service --include aliases --json
+```
+
+The JSON output includes an `aliases` field for each entity type. Use one of those alias type keys when creating, updating, or upserting an entity:
+
+```
+dx catalog entities create --type service --identifier my-service --alias github_repo=12345
+dx catalog entities update my-service --alias github_repo=12345
+dx catalog entities upsert --type service --identifier my-service --alias pagerduty_service=P12345
+```
+
+Repeat `--alias` to set multiple alias types or multiple identifiers for the same alias type in one command. The CLI validates alias keys against the entity type definition and sends each value as an alias entry identifier. This means `--alias github_repo=12345` is correct when `12345` is the source identifier; `--alias github_repo=get-dx/cli` is not correct because `get-dx/cli` is a name/path. Pass `null` to remove all aliases for that alias type:
+
+```
+dx catalog entities update my-service --alias github_repo=null
+```
+
+For exhaustive documentation on alias request and response shapes, see [Aliases](https://docs.getdx.com/webapi/types/aliases/).
