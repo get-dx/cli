@@ -199,15 +199,12 @@ describe("scorecards commands", () => {
           ),
       );
 
-      // Import before mocking readFileSync — the initial module load reads the
-      // blank template from disk via fs.readFileSync; mocking it beforehand would
-      // intercept Node's own CJS loader and cause a SyntaxError.
-      const { run } = await import("../cli.js");
       stubReadFileSyncForFixturePath(
         "my-scorecard.yaml",
         JSON.stringify({ ...MOCK_SCORECARD_PAYLOAD, name: "New Scorecard" }),
       );
 
+      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -249,12 +246,12 @@ describe("scorecards commands", () => {
           ),
       );
 
-      const { run } = await import("../cli.js");
       stubReadFileSyncForFixturePath(
         "my-scorecard.yaml",
         "id: qjfj1a6cmit4\nname: New Scorecard\n",
       );
 
+      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -297,12 +294,12 @@ describe("scorecards commands", () => {
           ),
       );
 
-      const { run } = await import("../cli.js");
       stubReadFileSyncForFixturePath(
         "my-scorecard.yaml",
         "name: New Scorecard\n",
       );
 
+      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -345,12 +342,12 @@ describe("scorecards commands", () => {
           ),
       );
 
-      const { run } = await import("../cli.js");
       stubReadFileSyncForFixturePath(
         "my-scorecard.yaml",
         "name: Bad Scorecard\n",
       );
 
+      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -481,9 +478,9 @@ describe("scorecards commands", () => {
       process.env.DX_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
-      const { run } = await import("../cli.js");
       stubReadFileSyncForFixturePath("my-scorecard.yaml", "- item1\n- item2\n");
 
+      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -1240,7 +1237,6 @@ describe("scorecards commands", () => {
           ),
       );
 
-      const { run } = await import("../cli.js");
       // JSON is valid YAML — use the payload mock so the full shape is exercised
       stubReadFileSyncForFixturePath(
         "my-scorecard.yaml",
@@ -1250,6 +1246,7 @@ describe("scorecards commands", () => {
         }),
       );
 
+      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -1293,12 +1290,12 @@ describe("scorecards commands", () => {
       );
 
       // YAML omits the id — it should still be sent from the CLI argument
-      const { run } = await import("../cli.js");
       stubReadFileSyncForFixturePath(
         "my-scorecard.yaml",
         "name: Updated Scorecard\n",
       );
 
+      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -1343,12 +1340,12 @@ describe("scorecards commands", () => {
           ),
       );
 
-      const { run } = await import("../cli.js");
       stubReadFileSyncForFixturePath(
         "my-scorecard.yaml",
         "id: qjfj1a6cmit4\nname: Updated Scorecard\n",
       );
 
+      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -1392,12 +1389,12 @@ describe("scorecards commands", () => {
           ),
       );
 
-      const { run } = await import("../cli.js");
       stubReadFileSyncForFixturePath(
         "my-scorecard.yaml",
         "id: qjfj1a6cmit4\nname: Bad Scorecard\n",
       );
 
+      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
@@ -1540,9 +1537,9 @@ describe("scorecards commands", () => {
       process.env.DX_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
-      const { run } = await import("../cli.js");
       stubReadFileSyncForFixturePath("my-scorecard.yaml", "- item1\n- item2\n");
 
+      const { run } = await import("../cli.js");
       await run([
         "node",
         "dx",
