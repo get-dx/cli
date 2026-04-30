@@ -113,7 +113,7 @@ export function authCommand(): Command {
           renderJson({
             ...response,
             token: maskToken(runtime.token),
-            base_url: runtime.apiBaseUrl,
+            api_base_url: runtime.apiBaseUrl,
             web_base_url: runtime.webBaseUrl,
           });
         } else {
