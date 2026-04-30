@@ -357,10 +357,10 @@ describe("auth commands", () => {
       expect(writes.join("")).toContain('"token_name": "cli"');
     });
 
-    it("requires DX_UI_BASE_URL when the API host is not cloud or dedicated", async () => {
+    it("requires DX_WEB_BASE_URL when the API host is not cloud or dedicated", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
       process.env.DX_BASE_URL = "https://api.corp.example.com";
-      delete process.env.DX_UI_BASE_URL;
+      delete process.env.DX_WEB_BASE_URL;
 
       const stderrWrites: string[] = [];
       vi.spyOn(process.stderr, "write").mockImplementation(((
@@ -384,14 +384,14 @@ describe("auth commands", () => {
       expect(fetch).not.toHaveBeenCalled();
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
       expect(stderrWrites.join("")).toContain(
-        "Set the DX_UI_BASE_URL environment variable",
+        "Set the DX_WEB_BASE_URL environment variable",
       );
     });
 
-    it("allows custom API hosts when DX_UI_BASE_URL is set", async () => {
+    it("allows custom API hosts when DX_WEB_BASE_URL is set", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
       process.env.DX_BASE_URL = "https://api.corp.example.com";
-      process.env.DX_UI_BASE_URL = "https://app.corp.example.com";
+      process.env.DX_WEB_BASE_URL = "https://app.corp.example.com";
 
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((

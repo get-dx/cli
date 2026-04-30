@@ -114,7 +114,7 @@ export function inferWebAppUrlFromApiBaseUrl(apiBaseUrl: string): string {
 /**
  * True when the API host is DX Cloud (`api.getdx.com`) or a dedicated
  * `api.<account>.getdx.io` deployment. For those hosts the web app URL can be
- * inferred without `DX_UI_BASE_URL`. Custom / managed API hosts return false.
+ * inferred without `DX_WEB_BASE_URL`. Custom / managed API hosts return false.
  */
 export function isDedicatedOrCloudApiHost(apiBaseUrl: string): boolean {
   const normalized = normalizeUrl(apiBaseUrl);
@@ -130,11 +130,11 @@ export function isDedicatedOrCloudApiHost(apiBaseUrl: string): boolean {
 
 /**
  * Resolved web-app base URL for CLI deep links and browser OAuth.
- * Precedence: `DX_UI_BASE_URL`, persisted `webBaseUrl`, then `inferWebAppUrlFromApiBaseUrl(apiBaseUrl)`.
+ * Precedence: `DX_WEB_BASE_URL`, persisted `webBaseUrl`, then `inferWebAppUrlFromApiBaseUrl(apiBaseUrl)`.
  */
 export function resolveWebBaseUrl(apiBaseUrl: string): string {
-  if (process.env.DX_UI_BASE_URL) {
-    return normalizeUrl(process.env.DX_UI_BASE_URL);
+  if (process.env.DX_WEB_BASE_URL) {
+    return normalizeUrl(process.env.DX_WEB_BASE_URL);
   }
 
   const stored = readConfig().webBaseUrl;

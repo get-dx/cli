@@ -26,12 +26,12 @@ describe("runtime", () => {
     expect(runtime.token).toBe("abcd1234wxyz");
   });
 
-  it("uses DX_UI_BASE_URL for webBaseUrl when set", () => {
+  it("uses DX_WEB_BASE_URL for webBaseUrl when set", () => {
     process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-runtime-ui";
     writeConfig({});
     process.env.DX_BASE_URL = "https://api.example.com/";
     process.env.DX_API_TOKEN = "abcd1234wxyz";
-    process.env.DX_UI_BASE_URL = "https://app.custom.example/";
+    process.env.DX_WEB_BASE_URL = "https://app.custom.example/";
 
     const runtime = buildRuntime({
       json: true,
@@ -40,7 +40,7 @@ describe("runtime", () => {
     expect(runtime.webBaseUrl).toBe("https://app.custom.example");
   });
 
-  it("uses persisted webBaseUrl when DX_UI_BASE_URL is unset", () => {
+  it("uses persisted webBaseUrl when DX_WEB_BASE_URL is unset", () => {
     process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-runtime-ui";
     writeConfig({ webBaseUrl: "https://ui.persisted.example.com" });
     process.env.DX_BASE_URL = "https://api.example.com/";

@@ -55,8 +55,8 @@ export function authCommand(): Command {
 
           if (method === "browser") {
             token = await loginViaBrowser(
-              process.env.DX_UI_BASE_URL
-                ? normalizeUrl(process.env.DX_UI_BASE_URL)
+              process.env.DX_WEB_BASE_URL
+                ? normalizeUrl(process.env.DX_WEB_BASE_URL)
                 : inferWebAppUrlFromApiBaseUrl(apiBaseUrl),
             );
           } else {
@@ -133,20 +133,20 @@ export function authCommand(): Command {
 }
 
 function ensureLoginWebAppUrlResolvable(apiBaseUrl: string): void {
-  if (process.env.DX_UI_BASE_URL) {
+  if (process.env.DX_WEB_BASE_URL) {
     return;
   }
   if (!isDedicatedOrCloudApiHost(apiBaseUrl)) {
     throw new CliError(
-      "This API host does not have a default web app URL. Set the DX_UI_BASE_URL environment variable to your DX web app URL, then retry.",
+      "This API host does not have a default web app URL. Set the DX_WEB_BASE_URL environment variable to your DX web app URL, then retry.",
       EXIT_CODES.ARGUMENT_ERROR,
     );
   }
 }
 
 function resolveWebBaseUrlForLoginPersist(apiBaseUrl: string): string {
-  if (process.env.DX_UI_BASE_URL) {
-    return normalizeUrl(process.env.DX_UI_BASE_URL);
+  if (process.env.DX_WEB_BASE_URL) {
+    return normalizeUrl(process.env.DX_WEB_BASE_URL);
   }
   return inferWebAppUrlFromApiBaseUrl(apiBaseUrl);
 }

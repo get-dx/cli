@@ -49,8 +49,8 @@ describe("inferWebAppUrlFromApiBaseUrl", () => {
 });
 
 describe("resolveWebBaseUrl", () => {
-  it("prefers DX_UI_BASE_URL over persisted config and inference", () => {
-    process.env.DX_UI_BASE_URL = "https://custom.example.com/";
+  it("prefers DX_WEB_BASE_URL over persisted config and inference", () => {
+    process.env.DX_WEB_BASE_URL = "https://custom.example.com/";
     writeConfig({ webBaseUrl: "https://wrong.example.com" });
 
     expect(resolveWebBaseUrl("https://api.getdx.com")).toBe(
@@ -58,7 +58,7 @@ describe("resolveWebBaseUrl", () => {
     );
   });
 
-  it("uses persisted webBaseUrl when DX_UI_BASE_URL is unset", () => {
+  it("uses persisted webBaseUrl when DX_WEB_BASE_URL is unset", () => {
     writeConfig({ webBaseUrl: "https://stored.example.com" });
 
     expect(resolveWebBaseUrl("https://api.getdx.com")).toBe(
