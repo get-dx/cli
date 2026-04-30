@@ -102,7 +102,7 @@ describe("readConfig", () => {
   });
 
   it("lets resolveApiBaseUrl use legacy baseUrl when env is unset", () => {
-    delete process.env.DX_BASE_URL;
+    delete process.env.DX_API_BASE_URL;
     const configPath = getConfigPath();
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(

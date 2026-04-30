@@ -78,11 +78,11 @@ const DEFAULT_API_BASE_URL = "https://api.getdx.com";
 
 /**
  * Resolved API base URL for HTTP requests.
- * Precedence: `DX_BASE_URL`, then persisted `apiBaseUrl` (legacy on-disk `baseUrl` is read in `readConfig`), then DX Cloud default.
+ * Precedence: `DX_API_BASE_URL`, then persisted `apiBaseUrl` (legacy on-disk `baseUrl` is read in `readConfig`), then DX Cloud default.
  */
 export function resolveApiBaseUrl(): string {
-  if (process.env.DX_BASE_URL) {
-    return normalizeUrl(process.env.DX_BASE_URL);
+  if (process.env.DX_API_BASE_URL) {
+    return normalizeUrl(process.env.DX_API_BASE_URL);
   }
 
   return normalizeUrl(readConfig().apiBaseUrl || DEFAULT_API_BASE_URL);

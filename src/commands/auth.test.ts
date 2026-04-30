@@ -69,7 +69,7 @@ describe("auth commands", () => {
   describe("login", () => {
     it("validates the token and stores it", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_BASE_URL = "https://api.getdx.com";
+      process.env.DX_API_BASE_URL = "https://api.getdx.com";
 
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
@@ -126,7 +126,7 @@ describe("auth commands", () => {
 
     it("accepts personal access tokens", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_BASE_URL = "https://api.getdx.com";
+      process.env.DX_API_BASE_URL = "https://api.getdx.com";
 
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
@@ -182,7 +182,7 @@ describe("auth commands", () => {
 
     it("fails without --token when stdin is not a tty", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_BASE_URL = "https://api.getdx.com";
+      process.env.DX_API_BASE_URL = "https://api.getdx.com";
 
       const stderrWrites: string[] = [];
       vi.spyOn(process.stderr, "write").mockImplementation(((
@@ -218,7 +218,7 @@ describe("auth commands", () => {
 
     it("logs in via browser when chosen interactively", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_BASE_URL = "https://api.getdx.com";
+      process.env.DX_API_BASE_URL = "https://api.getdx.com";
 
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
@@ -289,7 +289,7 @@ describe("auth commands", () => {
 
     it("logs in with a pasted token when chosen interactively", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_BASE_URL = "https://api.getdx.com";
+      process.env.DX_API_BASE_URL = "https://api.getdx.com";
 
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
@@ -359,7 +359,7 @@ describe("auth commands", () => {
 
     it("requires DX_WEB_BASE_URL when the API host is not cloud or dedicated", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_BASE_URL = "https://api.corp.example.com";
+      process.env.DX_API_BASE_URL = "https://api.corp.example.com";
       delete process.env.DX_WEB_BASE_URL;
 
       const stderrWrites: string[] = [];
@@ -390,7 +390,7 @@ describe("auth commands", () => {
 
     it("allows custom API hosts when DX_WEB_BASE_URL is set", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_BASE_URL = "https://api.corp.example.com";
+      process.env.DX_API_BASE_URL = "https://api.corp.example.com";
       process.env.DX_WEB_BASE_URL = "https://app.corp.example.com";
 
       const writes: string[] = [];
@@ -451,7 +451,7 @@ describe("auth commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-1234");
 
       vi.stubGlobal(
@@ -496,7 +496,7 @@ describe("auth commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-1234");
 
       vi.stubGlobal(
@@ -543,7 +543,7 @@ describe("auth commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-1234");
 
       vi.stubGlobal(
@@ -589,7 +589,7 @@ describe("auth commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-1234");
 
       vi.stubGlobal(
@@ -638,7 +638,7 @@ describe("auth commands", () => {
         value: true,
       });
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       delete process.env.NO_COLOR;
       getToken.mockReturnValue("token-1234");
 
@@ -701,7 +701,7 @@ describe("auth commands", () => {
         value: true,
       });
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       process.env.DX_LOG_LEVEL = "debug";
       getToken.mockReturnValue("token-1234");
 
@@ -759,7 +759,7 @@ describe("auth commands", () => {
         value: false,
       });
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       process.env.DX_LOG_LEVEL = "debug";
       getToken.mockReturnValue("token-1234");
 
@@ -804,7 +804,7 @@ describe("auth commands", () => {
         return true;
       }) as typeof process.stderr.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-1234");
 
       vi.stubGlobal(
@@ -835,7 +835,7 @@ describe("auth commands", () => {
 
   describe("logout", () => {
     it("removes the stored token for the active base URL", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
 
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((

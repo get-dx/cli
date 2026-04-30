@@ -182,7 +182,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const createdScorecard = { ...MOCK_SCORECARD, name: "New Scorecard" };
@@ -231,7 +231,7 @@ describe("scorecards commands", () => {
         (() => true) as typeof process.stdout.write,
       );
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -277,7 +277,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const createdScorecard = { ...MOCK_SCORECARD, name: "New Scorecard" };
@@ -327,7 +327,7 @@ describe("scorecards commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -370,7 +370,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const createdScorecard = { ...MOCK_SCORECARD, name: "Stdin Scorecard" };
@@ -423,7 +423,7 @@ describe("scorecards commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const { run } = await import("../cli.js");
@@ -445,7 +445,7 @@ describe("scorecards commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const { run } = await import("../cli.js");
@@ -475,7 +475,7 @@ describe("scorecards commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       stubReadFileSyncForFixturePath("my-scorecard.yaml", "- item1\n- item2\n");
@@ -505,7 +505,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -536,7 +536,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -574,7 +574,7 @@ describe("scorecards commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -604,7 +604,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -640,7 +640,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -676,7 +676,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -724,7 +724,7 @@ describe("scorecards commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -766,7 +766,7 @@ describe("scorecards commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue(undefined);
 
       const { run } = await import("../cli.js");
@@ -787,7 +787,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -837,7 +837,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -881,7 +881,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -916,7 +916,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -963,7 +963,7 @@ describe("scorecards commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -999,7 +999,7 @@ describe("scorecards commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const { run } = await import("../cli.js");
@@ -1020,7 +1020,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1068,7 +1068,7 @@ describe("scorecards commands", () => {
         (() => true) as typeof process.stdout.write,
       );
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1112,7 +1112,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1156,7 +1156,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const fetchSpy = vi.fn();
@@ -1188,7 +1188,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
@@ -1220,7 +1220,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const updatedScorecard = { ...MOCK_SCORECARD, name: "Updated Scorecard" };
@@ -1274,7 +1274,7 @@ describe("scorecards commands", () => {
         (() => true) as typeof process.stdout.write,
       );
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1323,7 +1323,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const updatedScorecard = { ...MOCK_SCORECARD, name: "Updated Scorecard" };
@@ -1374,7 +1374,7 @@ describe("scorecards commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1418,7 +1418,7 @@ describe("scorecards commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const updatedScorecard = { ...MOCK_SCORECARD, name: "Stdin Scorecard" };
@@ -1481,7 +1481,7 @@ describe("scorecards commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const { run } = await import("../cli.js");
@@ -1503,7 +1503,7 @@ describe("scorecards commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const { run } = await import("../cli.js");
@@ -1534,7 +1534,7 @@ describe("scorecards commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       stubReadFileSyncForFixturePath("my-scorecard.yaml", "- item1\n- item2\n");

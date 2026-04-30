@@ -31,7 +31,7 @@ A git worktree setup script should install and login:
 make
 
 # Generate an account-level token or personal access token
-DX_BASE_URL="https://api.getdx.com" dx auth login --token "TOKEN_GOES_HERE"
+DX_API_BASE_URL="https://api.getdx.com" dx auth login --token "TOKEN_GOES_HERE"
 ```
 
 Make sure that calls to the `dx` binary run outside of your agent client's sandbox, so network requests can succeed.
