@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { CliError } from "./errors.js";
 import {
   getConfigPath,
   readConfig,
@@ -74,7 +75,15 @@ describe("resolveWebBaseUrl", () => {
 });
 
 describe("readConfig", () => {
-  it("maps legacy baseUrl on disk to apiBaseUrl", () => {
+  it("returns {} for an empty config object on disk", () => {
+    const configPath = getConfigPath();
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, JSON.stringify({}));
+
+    expect(readConfig()).toEqual({});
+  });
+
+  it("throws when only legacy baseUrl is on disk", () => {
     const configPath = getConfigPath();
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(
@@ -82,9 +91,8 @@ describe("readConfig", () => {
       JSON.stringify({ baseUrl: "https://legacy.example.com" }),
     );
 
-    expect(readConfig()).toEqual({
-      apiBaseUrl: "https://legacy.example.com",
-    });
+    expect(() => readConfig()).toThrow(CliError);
+    expect(() => readConfig()).toThrow(/dx auth logout/);
   });
 
   it("prefers apiBaseUrl when both apiBaseUrl and legacy baseUrl are present", () => {
@@ -94,14 +102,17 @@ describe("readConfig", () => {
       configPath,
       JSON.stringify({
         apiBaseUrl: "https://new.example.com",
+        webBaseUrl: "https://app.example.com",
         baseUrl: "https://old.example.com",
       }),
     );
 
-    expect(readConfig().apiBaseUrl).toBe("https://new.example.com");
+    const stored = readConfig();
+    expect(stored.apiBaseUrl).toBe("https://new.example.com");
+    expect(stored.webBaseUrl).toBe("https://app.example.com");
   });
 
-  it("lets resolveApiBaseUrl use legacy baseUrl when env is unset", () => {
+  it("throws from resolveApiBaseUrl when only legacy baseUrl is on disk and env is unset", () => {
     delete process.env.DX_API_BASE_URL;
     const configPath = getConfigPath();
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
@@ -110,7 +121,7 @@ describe("readConfig", () => {
       JSON.stringify({ baseUrl: "https://from-legacy-file.example.com" }),
     );
 
-    expect(resolveApiBaseUrl()).toBe("https://from-legacy-file.example.com");
+    expect(() => resolveApiBaseUrl()).toThrow(CliError);
   });
 });
 

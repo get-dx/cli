@@ -2,22 +2,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { CliError } from "./errors.js";
 import type { StoredConfig } from "./types.js";
 
 // --- Config file I/O ---------------------------------------------------------
 
-type ParsedConfigFile = {
-  apiBaseUrl?: unknown;
-  /** @deprecated */
-  baseUrl?: unknown;
-  webBaseUrl?: unknown;
-};
-
-function pickConfigString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
-
-export function getConfigDir(): string {
+function getConfigDir(): string {
   const xdg = process.env.XDG_CONFIG_HOME;
   if (xdg) {
     return path.join(xdg, "dx");
@@ -37,13 +27,19 @@ export function readConfig(): StoredConfig {
   }
 
   const content = fs.readFileSync(configPath, "utf8");
-  const raw = JSON.parse(content) as ParsedConfigFile;
+  const raw = JSON.parse(content) as Record<string, string | undefined>;
+  const api = raw.apiBaseUrl;
+  const web = raw.webBaseUrl;
+  if (api === undefined && web === undefined && Object.keys(raw).length > 0) {
+    // Handling the breaking change from `baseUrl` to `apiBaseUrl` and `webBaseUrl`
+    throw new CliError(
+      "Your on-disk DX CLI config is missing apiBaseUrl and webBaseUrl. Run `dx auth logout`, then login again via `dx init` or `dx auth login`.",
+    );
+  }
   const stored: StoredConfig = {};
-  const web = pickConfigString(raw.webBaseUrl);
   if (web) {
     stored.webBaseUrl = web;
   }
-  const api = pickConfigString(raw.apiBaseUrl) ?? pickConfigString(raw.baseUrl);
   if (api) {
     stored.apiBaseUrl = api;
   }
@@ -78,7 +74,7 @@ const DEFAULT_API_BASE_URL = "https://api.getdx.com";
 
 /**
  * Resolved API base URL for HTTP requests.
- * Precedence: `DX_API_BASE_URL`, then persisted `apiBaseUrl` (legacy on-disk `baseUrl` is read in `readConfig`), then DX Cloud default.
+ * Precedence: `DX_API_BASE_URL`, then persisted `apiBaseUrl`, then DX Cloud default.
  */
 export function resolveApiBaseUrl(): string {
   if (process.env.DX_API_BASE_URL) {

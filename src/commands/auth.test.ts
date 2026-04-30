@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EXIT_CODES } from "../errors.js";
+import { writeConfig } from "../config.js";
 
 const setToken = vi.fn();
 const deleteToken = vi.fn();
@@ -442,6 +443,11 @@ describe("auth commands", () => {
   });
 
   describe("status", () => {
+    beforeEach(() => {
+      process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-auth-status";
+      writeConfig({});
+    });
+
     it("shows the current auth details", async () => {
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
