@@ -15,9 +15,8 @@ import * as ui from "../ui.js";
 import { CliError } from "../errors.js";
 import { CliContext, Runtime } from "../types.js";
 import {
-  parseWebBaseUrl,
+  getNormalizedBaseUrlsFromEnvironment,
   persistBaseUrls,
-  type ParsedWebBaseUrl,
 } from "../config.js";
 import { setToken } from "../secrets.js";
 
@@ -98,42 +97,8 @@ async function ensureLoggedIn(
 
   renderRichText([ui.p(`You are not logged in yet.`), ui.blankLine()]);
 
-  const webBaseUrl = process.env.DX_WEB_BASE_URL;
-  const parsed: ParsedWebBaseUrl = webBaseUrl
-    ? parseWebBaseUrl(webBaseUrl)
-    : { type: "cloud" };
-
-  if (parsed.type === "invalid") {
-    throw new CliError(
-      `Could not recognize web base URL "${webBaseUrl}". Expected https://app.getdx.com, https://<account>.getdx.io, or a custom domain.`,
-    );
-  }
-
-  switch (parsed.type) {
-    case "cloud":
-      return await attemptLogin(
-        "https://api.getdx.com",
-        "https://app.getdx.com",
-        context,
-      );
-    case "dedicated": {
-      const { accountName } = parsed;
-      return await attemptLogin(
-        `https://api.${accountName}.getdx.io`,
-        `https://${accountName}.getdx.io`,
-        context,
-      );
-    }
-    case "managed": {
-      const apiBaseUrl = process.env.DX_API_BASE_URL;
-      if (!apiBaseUrl) {
-        throw new CliError(
-          "DX_API_BASE_URL must be specified when initializing with a managed deployment",
-        );
-      }
-      return await attemptLogin(apiBaseUrl, parsed.webAppUrl, context);
-    }
-  }
+  const { apiBaseUrl, webBaseUrl } = getNormalizedBaseUrlsFromEnvironment();
+  return await attemptLogin(apiBaseUrl, webBaseUrl, context);
 }
 
 async function attemptLogin(

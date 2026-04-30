@@ -107,13 +107,55 @@ export function inferWebAppUrlFromApiBaseUrl(apiBaseUrl: string): string {
   return url.origin;
 }
 
-export type ParsedWebBaseUrl =
+// TODO: rename?
+export function getNormalizedBaseUrlsFromEnvironment(): {
+  apiBaseUrl: string;
+  webBaseUrl: string;
+} {
+  const webBaseUrl = process.env.DX_WEB_BASE_URL;
+  const parsed: ParsedWebBaseUrl = webBaseUrl
+    ? parseWebBaseUrl(webBaseUrl)
+    : { type: "cloud" };
+
+  switch (parsed.type) {
+    case "cloud":
+      return {
+        apiBaseUrl: "https://api.getdx.com",
+        webBaseUrl: "https://app.getdx.com",
+      };
+    case "dedicated": {
+      const { accountName } = parsed;
+      return {
+        apiBaseUrl: `https://api.${accountName}.getdx.io`,
+        webBaseUrl: `https://${accountName}.getdx.io`,
+      };
+    }
+    case "managed": {
+      const apiBaseUrl = process.env.DX_API_BASE_URL;
+      if (!apiBaseUrl) {
+        throw new CliError(
+          "DX_API_BASE_URL must be specified when authenticating with a managed deployment",
+        );
+      }
+      return {
+        apiBaseUrl,
+        webBaseUrl: parsed.webAppUrl,
+      };
+    }
+    case "invalid":
+      throw new CliError(
+        `Could not recognize web base URL "${parsed.input}". Expected https://app.getdx.com, https://<account>.getdx.io, or a custom domain.`,
+      );
+  }
+}
+
+type ParsedWebBaseUrl =
   | { type: "cloud" }
   | { type: "dedicated"; accountName: string }
   | { type: "managed"; webAppUrl: string }
-  | { type: "invalid" };
+  | { type: "invalid"; input: string };
 
-export function parseWebBaseUrl(raw: string): ParsedWebBaseUrl {
+function parseWebBaseUrl(raw: string): ParsedWebBaseUrl {
   const normalized = raw.trim().replace(/\/$/, "");
 
   if (!normalized || normalized === "app.getdx.com") {
@@ -138,7 +180,7 @@ export function parseWebBaseUrl(raw: string): ParsedWebBaseUrl {
     // fall through to invalid
   }
 
-  return { type: "invalid" };
+  return { type: "invalid", input: raw };
 }
 
 /**
