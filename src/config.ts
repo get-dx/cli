@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { CliError } from "./errors.js";
+import { CliError, EXIT_CODES } from "./errors.js";
 import type { StoredConfig } from "./types.js";
 
 // --- Config file I/O ---------------------------------------------------------
@@ -112,9 +112,18 @@ export function getNormalizedBaseUrlsFromEnvironment(): {
   apiBaseUrl: string;
   webBaseUrl: string;
 } {
-  const webBaseUrl = process.env.DX_WEB_BASE_URL;
-  const parsed: ParsedWebBaseUrl = webBaseUrl
-    ? parseWebBaseUrl(webBaseUrl)
+  const apiBaseUrlFromEnv = process.env.DX_API_BASE_URL;
+  const webBaseUrlFromEnv = process.env.DX_WEB_BASE_URL;
+
+  if (apiBaseUrlFromEnv && !webBaseUrlFromEnv) {
+    throw new CliError(
+      "DX_WEB_BASE_URL must be set when DX_API_BASE_URL is set",
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+
+  const parsed: ParsedWebBaseUrl = webBaseUrlFromEnv
+    ? parseWebBaseUrl(webBaseUrlFromEnv)
     : { type: "cloud" };
 
   switch (parsed.type) {

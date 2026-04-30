@@ -70,7 +70,6 @@ describe("auth commands", () => {
   describe("login", () => {
     it("validates the token and stores it", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_API_BASE_URL = "https://api.getdx.com";
 
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
@@ -127,7 +126,6 @@ describe("auth commands", () => {
 
     it("accepts personal access tokens", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_API_BASE_URL = "https://api.getdx.com";
 
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
@@ -183,7 +181,6 @@ describe("auth commands", () => {
 
     it("fails without --token when stdin is not a tty", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_API_BASE_URL = "https://api.getdx.com";
 
       const stderrWrites: string[] = [];
       vi.spyOn(process.stderr, "write").mockImplementation(((
@@ -219,7 +216,6 @@ describe("auth commands", () => {
 
     it("logs in via browser when chosen interactively", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_API_BASE_URL = "https://api.getdx.com";
 
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
@@ -290,7 +286,6 @@ describe("auth commands", () => {
 
     it("logs in with a pasted token when chosen interactively", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
-      process.env.DX_API_BASE_URL = "https://api.getdx.com";
 
       const writes: string[] = [];
       vi.spyOn(process.stdout, "write").mockImplementation(((
@@ -358,7 +353,7 @@ describe("auth commands", () => {
       expect(writes.join("")).toContain('"token_name": "cli"');
     });
 
-    it("requires DX_WEB_BASE_URL when the API host is not cloud or dedicated", async () => {
+    it("requires DX_WEB_BASE_URL when DX_API_BASE_URL is set", async () => {
       process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
       process.env.DX_API_BASE_URL = "https://api.corp.example.com";
       delete process.env.DX_WEB_BASE_URL;
@@ -385,7 +380,7 @@ describe("auth commands", () => {
       expect(fetch).not.toHaveBeenCalled();
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
       expect(stderrWrites.join("")).toContain(
-        "Set the DX_WEB_BASE_URL environment variable",
+        "DX_WEB_BASE_URL must be set when DX_API_BASE_URL is set",
       );
     });
 
