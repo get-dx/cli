@@ -111,23 +111,26 @@ export function authCommand(): Command {
     }),
   );
 
-  auth.command("status").action(
-    wrapAction(async (_options, command) => {
-      const runtime = buildRuntime(getContext(command));
-      const response = await getAuthInfo(runtime);
+  auth
+    .command("status")
+    .alias("info")
+    .action(
+      wrapAction(async (_options, command) => {
+        const runtime = buildRuntime(getContext(command));
+        const response = await getAuthInfo(runtime);
 
-      if (runtime.context.json) {
-        renderJson({
-          ...response,
-          token: maskToken(runtime.token),
-          base_url: runtime.apiBaseUrl,
-          web_base_url: runtime.webBaseUrl,
-        });
-      } else {
-        renderAuthInfo(response, runtime.token, runtime.apiBaseUrl);
-      }
-    }),
-  );
+        if (runtime.context.json) {
+          renderJson({
+            ...response,
+            token: maskToken(runtime.token),
+            base_url: runtime.apiBaseUrl,
+            web_base_url: runtime.webBaseUrl,
+          });
+        } else {
+          renderAuthInfo(response, runtime.token, runtime.apiBaseUrl);
+        }
+      }),
+    );
 
   return auth;
 }
