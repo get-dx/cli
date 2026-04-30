@@ -1,10 +1,10 @@
 import { access } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { input, password, confirm, select } from "@inquirer/prompts";
+import { password, confirm, select } from "@inquirer/prompts";
 import { Command } from "commander";
 import { execa } from "execa";
-import { buildRuntime, buildRuntimeSafe } from "../runtime.js";
+import { buildLogger, buildRuntime, buildRuntimeSafe } from "../runtime.js";
 import { getAuthInfo, type AuthInfoResponse } from "./auth.js";
 import { renderAuthInfo } from "./authRendering.js";
 import { loginViaBrowser } from "../loginViaBrowser.js";
@@ -14,42 +14,12 @@ import { renderRichText } from "../renderers.js";
 import * as ui from "../ui.js";
 import { CliError } from "../errors.js";
 import { CliContext, Runtime } from "../types.js";
-import { persistBaseUrls } from "../config.js";
+import {
+  parseWebBaseUrl,
+  persistBaseUrls,
+  type ParsedWebBaseUrl,
+} from "../config.js";
 import { setToken } from "../secrets.js";
-
-type ParsedHostname =
-  | { type: "cloud" }
-  | { type: "dedicated"; accountName: string }
-  | { type: "managed"; webAppUrl: string }
-  | { type: "invalid" };
-
-function parseHostname(raw: string): ParsedHostname {
-  const normalized = raw.trim().replace(/\/$/, "");
-
-  if (!normalized || normalized === "app.getdx.com") {
-    return { type: "cloud" };
-  }
-
-  try {
-    const url = new URL(
-      normalized.startsWith("http") ? normalized : `https://${normalized}`,
-    );
-    const host = url.hostname;
-
-    const dedicatedMatch = host.match(/^(.+)\.getdx\.io$/);
-    if (dedicatedMatch) {
-      return { type: "dedicated", accountName: dedicatedMatch[1] };
-    }
-
-    if (host) {
-      return { type: "managed", webAppUrl: url.origin };
-    }
-  } catch {
-    // fall through to invalid
-  }
-
-  return { type: "invalid" };
-}
 
 // FIXME: make this WAY more glam
 // Choose a more interesting ASCII art font from https://patorjk.com/software/taag/
@@ -70,10 +40,6 @@ export function initCommand() {
   const init = new Command()
     .name("init")
     .description("Initialize the DX CLI")
-    .option(
-      "--host <hostname>",
-      "DX hostname for dedicated or managed deployments (e.g. mycompany.getdx.io)",
-    )
     .action(
       wrapAction(async (commandOptions, command) => {
         const context = getContext(command);
@@ -83,8 +49,7 @@ export function initCommand() {
 
         showWelcomeBanner();
 
-        const host = commandOptions.host || process.env.DX_HOST;
-        runtime = await ensureLoggedIn(runtime, host);
+        runtime = await ensureLoggedIn(context, runtime);
 
         await optionallySetupSkill(runtime);
 
@@ -111,8 +76,8 @@ function showWelcomeBanner() {
 }
 
 async function ensureLoggedIn(
+  context: CliContext,
   runtime: Runtime | null,
-  host?: string,
 ): Promise<Runtime> {
   renderRichText([ui.h1(`Checking if you are logged in...`), ui.blankLine()]);
 
@@ -133,11 +98,14 @@ async function ensureLoggedIn(
 
   renderRichText([ui.p(`You are not logged in yet.`), ui.blankLine()]);
 
-  const parsed: ParsedHostname = host ? parseHostname(host) : { type: "cloud" };
+  const webBaseUrl = process.env.DX_WEB_BASE_URL;
+  const parsed: ParsedWebBaseUrl = webBaseUrl
+    ? parseWebBaseUrl(webBaseUrl)
+    : { type: "cloud" };
 
   if (parsed.type === "invalid") {
     throw new CliError(
-      `Could not recognize hostname "${host}". Expected app.getdx.com, <account>.getdx.io, or a custom domain.`,
+      `Could not recognize web base URL "${webBaseUrl}". Expected https://app.getdx.com, https://<account>.getdx.io, or a custom domain.`,
     );
   }
 
@@ -146,22 +114,24 @@ async function ensureLoggedIn(
       return await attemptLogin(
         "https://api.getdx.com",
         "https://app.getdx.com",
+        context,
       );
     case "dedicated": {
       const { accountName } = parsed;
       return await attemptLogin(
         `https://api.${accountName}.getdx.io`,
         `https://${accountName}.getdx.io`,
+        context,
       );
     }
     case "managed": {
-      const apiBaseUrl = await input({
-        message: "What is your API base URL?",
-      });
+      const apiBaseUrl = process.env.DX_API_BASE_URL;
       if (!apiBaseUrl) {
-        throw new CliError("API base URL is required");
+        throw new CliError(
+          "DX_API_BASE_URL must be specified when initializing with a managed deployment",
+        );
       }
-      return await attemptLogin(apiBaseUrl, parsed.webAppUrl);
+      return await attemptLogin(apiBaseUrl, parsed.webAppUrl, context);
     }
   }
 }
@@ -169,7 +139,12 @@ async function ensureLoggedIn(
 async function attemptLogin(
   apiBaseUrl: string,
   webBaseUrl: string,
+  context: CliContext,
 ): Promise<Runtime> {
+  const logger = buildLogger(context);
+
+  logger.debug("Attempting login", { apiBaseUrl, webBaseUrl });
+
   const method = await select({
     message: "How would you like to log in?",
     choices: [
@@ -193,7 +168,6 @@ async function attemptLogin(
     throw new CliError("Account web API token is required");
   }
 
-  const context = createEmptyContext();
   const runtime = buildRuntime(context, {
     apiBaseUrl,
     token,
@@ -270,10 +244,4 @@ async function optionallySetupSkill(runtime: Runtime) {
   if (result.exitCode !== 0) {
     throw new CliError(`Failed to setup the DX skill: ${result.stderr}`);
   }
-}
-
-function createEmptyContext(): CliContext {
-  return {
-    json: false,
-  };
 }

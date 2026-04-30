@@ -107,6 +107,40 @@ export function inferWebAppUrlFromApiBaseUrl(apiBaseUrl: string): string {
   return url.origin;
 }
 
+export type ParsedWebBaseUrl =
+  | { type: "cloud" }
+  | { type: "dedicated"; accountName: string }
+  | { type: "managed"; webAppUrl: string }
+  | { type: "invalid" };
+
+export function parseWebBaseUrl(raw: string): ParsedWebBaseUrl {
+  const normalized = raw.trim().replace(/\/$/, "");
+
+  if (!normalized || normalized === "app.getdx.com") {
+    return { type: "cloud" };
+  }
+
+  try {
+    const url = new URL(
+      normalized.startsWith("http") ? normalized : `https://${normalized}`,
+    );
+    const host = url.hostname;
+
+    const dedicatedMatch = host.match(/^(.+)\.getdx\.io$/);
+    if (dedicatedMatch) {
+      return { type: "dedicated", accountName: dedicatedMatch[1] };
+    }
+
+    if (host) {
+      return { type: "managed", webAppUrl: url.origin };
+    }
+  } catch {
+    // fall through to invalid
+  }
+
+  return { type: "invalid" };
+}
+
 /**
  * True when the API host is DX Cloud (`api.getdx.com`) or a dedicated
  * `api.<account>.getdx.io` deployment. For those hosts the web app URL can be
