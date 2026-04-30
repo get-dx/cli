@@ -5,16 +5,10 @@ import path from "node:path";
 import { CliError, EXIT_CODES } from "./errors.js";
 import type { StoredConfig } from "./types.js";
 
+const DEFAULT_API_BASE_URL = "https://api.getdx.com";
+const DEFAULT_WEB_BASE_URL = "https://app.getdx.com";
+
 // --- Config file I/O ---------------------------------------------------------
-
-function getConfigDir(): string {
-  const xdg = process.env.XDG_CONFIG_HOME;
-  if (xdg) {
-    return path.join(xdg, "dx");
-  }
-
-  return path.join(os.homedir(), ".config", "dx");
-}
 
 export function getConfigPath(): string {
   return path.join(getConfigDir(), "config.json");
@@ -68,9 +62,16 @@ export function normalizeUrl(url: string): string {
   return url.replace(/\/+$/, "");
 }
 
-// --- API URL resolution ------------------------------------------------------
+function getConfigDir(): string {
+  const xdg = process.env.XDG_CONFIG_HOME;
+  if (xdg) {
+    return path.join(xdg, "dx");
+  }
 
-const DEFAULT_API_BASE_URL = "https://api.getdx.com";
+  return path.join(os.homedir(), ".config", "dx");
+}
+
+// --- Resolving URLs at command runtime ------------------------------------------------------
 
 /**
  * Resolved API base URL for HTTP requests.
@@ -84,31 +85,31 @@ export function resolveApiBaseUrl(): string {
   return normalizeUrl(readConfig().apiBaseUrl || DEFAULT_API_BASE_URL);
 }
 
-// --- Web-app URL (browser / deep links) -------------------------------------
-
 /**
- * Infers the default web-app base URL from the API base URL only (no env or file).
- * DX Cloud and dedicated hosts map to their app; otherwise uses `new URL(apiBaseUrl).origin`.
+ * Resolved web-app base URL for CLI deep links and browser OAuth.
+ * Precedence: `DX_WEB_BASE_URL`, persisted `webBaseUrl`, then DX Cloud default.
  */
-export function inferWebAppUrlFromApiBaseUrl(apiBaseUrl: string): string {
-  const normalized = normalizeUrl(apiBaseUrl);
-  const url = new URL(normalized);
-  const host = url.hostname;
-
-  if (host === "api.getdx.com") {
-    return "https://app.getdx.com";
+export function resolveWebBaseUrl(): string {
+  if (process.env.DX_WEB_BASE_URL) {
+    return normalizeUrl(process.env.DX_WEB_BASE_URL);
   }
 
-  const dedicated = host.match(/^api\.(.+)\.getdx\.io$/);
-  if (dedicated) {
-    return `https://${dedicated[1]}.getdx.io`;
-  }
-
-  return url.origin;
+  return normalizeUrl(readConfig().webBaseUrl || DEFAULT_WEB_BASE_URL);
 }
 
-// TODO: rename?
-export function getNormalizedBaseUrlsFromEnvironment(): {
+// --- Deriving base URLs at login time -------------------------------------
+
+/**
+ * Derive the appropriate `apiBaseUrl` and `webBaseUrl` to persist into config,
+ * considering the `DX_API_BASE_URL` and `DX_WEB_BASE_URL` env vars if they are present.
+ *
+ * If the env vars are not set, we assume the user is configuring for a `cloud` deployment.
+ *
+ * If they are set, we parse them to determine whether the deployment is `cloud`, `dedicated`, or `managed`.
+ *
+ * If we fail to derive the base URLs, a `CliError` is thrown.
+ */
+export function deriveBaseUrlsFromEnv(): {
   apiBaseUrl: string;
   webBaseUrl: string;
 } {
@@ -190,38 +191,4 @@ function parseWebBaseUrl(raw: string): ParsedWebBaseUrl {
   }
 
   return { type: "invalid", input: raw };
-}
-
-/**
- * True when the API host is DX Cloud (`api.getdx.com`) or a dedicated
- * `api.<account>.getdx.io` deployment. For those hosts the web app URL can be
- * inferred without `DX_WEB_BASE_URL`. Custom / managed API hosts return false.
- */
-export function isDedicatedOrCloudApiHost(apiBaseUrl: string): boolean {
-  const normalized = normalizeUrl(apiBaseUrl);
-  const url = new URL(normalized);
-  const host = url.hostname;
-
-  if (host === "api.getdx.com") {
-    return true;
-  }
-
-  return /^api\.(.+)\.getdx\.io$/.test(host);
-}
-
-/**
- * Resolved web-app base URL for CLI deep links and browser OAuth.
- * Precedence: `DX_WEB_BASE_URL`, persisted `webBaseUrl`, then `inferWebAppUrlFromApiBaseUrl(apiBaseUrl)`.
- */
-export function resolveWebBaseUrl(apiBaseUrl: string): string {
-  if (process.env.DX_WEB_BASE_URL) {
-    return normalizeUrl(process.env.DX_WEB_BASE_URL);
-  }
-
-  const stored = readConfig().webBaseUrl;
-  if (stored) {
-    return normalizeUrl(stored);
-  }
-
-  return inferWebAppUrlFromApiBaseUrl(apiBaseUrl);
 }

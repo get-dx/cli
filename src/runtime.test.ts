@@ -11,10 +11,11 @@ afterEach(() => {
 });
 
 describe("runtime", () => {
-  it("uses environment overrides for base URL and token", () => {
+  it("uses environment overrides for base URLs and token", () => {
     process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-runtime-default";
     writeConfig({});
     process.env.DX_API_BASE_URL = "https://api.example.com/";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com/";
     process.env.DX_API_TOKEN = "abcd1234wxyz";
 
     const runtime = buildRuntime({
@@ -22,7 +23,7 @@ describe("runtime", () => {
     });
 
     expect(runtime.apiBaseUrl).toBe("https://api.example.com");
-    expect(runtime.webBaseUrl).toBe("https://api.example.com");
+    expect(runtime.webBaseUrl).toBe("https://app.example.com");
     expect(runtime.token).toBe("abcd1234wxyz");
   });
 
@@ -53,7 +54,7 @@ describe("runtime", () => {
     expect(runtime.webBaseUrl).toBe("https://ui.persisted.example.com");
   });
 
-  it("reads persisted base URL when env is absent", () => {
+  it("reads persisted API base URL when env is absent", () => {
     const tmp = vi.fn();
     process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
     writeConfig({ apiBaseUrl: "https://api.persisted.example.com" });
@@ -64,7 +65,6 @@ describe("runtime", () => {
     });
 
     expect(runtime.apiBaseUrl).toBe("https://api.persisted.example.com");
-    expect(runtime.webBaseUrl).toBe("https://api.persisted.example.com");
     expect(runtime.token).toBe("persisted-token");
     expect(tmp).not.toHaveBeenCalled();
   });

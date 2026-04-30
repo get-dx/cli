@@ -117,7 +117,9 @@ describe("auth commands", () => {
         "https://api.getdx.com",
         "secret-token",
       );
-      expect(writes.join("")).toContain('"base_url": "https://api.getdx.com"');
+      expect(writes.join("")).toContain(
+        '"api_base_url": "https://api.getdx.com"',
+      );
       expect(writes.join("")).toContain(
         '"web_base_url": "https://app.getdx.com"',
       );
@@ -453,6 +455,7 @@ describe("auth commands", () => {
       }) as typeof process.stdout.write);
 
       process.env.DX_API_BASE_URL = "https://api.example.com";
+      process.env.DX_WEB_BASE_URL = "https://app.example.com";
       getToken.mockReturnValue("token-1234");
 
       vi.stubGlobal(
@@ -484,7 +487,10 @@ describe("auth commands", () => {
       expect(writes.join("")).toContain('"token_name": "cli"');
       expect(writes.join("")).toContain('"token": "toke**1234"');
       expect(writes.join("")).toContain(
-        '"web_base_url": "https://api.example.com"',
+        '"api_base_url": "https://api.example.com"',
+      );
+      expect(writes.join("")).toContain(
+        '"web_base_url": "https://app.example.com"',
       );
     });
 

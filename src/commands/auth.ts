@@ -8,7 +8,7 @@ import { getContext, wrapAction } from "../commandHelpers.js";
 import {
   persistBaseUrls,
   resolveApiBaseUrl,
-  getNormalizedBaseUrlsFromEnvironment,
+  deriveBaseUrlsFromEnv,
 } from "../config.js";
 import { CliError } from "../errors.js";
 import { request } from "../http.js";
@@ -32,8 +32,7 @@ export function authCommand(): Command {
       wrapAction(async (commandOptions: { token?: string }, command) => {
         const context = getContext(command);
 
-        const { apiBaseUrl, webBaseUrl } =
-          getNormalizedBaseUrlsFromEnvironment();
+        const { apiBaseUrl, webBaseUrl } = deriveBaseUrlsFromEnv();
 
         let token = commandOptions.token;
         if (!token) {
@@ -79,7 +78,7 @@ export function authCommand(): Command {
         if (context.json) {
           renderJson({
             ...response,
-            base_url: apiBaseUrl,
+            api_base_url: apiBaseUrl,
             web_base_url: webBaseUrl,
           });
           return;
@@ -95,7 +94,7 @@ export function authCommand(): Command {
       deleteToken(apiBaseUrl);
 
       if (context.json) {
-        renderJson({ ok: true, base_url: apiBaseUrl, logged_out: true });
+        renderJson({ ok: true, api_base_url: apiBaseUrl, logged_out: true });
       } else {
         renderLoggedOut(apiBaseUrl);
       }

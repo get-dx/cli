@@ -16,7 +16,7 @@ export function buildRuntime(
   overrides?: Partial<Runtime>,
 ): Runtime {
   const apiBaseUrl = overrides?.apiBaseUrl ?? resolveApiBaseUrl();
-  const webBaseUrl = overrides?.webBaseUrl ?? resolveWebBaseUrl(apiBaseUrl);
+  const webBaseUrl = overrides?.webBaseUrl ?? resolveWebBaseUrl();
   const token = overrides?.token ?? getToken(apiBaseUrl);
 
   if (!token) {
@@ -40,7 +40,7 @@ export function buildRuntimeSafe(
   overrides?: Partial<Runtime>,
 ): Runtime | null {
   const apiBaseUrl = overrides?.apiBaseUrl ?? resolveApiBaseUrl();
-  const webBaseUrl = overrides?.webBaseUrl ?? resolveWebBaseUrl(apiBaseUrl);
+  const webBaseUrl = overrides?.webBaseUrl ?? resolveWebBaseUrl();
   const token = overrides?.token ?? getToken(apiBaseUrl);
 
   if (!token) {

@@ -14,10 +14,7 @@ import { renderRichText } from "../renderers.js";
 import * as ui from "../ui.js";
 import { CliError } from "../errors.js";
 import { CliContext, Runtime } from "../types.js";
-import {
-  getNormalizedBaseUrlsFromEnvironment,
-  persistBaseUrls,
-} from "../config.js";
+import { deriveBaseUrlsFromEnv, persistBaseUrls } from "../config.js";
 import { setToken } from "../secrets.js";
 
 // FIXME: make this WAY more glam
@@ -97,7 +94,7 @@ async function ensureLoggedIn(
 
   renderRichText([ui.p(`You are not logged in yet.`), ui.blankLine()]);
 
-  const { apiBaseUrl, webBaseUrl } = getNormalizedBaseUrlsFromEnvironment();
+  const { apiBaseUrl, webBaseUrl } = deriveBaseUrlsFromEnv();
   return await attemptLogin(apiBaseUrl, webBaseUrl, context);
 }
 
