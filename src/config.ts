@@ -24,12 +24,7 @@ export function readConfig(): StoredConfig {
   const raw = JSON.parse(content) as Record<string, string | undefined>;
   const api = raw.apiBaseUrl;
   const web = raw.webBaseUrl;
-  if (api === undefined && web === undefined && Object.keys(raw).length > 0) {
-    // Handling the breaking change from `baseUrl` to `apiBaseUrl` and `webBaseUrl`
-    throw new CliError(
-      "Your on-disk DX CLI config is missing apiBaseUrl and webBaseUrl. Run `dx auth logout`, then login again via `dx init` or `dx auth login`.",
-    );
-  }
+
   const stored: StoredConfig = {};
   if (web) {
     stored.webBaseUrl = web;
@@ -38,6 +33,76 @@ export function readConfig(): StoredConfig {
     stored.apiBaseUrl = api;
   }
   return stored;
+}
+
+/**
+ * Responsible for handling the migration from `baseUrl` to `apiBaseUrl` and `webBaseUrl`,
+ * so the upgrade to 0.3.x will be non-breaking for `cloud` and `dedicated` deployments.
+ *
+ * `managed` deployments will encounter an error and will have to reauthenticate.
+ *
+ * TODO: delete after 2026-07-01.
+ */
+export function handleTemporaryBaseUrlMigration(argv: string[]): void {
+  if (!process.env.VITEST) {
+    // Running tests - we don't want our permanent tests to exercise this logic
+    return;
+  }
+
+  const COMMANDS_TO_SKIP_MIGRATION = ["login", "logout", "init"];
+  if (COMMANDS_TO_SKIP_MIGRATION.some((command) => argv.includes(command))) {
+    // Logging in or logging out: we need to ignore the current config file's contents
+    return;
+  }
+
+  const configPath = getConfigPath();
+  if (!fs.existsSync(configPath)) {
+    // No config file, no need to migrate
+    return;
+  }
+
+  const content = fs.readFileSync(configPath, "utf8");
+  const raw = JSON.parse(content) as Record<string, string | undefined>;
+
+  const api = raw.apiBaseUrl;
+  const web = raw.webBaseUrl;
+
+  if (api !== undefined && web !== undefined) {
+    // Already migrated, no need to do anything
+    return;
+  }
+
+  if (raw.baseUrl) {
+    // Legacy baseUrl is present, migrate to apiBaseUrl and webBaseUrl
+
+    const apiBaseUrl = raw.baseUrl;
+    let webBaseUrl;
+    if (apiBaseUrl.endsWith(".getdx.com")) {
+      // Migrate `cloud`
+      webBaseUrl = "https://app.getdx.com";
+      writeConfig({
+        apiBaseUrl: normalizeUrl(apiBaseUrl),
+        webBaseUrl: normalizeUrl(webBaseUrl),
+      });
+      return;
+    }
+
+    const dedicatedMatch = apiBaseUrl.match(/^api\.(.+)\.getdx\.io$/);
+    if (dedicatedMatch) {
+      // Migrate `dedicated`
+      webBaseUrl = `https://${dedicatedMatch[1]}.getdx.io`;
+      writeConfig({
+        apiBaseUrl: normalizeUrl(apiBaseUrl),
+        webBaseUrl: normalizeUrl(webBaseUrl),
+      });
+      return;
+    }
+
+    // Unable to automatically migrate `managed`
+    throw new CliError(
+      "Your on-disk DX CLI config is missing apiBaseUrl and webBaseUrl. Run `dx auth logout`, then login again via `dx init` or `dx auth login`.",
+    );
+  }
 }
 
 export function writeConfig(config: StoredConfig): void {

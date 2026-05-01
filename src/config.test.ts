@@ -3,11 +3,9 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { CliError } from "./errors.js";
 import {
   getConfigPath,
   readConfig,
-  resolveApiBaseUrl,
   resolveWebBaseUrl,
   writeConfig,
 } from "./config.js";
@@ -48,18 +46,6 @@ describe("readConfig", () => {
     expect(readConfig()).toEqual({});
   });
 
-  it("throws when only legacy baseUrl is on disk", () => {
-    const configPath = getConfigPath();
-    fs.mkdirSync(path.dirname(configPath), { recursive: true });
-    fs.writeFileSync(
-      configPath,
-      JSON.stringify({ baseUrl: "https://legacy.example.com" }),
-    );
-
-    expect(() => readConfig()).toThrow(CliError);
-    expect(() => readConfig()).toThrow(/dx auth logout/);
-  });
-
   it("prefers apiBaseUrl when both apiBaseUrl and legacy baseUrl are present", () => {
     const configPath = getConfigPath();
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
@@ -75,17 +61,5 @@ describe("readConfig", () => {
     const stored = readConfig();
     expect(stored.apiBaseUrl).toBe("https://new.example.com");
     expect(stored.webBaseUrl).toBe("https://app.example.com");
-  });
-
-  it("throws from resolveApiBaseUrl when only legacy baseUrl is on disk and env is unset", () => {
-    delete process.env.DX_API_BASE_URL;
-    const configPath = getConfigPath();
-    fs.mkdirSync(path.dirname(configPath), { recursive: true });
-    fs.writeFileSync(
-      configPath,
-      JSON.stringify({ baseUrl: "https://from-legacy-file.example.com" }),
-    );
-
-    expect(() => resolveApiBaseUrl()).toThrow(CliError);
   });
 });
