@@ -18,8 +18,115 @@ export function snapshotsCommand(): Command {
     .name("snapshots")
     .description("Work with DX snapshots");
 
-  snapshots.addCommand(csatCommentsCommand());
-  snapshots.addCommand(driverCommentsCommand());
+  const csatComments = new Command()
+    .name("csatComments")
+    .description("Work with snapshot CSAT comments");
+
+  csatComments
+    .command("list")
+    .description("List CSAT comments for a snapshot")
+    .option("--id <id>", "The unique ID of the snapshot")
+    .option("--cursor <cursor>", "Cursor for the next page of results")
+    .option(
+      "--limit <n>",
+      "Max comments per page (default is 50, max is 100)",
+      (value) => parseLimitOption(value, "--limit"),
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "List CSAT comments for a snapshot",
+          command: "dx snapshots csatComments list --id MjUyNbaY",
+        },
+        {
+          label: "List CSAT comments as JSON",
+          command: "dx --json snapshots csatComments list --id MjUyNbaY",
+        },
+        {
+          label: "Fetch the next page using a cursor from the prior response",
+          command:
+            "dx snapshots csatComments list --id MjUyNbaY --cursor xuvkgfq9t0ty --limit 100",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (options, command) => {
+        const id = parseRequiredTextOption(options.id, "--id");
+        const runtime = buildRuntime(getContext(command));
+        const response = await listSnapshotCsatComments(runtime, {
+          id,
+          cursor: options.cursor,
+          limit: options.limit,
+        });
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderSnapshotCsatComments(
+            extractCsatComments(response),
+            response.response_metadata?.next_cursor ?? null,
+          );
+        }
+      }),
+    );
+
+  snapshots.addCommand(csatComments);
+
+  const driverComments = new Command()
+    .name("driverComments")
+    .description("Work with snapshot driver comments");
+
+  driverComments
+    .command("list")
+    .description("List driver comments for a snapshot")
+    .option("--id <id>", "The unique ID of the snapshot")
+    .option("--cursor <cursor>", "Cursor for the next page of results")
+    .option(
+      "--limit <n>",
+      "Max comments per page (default is 50, max is 100)",
+      (value) => parseLimitOption(value, "--limit"),
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "List driver comments for a snapshot",
+          command: "dx snapshots driverComments list --id MjUyNbaY",
+        },
+        {
+          label: "List driver comments as JSON",
+          command: "dx --json snapshots driverComments list --id MjUyNbaY",
+        },
+        {
+          label: "Fetch the next page using a cursor from the prior response",
+          command:
+            "dx snapshots driverComments list --id MjUyNbaY --cursor xuvkgfq9t0ty --limit 100",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (options, command) => {
+        const id = parseRequiredTextOption(options.id, "--id");
+        const runtime = buildRuntime(getContext(command));
+        const response = await listSnapshotDriverComments(runtime, {
+          id,
+          cursor: options.cursor,
+          limit: options.limit,
+        });
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderSnapshotDriverComments(
+            extractDriverComments(response),
+            response.response_metadata?.next_cursor ?? null,
+          );
+        }
+      }),
+    );
+
+  snapshots.addCommand(driverComments);
 
   snapshots
     .command("info")
@@ -82,120 +189,6 @@ export function snapshotsCommand(): Command {
     );
 
   return snapshots;
-}
-
-function csatCommentsCommand(): Command {
-  const csatComments = new Command()
-    .name("csatComments")
-    .description("Work with snapshot CSAT comments");
-
-  csatComments
-    .command("list")
-    .description("List CSAT comments for a snapshot")
-    .option("--id <id>", "The unique ID of the snapshot")
-    .option("--cursor <cursor>", "Cursor for the next page of results")
-    .option(
-      "--limit <n>",
-      "Max comments per page (default is 50, max is 100)",
-      (value) => parseLimitOption(value, "--limit"),
-    )
-    .addHelpText(
-      "afterAll",
-      createExampleText([
-        {
-          label: "List CSAT comments for a snapshot",
-          command: "dx snapshots csatComments list --id MjUyNbaY",
-        },
-        {
-          label: "List CSAT comments as JSON",
-          command: "dx --json snapshots csatComments list --id MjUyNbaY",
-        },
-        {
-          label: "Fetch the next page using a cursor from the prior response",
-          command:
-            "dx snapshots csatComments list --id MjUyNbaY --cursor xuvkgfq9t0ty --limit 100",
-        },
-      ]),
-    )
-    .action(
-      wrapAction(async (options, command) => {
-        const id = parseRequiredTextOption(options.id, "--id");
-        const runtime = buildRuntime(getContext(command));
-        const response = await listSnapshotCsatComments(runtime, {
-          id,
-          cursor: options.cursor,
-          limit: options.limit,
-        });
-
-        if (runtime.context.json) {
-          renderJson(response);
-        } else {
-          renderSnapshotCsatComments(
-            extractCsatComments(response),
-            response.response_metadata?.next_cursor ?? null,
-          );
-        }
-      }),
-    );
-
-  return csatComments;
-}
-
-function driverCommentsCommand(): Command {
-  const driverComments = new Command()
-    .name("driverComments")
-    .description("Work with snapshot driver comments");
-
-  driverComments
-    .command("list")
-    .description("List driver comments for a snapshot")
-    .option("--id <id>", "The unique ID of the snapshot")
-    .option("--cursor <cursor>", "Cursor for the next page of results")
-    .option(
-      "--limit <n>",
-      "Max comments per page (default is 50, max is 100)",
-      (value) => parseLimitOption(value, "--limit"),
-    )
-    .addHelpText(
-      "afterAll",
-      createExampleText([
-        {
-          label: "List driver comments for a snapshot",
-          command: "dx snapshots driverComments list --id MjUyNbaY",
-        },
-        {
-          label: "List driver comments as JSON",
-          command: "dx --json snapshots driverComments list --id MjUyNbaY",
-        },
-        {
-          label: "Fetch the next page using a cursor from the prior response",
-          command:
-            "dx snapshots driverComments list --id MjUyNbaY --cursor xuvkgfq9t0ty --limit 100",
-        },
-      ]),
-    )
-    .action(
-      wrapAction(async (options, command) => {
-        const id = parseRequiredTextOption(options.id, "--id");
-        const runtime = buildRuntime(getContext(command));
-        const response = await listSnapshotDriverComments(runtime, {
-          id,
-          cursor: options.cursor,
-          limit: options.limit,
-        });
-
-        if (runtime.context.json) {
-          renderJson(response);
-        } else {
-          renderSnapshotDriverComments(
-            extractDriverComments(response),
-            response.response_metadata?.next_cursor ?? null,
-          );
-        }
-      }),
-    );
-
-  return driverComments;
 }
 
 type SnapshotDriverComment = Record<string, unknown> & {
