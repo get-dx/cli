@@ -40,7 +40,7 @@ export async function request<T extends Record<string, unknown>>(
     }
   });
 
-  const url = `${runtime.baseUrl}${route}${query.size > 0 ? `?${query.toString()}` : ""}`;
+  const url = `${runtime.apiBaseUrl}${route}${query.size > 0 ? `?${query.toString()}` : ""}`;
   const requestBody =
     options.body !== undefined ? JSON.stringify(options.body) : undefined;
 

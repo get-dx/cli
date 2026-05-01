@@ -117,7 +117,7 @@ describe("teams command", () => {
   };
 
   it("finds a team by member email addresses in human-readable output", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -150,7 +150,7 @@ describe("teams command", () => {
   });
 
   it("prints the findByMembers API response with --json", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -189,7 +189,7 @@ describe("teams command", () => {
   });
 
   it("prints an actionable findByMembers error when no users are found", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
     const exitSpy = vi
       .spyOn(process, "exit")
@@ -223,7 +223,7 @@ describe("teams command", () => {
   });
 
   it("preserves structured findByMembers API errors with --json", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
     const exitSpy = vi
       .spyOn(process, "exit")
@@ -262,7 +262,7 @@ describe("teams command", () => {
   });
 
   it("gets team info by team ID in human-readable output", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -291,7 +291,7 @@ describe("teams command", () => {
   });
 
   it("gets team info by reference ID with --json", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -359,7 +359,7 @@ describe("teams command", () => {
   });
 
   it("lists teams in human-readable output", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -386,7 +386,7 @@ describe("teams command", () => {
   });
 
   it("prints the API response with --json", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(

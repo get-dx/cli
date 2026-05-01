@@ -89,6 +89,7 @@ export function scorecardsCommand() {
           renderScorecard(
             response.scorecard,
             null,
+            runtime,
             `${ui.success(ui.GLYPHS.CHECK)} Scorecard created`,
           );
         }
@@ -168,7 +169,7 @@ export function scorecardsCommand() {
           );
           renderJson({ ok: true, scorecard: processedScorecard });
         } else {
-          renderScorecard(response.scorecard, includeSections);
+          renderScorecard(response.scorecard, includeSections, runtime);
         }
       }),
     );
@@ -310,6 +311,7 @@ export function scorecardsCommand() {
             response.scorecards,
             response.response_metadata?.next_cursor ?? null,
             includeSections,
+            runtime,
           );
         }
       }),
@@ -384,6 +386,7 @@ export function scorecardsCommand() {
           renderScorecard(
             response.scorecard,
             null,
+            runtime,
             `${ui.success(ui.GLYPHS.CHECK)} Scorecard updated`,
           );
         }

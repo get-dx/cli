@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Now persisting and loading configuration for two base URLs instead of one: `DX_API_BASE_URL` and `DX_WEB_BASE_URL`. This enables support for web links and fixes edge cases around logging in to managed deployments. Users of previous versions will need to log out and reauthenticate in order to update their configuration files. See the readme for more details.
+  - BREAKING for users of managed DX deployments on custom domains: these users will need to logout and log back in so the web base URL can be saved. Users that log into DX through `app.getdx.com` or `customer-name.getdx.io` are not affected.
+
+### Added
+
+- Add web links for entities, entity types, and scorecards.
+
 ## 0.2.1 - 2026-04-29
 
 ### Added
