@@ -66,6 +66,8 @@ export function snapshotsCommand(): Command {
           renderSnapshotCsatComments(
             extractCsatComments(response),
             response.response_metadata?.next_cursor ?? null,
+            id,
+            runtime,
           );
         }
       }),
@@ -121,6 +123,8 @@ export function snapshotsCommand(): Command {
           renderSnapshotDriverComments(
             extractDriverComments(response),
             response.response_metadata?.next_cursor ?? null,
+            id,
+            runtime,
           );
         }
       }),
@@ -154,7 +158,7 @@ export function snapshotsCommand(): Command {
         if (runtime.context.json) {
           renderJson(response);
         } else {
-          renderSnapshotInfo(response.snapshot);
+          renderSnapshotInfo(response.snapshot, snapshotId, runtime);
         }
       }),
     );
@@ -183,7 +187,7 @@ export function snapshotsCommand(): Command {
         if (runtime.context.json) {
           renderJson(response);
         } else {
-          renderSnapshots(response.snapshots);
+          renderSnapshots(response.snapshots, runtime);
         }
       }),
     );
@@ -359,10 +363,15 @@ async function listSnapshots(runtime: Runtime): Promise<ListSnapshotsResponse> {
 function renderSnapshotDriverComments(
   comments: SnapshotDriverComment[],
   nextCursor: string | null,
+  snapshotId: string,
+  runtime: Runtime,
 ): void {
   const blocks: ui.Block[] = [ui.h1("Snapshot Driver Comments")];
   blocks.push(
     ui.p(`Displaying ${ui.bold(comments.length.toString())} comments.`),
+  );
+  blocks.push(
+    ui.p(ui.link(snapshotWebLink(snapshotId, "drivers/comments", runtime))),
   );
 
   if (nextCursor) {
@@ -419,10 +428,15 @@ function renderSnapshotDriverComments(
 function renderSnapshotCsatComments(
   comments: SnapshotCsatComment[],
   nextCursor: string | null,
+  snapshotId: string,
+  runtime: Runtime,
 ): void {
   const blocks: ui.Block[] = [ui.h1("Snapshot CSAT Comments")];
   blocks.push(
     ui.p(`Displaying ${ui.bold(comments.length.toString())} comments.`),
+  );
+  blocks.push(
+    ui.p(ui.link(snapshotWebLink(snapshotId, "csat/comments", runtime))),
   );
 
   if (nextCursor) {
@@ -466,12 +480,17 @@ function renderSnapshotCsatComments(
   renderRichText(blocks);
 }
 
-function renderSnapshotInfo(snapshot: SnapshotInfo): void {
+function renderSnapshotInfo(
+  snapshot: SnapshotInfo,
+  snapshotId: string,
+  runtime: Runtime,
+): void {
   const teamScores = snapshot.team_scores ?? [];
   const blocks: ui.Block[] = [ui.h1("Snapshot Information")];
   blocks.push(
     ui.p(`Displaying ${ui.bold(teamScores.length.toString())} team scores.`),
   );
+  blocks.push(ui.p(ui.link(snapshotWebLink(snapshotId, "drivers", runtime))));
 
   if (teamScores.length === 0) {
     blocks.push(ui.p(ui.dim("(None)")));
@@ -520,7 +539,7 @@ function renderSnapshotInfo(snapshot: SnapshotInfo): void {
   renderRichText(blocks);
 }
 
-function renderSnapshots(snapshots: Snapshot[]): void {
+function renderSnapshots(snapshots: Snapshot[], runtime: Runtime): void {
   const blocks: ui.Block[] = [ui.h1("Snapshots")];
   blocks.push(
     ui.p(`Displaying ${ui.bold(snapshots.length.toString())} snapshots.`),
@@ -571,6 +590,10 @@ function renderSnapshots(snapshots: Snapshot[]): void {
             "Deleted",
             formatTimestamp(snapshot.deleted_at),
             snapshot.deleted_at,
+          ),
+          ui.dli(
+            "Web link",
+            ui.link(snapshotWebLink(snapshot.id, "drivers", runtime)),
           ),
         ].filter((detail) => detail !== null),
         { termWidth: 18 },
@@ -690,6 +713,14 @@ function formatBenchmarkNumber(value: unknown): string {
   return typeof value === "number" && Number.isFinite(value)
     ? value.toString()
     : "(None)";
+}
+
+function snapshotWebLink(
+  snapshotId: string,
+  section: "drivers" | "drivers/comments" | "csat/comments",
+  runtime: Runtime,
+): string {
+  return ui.webLink(`/snapshots/${snapshotId}/${section}`, runtime);
 }
 
 function parseRequiredTextOption(value: unknown, flag: string): string {

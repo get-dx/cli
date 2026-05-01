@@ -139,6 +139,7 @@ describe("snapshots command", () => {
 
   it("lists snapshot CSAT comments in human-readable output", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -168,6 +169,9 @@ describe("snapshots command", () => {
     expect(stdoutWrites.join("")).toContain("Snapshot CSAT Comments");
     expect(stdoutWrites.join("")).toContain("Next cursor");
     expect(stdoutWrites.join("")).toContain("next-csat-cursor");
+    expect(stdoutWrites.join("")).toContain(
+      "https://app.example.com/snapshots/MjUyNbaY/csat/comments",
+    );
     expect(stdoutWrites.join("")).toContain("CSAT");
     expect(stdoutWrites.join("")).toContain("Core Data");
     expect(stdoutWrites.join("")).toContain("The platform is easy to use.");
@@ -276,6 +280,7 @@ describe("snapshots command", () => {
 
   it("gets snapshot info in human-readable output", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -295,6 +300,9 @@ describe("snapshots command", () => {
       expect.objectContaining({ method: "GET" }),
     );
     expect(stdoutWrites.join("")).toContain("Snapshot Information");
+    expect(stdoutWrites.join("")).toContain(
+      "https://app.example.com/snapshots/MjUyNbaY/drivers",
+    );
     expect(stdoutWrites.join("")).toContain("Machine Learning");
     expect(stdoutWrites.join("")).toContain("Team ID");
     expect(stdoutWrites.join("")).toContain("item_name");
@@ -354,6 +362,7 @@ describe("snapshots command", () => {
 
   it("lists snapshots in human-readable output", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -375,6 +384,10 @@ describe("snapshots command", () => {
     expect(stdoutWrites.join("")).toContain("Snapshots");
     expect(stdoutWrites.join("")).toContain("MjUyNbaY");
     expect(stdoutWrites.join("")).toContain("2024-06-16");
+    expect(stdoutWrites.join("")).toContain("Web link");
+    expect(stdoutWrites.join("")).toContain(
+      "https://app.example.com/snapshots/MjUyNbaY/drivers",
+    );
     expect(stdoutWrites.join("")).toContain("3077");
     expect(stdoutWrites.join("")).toContain("0");
   });
@@ -400,6 +413,7 @@ describe("snapshots command", () => {
 
   it("lists snapshot driver comments in human-readable output", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -429,6 +443,9 @@ describe("snapshots command", () => {
     expect(stdoutWrites.join("")).toContain("Snapshot Driver Comments");
     expect(stdoutWrites.join("")).toContain("Next cursor");
     expect(stdoutWrites.join("")).toContain("next-driver-cursor");
+    expect(stdoutWrites.join("")).toContain(
+      "https://app.example.com/snapshots/MjUyNbaY/drivers/comments",
+    );
     expect(stdoutWrites.join("")).toContain("Ease of release");
     expect(stdoutWrites.join("")).toContain("Core Data");
     expect(stdoutWrites.join("")).toContain(
