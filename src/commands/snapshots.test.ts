@@ -138,7 +138,7 @@ describe("snapshots command", () => {
   };
 
   it("lists snapshot CSAT comments in human-readable output", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -174,7 +174,7 @@ describe("snapshots command", () => {
   });
 
   it("prints the snapshots csatComments API response with --json", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -202,7 +202,7 @@ describe("snapshots command", () => {
   });
 
   it("passes CSAT comments --cursor and --limit to the API", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -275,7 +275,7 @@ describe("snapshots command", () => {
   });
 
   it("gets snapshot info in human-readable output", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -314,7 +314,7 @@ describe("snapshots command", () => {
   });
 
   it("prints the snapshot info API response with --json", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -353,7 +353,7 @@ describe("snapshots command", () => {
   });
 
   it("lists snapshots in human-readable output", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -380,7 +380,7 @@ describe("snapshots command", () => {
   });
 
   it("prints the snapshots list API response with --json", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -399,7 +399,7 @@ describe("snapshots command", () => {
   });
 
   it("lists snapshot driver comments in human-readable output", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -437,7 +437,7 @@ describe("snapshots command", () => {
   });
 
   it("prints the snapshots driverComments API response with --json", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -465,7 +465,7 @@ describe("snapshots command", () => {
   });
 
   it("passes driver comments --cursor and --limit to the API", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -504,7 +504,7 @@ describe("snapshots command", () => {
   });
 
   it("renders comments when the response uses the comments key", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
