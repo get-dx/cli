@@ -76,7 +76,7 @@ describe("studio query command", () => {
   };
 
   it("runs a query and prints the results as an ASCII table", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     const fetchMock = vi
@@ -138,7 +138,7 @@ describe("studio query command", () => {
   });
 
   it("prints the JSON results payload with --json", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
@@ -172,7 +172,7 @@ describe("studio query command", () => {
   });
 
   it("uses Retry-After to pace polling", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     const fetchMock = vi
@@ -211,7 +211,7 @@ describe("studio query command", () => {
   });
 
   it("downloads CSV results to disk with --output", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dx-cli-query-"));
@@ -324,7 +324,7 @@ describe("studio query command", () => {
     }
 
     beforeEach(() => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
     });
 
@@ -506,7 +506,7 @@ describe("studio query command", () => {
       .spyOn(process, "exit")
       .mockImplementation(() => undefined as never);
 
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(

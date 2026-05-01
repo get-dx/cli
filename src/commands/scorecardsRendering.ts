@@ -6,11 +6,13 @@ import type {
 import type { ScorecardIncludeSection } from "./scorecards.js";
 import { renderRichText } from "../renderers.js";
 import * as ui from "../ui.js";
+import { Runtime } from "../types.js";
 
 export function renderScorecardList(
   scorecards: Scorecard[],
   nextCursor: string | null,
   includeSections: ScorecardIncludeSection[] | null,
+  runtime: Runtime,
 ) {
   const shouldIncludeAll = includeSections === null;
   const blocks = [ui.h1("Scorecards")];
@@ -28,7 +30,7 @@ export function renderScorecardList(
 
     if (shouldIncludeAll || includeSections.includes("core")) {
       blocks.push(ui.h3("Basic details"));
-      blocks.push(...basicDetailsContent(scorecard));
+      blocks.push(...basicDetailsContent(scorecard, runtime));
 
       blocks.push(ui.h3("Entity filter"));
       blocks.push(...entityFilterContent(scorecard));
@@ -59,6 +61,7 @@ export function renderScorecardList(
 export function renderScorecard(
   scorecard: Scorecard,
   includeSections: ScorecardIncludeSection[] | null,
+  runtime: Runtime,
   title = "Scorecard Information",
 ) {
   const shouldIncludeAll = includeSections === null;
@@ -67,7 +70,7 @@ export function renderScorecard(
 
   if (shouldIncludeAll || includeSections.includes("core")) {
     blocks.push(ui.h2("Basic details"));
-    blocks.push(...basicDetailsContent(scorecard));
+    blocks.push(...basicDetailsContent(scorecard, runtime));
 
     blocks.push(ui.h2("Entity filter"));
     blocks.push(...entityFilterContent(scorecard));
@@ -94,7 +97,10 @@ export function renderScorecard(
   renderRichText(blocks);
 }
 
-function basicDetailsContent(scorecard: Scorecard): ui.Block[] {
+function basicDetailsContent(
+  scorecard: Scorecard,
+  runtime: Runtime,
+): ui.Block[] {
   const items = [
     ui.dli("ID", [ui.p(ui.code(scorecard.id), false)]),
     ui.dli("Name", [ui.p(scorecard.name, false)]),
@@ -109,6 +115,9 @@ function basicDetailsContent(scorecard: Scorecard): ui.Block[] {
         scorecard.published ? ui.success("Yes") : ui.dim("No (draft)"),
         false,
       ),
+    ]),
+    ui.dli("Web link", [
+      ui.p(ui.link(ui.webLink(`/scorecards/${scorecard.id}`, runtime)), false),
     ]),
   ];
 

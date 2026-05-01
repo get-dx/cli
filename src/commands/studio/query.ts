@@ -272,7 +272,7 @@ async function downloadStudioQueryResultsCsv(
 ): Promise<void> {
   const response = await fetchWithApiHeaders(
     runtime,
-    `${runtime.baseUrl}/studio.queryRuns.results?id=${encodeURIComponent(id)}&format=csv`,
+    `${runtime.apiBaseUrl}/studio.queryRuns.results?id=${encodeURIComponent(id)}&format=csv`,
     { redirect: "manual" },
   );
 
@@ -286,7 +286,7 @@ async function downloadStudioQueryResultsCsv(
     }
 
     const downloadResponse = await fetchResponse(
-      new URL(location, runtime.baseUrl).toString(),
+      new URL(location, runtime.apiBaseUrl).toString(),
       {
         method: "GET",
         headers: buildDownloadHeaders(runtime, "text/csv"),

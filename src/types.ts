@@ -1,7 +1,8 @@
 import type { Logger } from "./logger.js";
 
 export interface Runtime {
-  baseUrl: string;
+  apiBaseUrl: string;
+  webBaseUrl: string;
   token: string;
   context: CliContext;
   version: string;
@@ -21,5 +22,6 @@ export interface RequestOptions {
 }
 
 export interface StoredConfig {
-  baseUrl?: string;
+  apiBaseUrl?: string;
+  webBaseUrl?: string;
 }

@@ -51,7 +51,7 @@ describe("catalog entities commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -90,7 +90,7 @@ describe("catalog entities commands", () => {
     });
 
     it("includes optional fields in the request body when provided", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -135,7 +135,7 @@ describe("catalog entities commands", () => {
     });
 
     it("splits --owner-team-ids into an array in the request body", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -278,7 +278,7 @@ describe("catalog entities commands", () => {
     });
 
     it("fetches entity type and sends properties in the request body", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -332,7 +332,7 @@ describe("catalog entities commands", () => {
     });
 
     it("sends multiple properties of different types", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -399,7 +399,7 @@ describe("catalog entities commands", () => {
     });
 
     it("sends null to remove a property when value is 'null'", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -448,7 +448,7 @@ describe("catalog entities commands", () => {
     });
 
     it("fetches entity type and sends aliases in the request body", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -504,7 +504,7 @@ describe("catalog entities commands", () => {
     });
 
     it("parses json property values with JSON.parse", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -568,7 +568,7 @@ describe("catalog entities commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -616,7 +616,7 @@ describe("catalog entities commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -664,7 +664,7 @@ describe("catalog entities commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -714,7 +714,7 @@ describe("catalog entities commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -764,7 +764,7 @@ describe("catalog entities commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -813,7 +813,7 @@ describe("catalog entities commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -859,7 +859,7 @@ describe("catalog entities commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -911,7 +911,7 @@ describe("catalog entities commands", () => {
     });
 
     it("sends agent provenance from environment variables", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       process.env.DX_AGENT_NAME = "codex";
       process.env.DX_AGENT_SESSION_ID = "session-123";
       getToken.mockReturnValue("token-123");
@@ -989,7 +989,7 @@ describe("catalog entities commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1030,7 +1030,7 @@ describe("catalog entities commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1077,7 +1077,7 @@ describe("catalog entities commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1158,7 +1158,7 @@ describe("catalog entities commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1211,7 +1211,7 @@ describe("catalog entities commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1314,7 +1314,7 @@ describe("catalog entities commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1352,7 +1352,7 @@ describe("catalog entities commands", () => {
     });
 
     it("supports cursor-based pagination", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1444,7 +1444,7 @@ describe("catalog entities commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1487,7 +1487,7 @@ describe("catalog entities commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1572,7 +1572,7 @@ describe("catalog entities commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1611,7 +1611,7 @@ describe("catalog entities commands", () => {
     });
 
     it("includes optional fields in the request body when provided", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1655,7 +1655,7 @@ describe("catalog entities commands", () => {
     });
 
     it("fetches the entity and entity type before updating properties", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1717,7 +1717,7 @@ describe("catalog entities commands", () => {
     });
 
     it("sends null to remove a property when value is 'null'", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1767,7 +1767,7 @@ describe("catalog entities commands", () => {
     });
 
     it("fetches the entity and entity type before updating aliases", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1829,7 +1829,7 @@ describe("catalog entities commands", () => {
     });
 
     it("sends null to remove an alias when value is 'null'", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1911,7 +1911,7 @@ describe("catalog entities commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -1961,7 +1961,7 @@ describe("catalog entities commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -2011,7 +2011,7 @@ describe("catalog entities commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -2108,7 +2108,7 @@ describe("catalog entities commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -2158,7 +2158,7 @@ describe("catalog entities commands", () => {
     });
 
     it("fetches entity type and sends properties in the request body", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -2222,7 +2222,7 @@ describe("catalog entities commands", () => {
     });
 
     it("fetches entity type and sends aliases in the request body", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -2340,7 +2340,7 @@ describe("catalog entities commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(

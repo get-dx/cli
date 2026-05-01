@@ -93,6 +93,7 @@ export function entityTypesCommand() {
         } else {
           renderEntityType(
             response.entity_type,
+            runtime,
             `${ui.success(ui.GLYPHS.CHECK)} Entity type created`,
           );
         }
@@ -167,7 +168,7 @@ export function entityTypesCommand() {
         if (runtime.context.json) {
           renderJson(processedEntityType);
         } else {
-          renderEntityType(processedEntityType as Partial<EntityType>);
+          renderEntityType(processedEntityType as Partial<EntityType>, runtime);
         }
       }),
     );
@@ -302,6 +303,7 @@ export function entityTypesCommand() {
           renderEntityTypeList(
             processedEntityTypes,
             response.response_metadata?.next_cursor ?? null,
+            runtime,
           );
         }
       }),
@@ -376,6 +378,7 @@ export function entityTypesCommand() {
         } else {
           renderEntityType(
             response.entity_type,
+            runtime,
             `${ui.success(ui.GLYPHS.CHECK)} Entity type updated`,
           );
         }

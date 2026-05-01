@@ -49,4 +49,4 @@ Tests use **Vitest**. Run with `pnpm test`. Test files live alongside source fil
 
 - Store a token: `dx auth login --token <token>`
 - Or set `DX_API_TOKEN` in the environment.
-- Tokens are keyed per base URL (supports multiple DX instances).
+- Tokens are keyed per API base URL (supports multiple DX instances).

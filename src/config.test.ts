@@ -1,24 +1,74 @@
-import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 
-import { resolveUiUrl } from "./config.js";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-describe("resolveUiUrl", () => {
-  it("maps DX cloud API host to app.getdx.com", () => {
-    expect(resolveUiUrl("https://api.getdx.com")).toBe("https://app.getdx.com");
-    expect(resolveUiUrl("https://api.getdx.com/")).toBe(
-      "https://app.getdx.com",
-    );
+import {
+  getConfigPath,
+  readConfig,
+  resolveWebBaseUrl,
+  writeConfig,
+} from "./config.js";
+
+const originalEnv = { ...process.env };
+
+beforeEach(() => {
+  process.env = { ...originalEnv };
+  process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-resolve-web-base-url";
+  writeConfig({});
+});
+
+afterEach(() => {
+  process.env = { ...originalEnv };
+});
+
+describe("resolveWebBaseUrl", () => {
+  it("prefers DX_WEB_BASE_URL over persisted config and inference", () => {
+    process.env.DX_WEB_BASE_URL = "https://custom.example.com/";
+    writeConfig({ webBaseUrl: "https://wrong.example.com" });
+
+    expect(resolveWebBaseUrl()).toBe("https://custom.example.com");
   });
 
-  it("maps dedicated API host to the matching app origin", () => {
-    expect(resolveUiUrl("https://api.acme.getdx.io")).toBe(
-      "https://acme.getdx.io",
-    );
+  it("uses persisted webBaseUrl when DX_WEB_BASE_URL is unset", () => {
+    writeConfig({ webBaseUrl: "https://stored.example.com" });
+
+    expect(resolveWebBaseUrl()).toBe("https://stored.example.com");
+  });
+});
+
+describe("readConfig", () => {
+  it("returns {} for an empty config object on disk", () => {
+    const configPath = getConfigPath();
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, JSON.stringify({}));
+
+    expect(readConfig()).toEqual({});
   });
 
-  it("falls back to the API URL origin for other hosts", () => {
-    expect(resolveUiUrl("https://api.example.com/v1/")).toBe(
-      "https://api.example.com",
+  it("prefers apiBaseUrl when both apiBaseUrl and legacy baseUrl are present", () => {
+    const configPath = getConfigPath();
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        apiBaseUrl: "https://new.example.com",
+        webBaseUrl: "https://app.example.com",
+        baseUrl: "https://old.example.com",
+      }),
     );
+
+    const stored = readConfig();
+    expect(stored.apiBaseUrl).toBe("https://new.example.com");
+    expect(stored.webBaseUrl).toBe("https://app.example.com");
   });
+});
+
+it("TIME BOMB TEST: remove the handleTemporaryBaseUrlMigration function after 2026-07-01", () => {
+  const now = new Date();
+  if (now.getTime() > new Date("2026-07-01").getTime()) {
+    throw new Error(
+      "TIME BOMB TEST: handleTemporaryBaseUrlMigration function should be removed from the codebase after 2026-07-01",
+    );
+  }
 });

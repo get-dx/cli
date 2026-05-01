@@ -18,31 +18,44 @@ Interactively login and install the AI agent skill:
 dx init
 ```
 
-The CLI uses `app.getdx.com` as the hostname and `api.getdx.com` as the api base url by default.
-
-### Dedicated or managed deployments
-
-If your organization is on a dedicated or managed DX deployment, pass your custom hostname at init time:
-
-```shell
-# Flag (dedicated instance at mycompany.getdx.io)
-dx init --host mycompany.getdx.io
-
-# Env var — useful for CI or scripted setups
-DX_HOST=mycompany.getdx.io dx init
-```
-
-The `DX_HOST` and `--host` values accept:
-
-- `app.getdx.com` — DX Cloud (default)
-- `<account>.getdx.io` — DX dedicated (derives `https://api.<account>.getdx.io` automatically)
-- Any custom domain — you will be prompted for the separate API base URL
-
 Show help text:
 
 ```shell
 dx --help
 dx <subcommand> --help
+```
+
+### Customizing base URLs
+
+The CLI requires two base URLs to be configured. The default values are used for DX **cloud** deployments. Users of **dedicated** and **managed** deployments will need to specify these values explicitly when logging in.
+
+| Value            | How it is used                               | Env var           | Default value           |
+| ---------------- | -------------------------------------------- | ----------------- | ----------------------- |
+| **Web base URL** | Browser-based login and displaying web links | `DX_WEB_BASE_URL` | `https://app.getdx.com` |
+| **API base URL** | Making each API request to DX                | `DX_API_BASE_URL` | `https://api.getdx.com` |
+
+#### For dedicated deployments
+
+Set the env vars once when initializing:
+
+```shell
+# Interactive login
+DX_WEB_BASE_URL="https://mycompany.getdx.io" DX_API_BASE_URL="https://api.mycompany.getdx.io" dx init
+
+# Non-interactive login for CI or remote agents
+DX_WEB_BASE_URL="https://mycompany.getdx.io" DX_API_BASE_URL="https://api.mycompany.getdx.io" dx auth login --token $DX_TOKEN
+```
+
+#### For managed deployments
+
+Set the env vars once when initializing:
+
+```shell
+# Interactive login
+DX_WEB_BASE_URL="https://dx.some-example-subdomain.example.com" DX_API_BASE_URL="https://api.dx.some-example-subdomain.example.com" dx init
+
+# Non-interactive login for CI or remote agents
+DX_WEB_BASE_URL="https://dx.some-example-subdomain.example.com" DX_API_BASE_URL="https://api.dx.some-example-subdomain.example.com" dx auth login --token $DX_TOKEN
 ```
 
 ## Logging
