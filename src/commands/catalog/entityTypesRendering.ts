@@ -1,10 +1,12 @@
 import type { EntityType, Property } from "./entityTypes.js";
 import { renderRichText } from "../../renderers.js";
+import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
 
 export function renderEntityTypeList(
   entityTypes: Partial<EntityType>[],
   nextCursor: string | null,
+  runtime: Runtime,
 ) {
   const blocks = [ui.h1("Entity Types")];
 
@@ -29,7 +31,7 @@ export function renderEntityTypeList(
 
     if (entityType.identifier) {
       blocks.push(ui.h3("Core attributes"));
-      blocks.push(...coreContent(entityType));
+      blocks.push(...coreContent(entityType, runtime));
     }
 
     if (entityType.properties) {
@@ -48,13 +50,14 @@ export function renderEntityTypeList(
 
 export function renderEntityType(
   entityType: Partial<EntityType>,
+  runtime: Runtime,
   title = "Entity Type Information",
 ) {
   renderRichText([
     ui.h1(title),
 
     entityType.identifier
-      ? [ui.h2("Core attributes"), ...coreContent(entityType)]
+      ? [ui.h2("Core attributes"), ...coreContent(entityType, runtime)]
       : null,
 
     entityType.properties
@@ -74,27 +77,37 @@ export function renderEntityTypeDeleted(entityType: EntityType) {
   ]);
 }
 
-function coreContent(entityType: Partial<EntityType>): ui.Block[] {
+function coreContent(
+  entityType: Partial<EntityType>,
+  runtime: Runtime,
+): ui.Block[] {
   return [
     ui.dl(
       [
-        ui.dli("Name", [ui.p(entityType.name ?? ui.dim("(None)"), false)]),
-        ui.dli("Identifier", [ui.p(ui.code(entityType.identifier!), false)]),
-        ui.dli("Description", [
-          ui.p(entityType.description || ui.dim("(None)"), false),
-        ]),
-        ui.dli("Icon", [ui.p(entityType.icon ?? ui.dim("(None)"), false)]),
-        ui.dli("Ordering", [
-          ui.p(entityType.ordering?.toString() ?? ui.dim("(None)"), false),
-        ]),
-        ui.dli("Created", [
-          ui.p(ui.timestampSummary(entityType.created_at!), false),
-        ]),
-        ui.dli("Last updated", [
-          ui.p(ui.timestampSummary(entityType.updated_at!)),
-        ]),
+        ui.dli("Name", entityType.name ?? ui.dim("(None)")),
+        ui.dli("Identifier", ui.code(entityType.identifier!)),
+        ui.dli("Description", entityType.description || ui.dim("(None)")),
+        ui.dli("Icon", entityType.icon ?? ui.dim("(None)")),
+        ui.dli("Ordering", entityType.ordering?.toString() ?? ui.dim("(None)")),
+        ui.dli("Created", ui.timestampSummary(entityType.created_at!)),
+        ui.dli("Last updated", ui.timestampSummary(entityType.updated_at!)),
+        ui.dli(
+          "Entities link",
+          ui.link(
+            ui.webLink(`/catalog?type=${entityType.identifier}`, runtime),
+          ),
+        ),
+        ui.dli(
+          "Settings link",
+          ui.link(
+            ui.webLink(
+              `/catalog/manage/entitytypes/${entityType.identifier}`,
+              runtime,
+            ),
+          ),
+        ),
       ],
-      { termWidth: 14 },
+      { termWidth: 15 },
     ),
   ];
 }

@@ -76,7 +76,7 @@ describe("workflows commands", () => {
     };
 
     it("lists workflows in human-readable output", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -105,7 +105,7 @@ describe("workflows commands", () => {
     });
 
     it("prints the API response with --json", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -124,7 +124,7 @@ describe("workflows commands", () => {
     });
 
     it("sends scope and entity_identifier query params when set", async () => {
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(

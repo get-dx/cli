@@ -5,13 +5,16 @@ import { deleteToken, setToken } from "../secrets.js";
 import { renderJson } from "../renderers.js";
 import { renderAuthInfo, renderLoggedOut } from "./authRendering.js";
 import { getContext, wrapAction } from "../commandHelpers.js";
-import { persistBaseUrl, resolveBaseUrl, resolveUiUrl } from "../config.js";
+import {
+  persistBaseUrls,
+  resolveApiBaseUrl,
+  deriveBaseUrlsFromEnv,
+} from "../config.js";
 import { CliError } from "../errors.js";
 import { request } from "../http.js";
 import { loginViaBrowser } from "../loginViaBrowser.js";
-import { buildLogger, buildRuntime } from "../runtime.js";
+import { buildRuntime } from "../runtime.js";
 import type { Runtime } from "../types.js";
-import cliPackage from "../../package.json" with { type: "json" };
 import { maskToken } from "../ui.js";
 
 export function authCommand(): Command {
@@ -28,7 +31,8 @@ export function authCommand(): Command {
     .action(
       wrapAction(async (commandOptions: { token?: string }, command) => {
         const context = getContext(command);
-        const baseUrl = resolveBaseUrl();
+
+        const { apiBaseUrl, webBaseUrl } = deriveBaseUrlsFromEnv();
 
         let token = commandOptions.token;
         if (!token) {
@@ -47,7 +51,7 @@ export function authCommand(): Command {
           });
 
           if (method === "browser") {
-            token = await loginViaBrowser(resolveUiUrl(baseUrl));
+            token = await loginViaBrowser(webBaseUrl);
           } else {
             token = await password({
               message: "Paste your account web API token here:",
@@ -62,55 +66,61 @@ export function authCommand(): Command {
           }
         }
 
-        const runtime = {
-          baseUrl,
+        const runtime = buildRuntime(context, {
+          apiBaseUrl,
           token,
-          context,
-          version: cliPackage.version,
-          logger: buildLogger(context),
-        };
+          webBaseUrl,
+        });
 
         const response = await getAuthInfo(runtime);
-        persistBaseUrl(baseUrl);
-        setToken(baseUrl, token);
+        persistBaseUrls(apiBaseUrl, webBaseUrl);
+        setToken(apiBaseUrl, token);
         if (context.json) {
-          renderJson({ ...response, base_url: baseUrl });
+          renderJson({
+            ...response,
+            api_base_url: apiBaseUrl,
+            web_base_url: webBaseUrl,
+          });
           return;
         }
-        renderAuthInfo(response, token, baseUrl);
+        renderAuthInfo(response, token, apiBaseUrl);
       }),
     );
 
   auth.command("logout").action(
     wrapAction(async (_options, command) => {
       const context = getContext(command);
-      const baseUrl = resolveBaseUrl();
-      deleteToken(baseUrl);
+      const apiBaseUrl = resolveApiBaseUrl();
+      deleteToken(apiBaseUrl);
 
       if (context.json) {
-        renderJson({ ok: true, base_url: baseUrl, logged_out: true });
+        renderJson({ ok: true, api_base_url: apiBaseUrl, logged_out: true });
       } else {
-        renderLoggedOut(baseUrl);
+        renderLoggedOut(apiBaseUrl);
       }
     }),
   );
 
-  auth.command("status").action(
-    wrapAction(async (_options, command) => {
-      const runtime = buildRuntime(getContext(command));
-      const response = await getAuthInfo(runtime);
+  auth
+    .command("status")
+    .alias("info")
+    .action(
+      wrapAction(async (_options, command) => {
+        const runtime = buildRuntime(getContext(command));
+        const response = await getAuthInfo(runtime);
 
-      if (runtime.context.json) {
-        renderJson({
-          ...response,
-          token: maskToken(runtime.token),
-          base_url: runtime.baseUrl,
-        });
-      } else {
-        renderAuthInfo(response, runtime.token, runtime.baseUrl);
-      }
-    }),
-  );
+        if (runtime.context.json) {
+          renderJson({
+            ...response,
+            token: maskToken(runtime.token),
+            api_base_url: runtime.apiBaseUrl,
+            web_base_url: runtime.webBaseUrl,
+          });
+        } else {
+          renderAuthInfo(response, runtime.token, runtime.apiBaseUrl);
+        }
+      }),
+    );
 
   return auth;
 }

@@ -1,6 +1,6 @@
 ---
 name: dx-cli
-description: Interact with the DX (getdx.com) APIs to get and manage information about services and other entities in the Software Catalog, manage Scorecards to track system health, and perform data analysis on Engineering productivity.
+description: Interact with the DX (getdx.com) APIs to get and manage information about the Software Catalog, manage Scorecards to track system health, analyze Snapshot survey results, and perform data analysis on Engineering productivity.
 user-invocable: false
 compatibility: Requires access to the internet
 allowed-tools: Bash(dx:*)
@@ -60,3 +60,4 @@ If this returns an error or shows that you are not logged in, stop and ask the u
 
 - [Catalog management](./references/catalog-management.md) — Entities and entity types: listing, inspecting, creating, updating, and deleting.
 - [Scorecards management](./references/scorecards-management.md) — Scorecards and checks: listing, inspecting, creating, updating, and deleting via YAML.
+- [Snapshot analysis](./references/snapshot-analysis.md) — Analyze snapshot scores, driver comments, and CSAT comments.

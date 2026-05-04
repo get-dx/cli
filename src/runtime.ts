@@ -1,4 +1,4 @@
-import { resolveBaseUrl } from "./config.js";
+import { resolveApiBaseUrl, resolveWebBaseUrl } from "./config.js";
 import { CliError } from "./errors.js";
 import { getToken } from "./secrets.js";
 import type { CliContext, Runtime } from "./types.js";
@@ -15,8 +15,9 @@ export function buildRuntime(
   context: CliContext,
   overrides?: Partial<Runtime>,
 ): Runtime {
-  const baseUrl = overrides?.baseUrl ?? resolveBaseUrl();
-  const token = overrides?.token ?? getToken(baseUrl);
+  const apiBaseUrl = overrides?.apiBaseUrl ?? resolveApiBaseUrl();
+  const webBaseUrl = overrides?.webBaseUrl ?? resolveWebBaseUrl();
+  const token = overrides?.token ?? getToken(apiBaseUrl);
 
   if (!token) {
     throw new CliError(
@@ -25,7 +26,8 @@ export function buildRuntime(
   }
 
   return {
-    baseUrl,
+    apiBaseUrl,
+    webBaseUrl,
     token,
     context,
     version: cliPackage.version,
@@ -37,15 +39,17 @@ export function buildRuntimeSafe(
   context: CliContext,
   overrides?: Partial<Runtime>,
 ): Runtime | null {
-  const baseUrl = overrides?.baseUrl ?? resolveBaseUrl();
-  const token = overrides?.token ?? getToken(baseUrl);
+  const apiBaseUrl = overrides?.apiBaseUrl ?? resolveApiBaseUrl();
+  const webBaseUrl = overrides?.webBaseUrl ?? resolveWebBaseUrl();
+  const token = overrides?.token ?? getToken(apiBaseUrl);
 
   if (!token) {
     return null;
   }
 
   return {
-    baseUrl,
+    apiBaseUrl,
+    webBaseUrl,
     token,
     context,
     version: cliPackage.version,

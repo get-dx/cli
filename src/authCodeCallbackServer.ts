@@ -17,6 +17,7 @@ export type OnCodeReceiptFn = (
 export class AuthCodeCallbackServer {
   private server: Server | null = null;
   private address: string | null = null;
+  private requestReceived = false;
 
   async start(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
@@ -42,22 +43,38 @@ export class AuthCodeCallbackServer {
     onCodeReceipt: OnCodeReceiptFn,
   ): Promise<OnCodeReceiptReponse> {
     return new Promise<OnCodeReceiptReponse>((resolve, reject) => {
-      if (!this.server) {
+      const srv = this.server;
+      if (!srv) {
         reject(new Error("Unreachable: server not started"));
         return;
       }
 
-      this.server.on("request", async (req, res) => {
-        this.stop();
+      srv.on("request", async (req, res) => {
+        if (this.requestReceived) {
+          res.writeHead(409, { Connection: "close" }).end();
+          return;
+        }
+        this.requestReceived = true;
 
         const url = new URL(req.url ?? "/", this.address!);
         const code = url.searchParams.get("code");
         const state = url.searchParams.get("state");
 
+        const stopServerAndResolve = (result: OnCodeReceiptReponse) => {
+          res.once("close", () => {
+            this.stop();
+            resolve(result);
+          });
+        };
+
         if (!code) {
           const message = "Authentication failed: no code received";
-          res.writeHead(500, { "Content-Type": "text/plain" }).end(message);
-          resolve({ type: "ERROR", error: new CliError(message) });
+          res.writeHead(500, {
+            Connection: "close",
+            "Content-Type": "text/plain",
+          });
+          stopServerAndResolve({ type: "ERROR", error: new CliError(message) });
+          res.end(message);
           return;
         }
 
@@ -69,34 +86,51 @@ export class AuthCodeCallbackServer {
             err instanceof Error
               ? err.message
               : "Authentication failed: unknown error";
-          res.writeHead(500, { "Content-Type": "text/plain" }).end(message);
-          resolve({
+          res.writeHead(500, {
+            Connection: "close",
+            "Content-Type": "text/plain",
+          });
+          stopServerAndResolve({
             type: "ERROR",
             error: err instanceof Error ? err : new CliError(message),
           });
+          res.end(message);
           return;
         }
 
         if (result.type === "SUCCESS") {
           if (result.redirectUri) {
-            res.writeHead(302, { Location: result.redirectUri }).end();
+            res.writeHead(302, {
+              Connection: "close",
+              Location: result.redirectUri,
+            });
+            stopServerAndResolve(result);
+            res.end();
           } else {
-            res
-              .writeHead(200, { "Content-Type": "text/plain" })
-              .end("Authentication successful");
+            res.writeHead(200, {
+              Connection: "close",
+              "Content-Type": "text/plain",
+            });
+            stopServerAndResolve(result);
+            res.end("Authentication successful");
           }
         } else {
-          res
-            .writeHead(500, { "Content-Type": "text/plain" })
-            .end(result.error.message);
+          res.writeHead(500, {
+            Connection: "close",
+            "Content-Type": "text/plain",
+          });
+          stopServerAndResolve(result);
+          res.end(result.error.message);
         }
-        resolve(result);
       });
     });
   }
 
   stop(): void {
-    this.server?.close();
+    const srv = this.server;
+    if (!srv) return;
+    srv.closeAllConnections();
+    srv.close();
     this.server = null;
   }
 }

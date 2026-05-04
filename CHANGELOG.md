@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fix the `dx auth login` and `dx init` commands so the process exits promptly after a completed browser login.
+
+## 0.3.1 - 2026-05-01
+
+### Added
+
+- `dx snapshots csatComments list`: Add support for listing CSAT comments for a snapshot.
+- `dx snapshots info --id`: Add support for retrieving results for a single snapshot.
+- `dx snapshots list`: Add support for listing DX snapshots.
+- `dx snapshots driverComments list`: Add support for listing driver comments for a snapshot.
+
+New Skill! A new snapshot-analysis skill is available.
+
+## 0.3.0 - 2026-05-01
+
+### Changed
+
+- Now persisting and loading configuration for two base URLs instead of one: `DX_API_BASE_URL` and `DX_WEB_BASE_URL`. This enables support for web links and fixes edge cases around logging in to managed deployments. Users of previous versions will need to log out and reauthenticate in order to update their configuration files. See the readme for more details.
+  - BREAKING for users of managed DX deployments on custom domains: these users will need to logout and log back in so the web base URL can be saved. Users that log into DX through `app.getdx.com` or `customer-name.getdx.io` are not affected.
+
+### Added
+
+- Add web links for entities, entity types, and scorecards.
+
 ## 0.2.1 - 2026-04-29
 
 ### Added

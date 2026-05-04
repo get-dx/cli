@@ -30,6 +30,30 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// TODO: the runtime reading of the YAML templates is leading to maintainability problems during development.
+// This extra complexity around mocking `fs.readFileSync` is risky.
+// Let's find a different approach to ship the YAML templates.
+
+/** Only stub fixture paths; `readConfig()` and others still need real file reads. */
+function stubReadFileSyncForFixturePath(
+  fixturePathSubstring: string,
+  content: string,
+) {
+  const realReadFileSync = fs.readFileSync.bind(fs);
+  return vi.spyOn(fs, "readFileSync").mockImplementation((path, options) => {
+    const resolved =
+      path instanceof URL
+        ? path.toString()
+        : path instanceof Buffer
+          ? path.toString("utf8")
+          : String(path);
+    if (resolved.includes(fixturePathSubstring)) {
+      return content;
+    }
+    return realReadFileSync(path, options as never);
+  });
+}
+
 const MOCK_ENTITY_TYPE: EntityType = {
   identifier: "service",
   name: "Service",
@@ -66,7 +90,7 @@ describe("catalog entityTypes commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const createdEntityType = { ...MOCK_ENTITY_TYPE, name: "New Service" };
@@ -87,8 +111,9 @@ describe("catalog entityTypes commands", () => {
       // blank template from disk via fs.readFileSync; mocking it beforehand would
       // intercept Node's own CJS loader and cause a SyntaxError.
       const { run } = await import("../../cli.js");
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "identifier: service\nname: New Service\n",
+      stubReadFileSyncForFixturePath(
+        "my-entity-type.yaml",
+        "identifier: service\nname: New Service\n",
       );
 
       await run([
@@ -122,7 +147,7 @@ describe("catalog entityTypes commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -139,8 +164,9 @@ describe("catalog entityTypes commands", () => {
       );
 
       const { run } = await import("../../cli.js");
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "identifier: service\nname: New Service\n",
+      stubReadFileSyncForFixturePath(
+        "my-entity-type.yaml",
+        "identifier: service\nname: New Service\n",
       );
 
       await run([
@@ -171,7 +197,7 @@ describe("catalog entityTypes commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const { run } = await import("../../cli.js");
@@ -195,7 +221,7 @@ describe("catalog entityTypes commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const { run } = await import("../../cli.js");
@@ -226,7 +252,7 @@ describe("catalog entityTypes commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -242,8 +268,9 @@ describe("catalog entityTypes commands", () => {
       );
 
       const { run } = await import("../../cli.js");
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "identifier: service\nname: Bad Entity\n",
+      stubReadFileSyncForFixturePath(
+        "my-entity-type.yaml",
+        "identifier: service\nname: Bad Entity\n",
       );
 
       await run([
@@ -271,7 +298,7 @@ describe("catalog entityTypes commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -321,7 +348,7 @@ describe("catalog entityTypes commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -375,7 +402,7 @@ describe("catalog entityTypes commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -431,7 +458,7 @@ describe("catalog entityTypes commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -474,7 +501,7 @@ describe("catalog entityTypes commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -523,7 +550,7 @@ describe("catalog entityTypes commands", () => {
         (() => true) as typeof process.stdout.write,
       );
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -568,7 +595,7 @@ describe("catalog entityTypes commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -613,7 +640,7 @@ describe("catalog entityTypes commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const fetchSpy = vi.fn();
@@ -652,7 +679,7 @@ describe("catalog entityTypes commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
@@ -686,7 +713,7 @@ describe("catalog entityTypes commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -727,7 +754,7 @@ describe("catalog entityTypes commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -768,7 +795,7 @@ describe("catalog entityTypes commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -826,7 +853,7 @@ describe("catalog entityTypes commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const updatedEntityType = {
@@ -847,8 +874,9 @@ describe("catalog entityTypes commands", () => {
       );
 
       const { run } = await import("../../cli.js");
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "identifier: service\nname: Updated Service\n",
+      stubReadFileSyncForFixturePath(
+        "my-entity-type.yaml",
+        "identifier: service\nname: Updated Service\n",
       );
 
       await run([
@@ -879,7 +907,7 @@ describe("catalog entityTypes commands", () => {
         (() => true) as typeof process.stdout.write,
       );
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -896,8 +924,9 @@ describe("catalog entityTypes commands", () => {
 
       // YAML omits the identifier — it should be sent from the CLI argument
       const { run } = await import("../../cli.js");
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "name: Updated Service\n",
+      stubReadFileSyncForFixturePath(
+        "my-entity-type.yaml",
+        "name: Updated Service\n",
       );
 
       await run([
@@ -928,7 +957,7 @@ describe("catalog entityTypes commands", () => {
         return true;
       }) as typeof process.stdout.write);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const updatedEntityType = {
@@ -949,8 +978,9 @@ describe("catalog entityTypes commands", () => {
       );
 
       const { run } = await import("../../cli.js");
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "identifier: service\nname: Updated Service\n",
+      stubReadFileSyncForFixturePath(
+        "my-entity-type.yaml",
+        "identifier: service\nname: Updated Service\n",
       );
 
       await run([
@@ -982,7 +1012,7 @@ describe("catalog entityTypes commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       vi.stubGlobal(
@@ -995,8 +1025,9 @@ describe("catalog entityTypes commands", () => {
       );
 
       const { run } = await import("../../cli.js");
-      vi.spyOn(fs, "readFileSync").mockImplementation(
-        () => "identifier: service\nname: Updated Service\n",
+      stubReadFileSyncForFixturePath(
+        "my-entity-type.yaml",
+        "identifier: service\nname: Updated Service\n",
       );
 
       await run([
@@ -1026,7 +1057,7 @@ describe("catalog entityTypes commands", () => {
         .spyOn(process, "exit")
         .mockImplementation(() => undefined as never);
 
-      process.env.DX_BASE_URL = "https://api.example.com";
+      process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
 
       const { run } = await import("../../cli.js");
