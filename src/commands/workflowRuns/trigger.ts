@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import { input, select } from "@inquirer/prompts";
 
 import {
   createExampleText,
@@ -15,6 +16,7 @@ import {
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
+import { listWorkflows, WorkflowParameter } from "../workflows.js";
 
 const DEFAULT_RETRY_AFTER_MS = 1000;
 
@@ -76,9 +78,35 @@ export function triggerCommand() {
       wrapAction(async (workflowIdentifier: string, options, command) => {
         const context = getContext(command);
         const runtime = buildRuntime(context);
+
         const progress = new AsyncProgressReporter();
-        const params = parseWorkflowParams(options.param as string[]);
+
+        // Fetch list of all workflows, find the one that applies
+        const workflowsResponse = await listWorkflows(runtime, {});
+        const workflow = workflowsResponse.workflows.find(
+          (w) => w.identifier === workflowIdentifier,
+        );
+
+        if (!workflow) {
+          throw new CliError(
+            `Workflow \`${workflowIdentifier}\` not found`,
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+
+        // Collect options
         const entityIdentifier = parseOptionalTrimmed(options.entity);
+        const parameterData = parseParameterData(options.param as string[]);
+        if (isInteractive()) {
+          for (const param of workflow.parameters) {
+            if (parameterData[param.identifier] !== undefined) {
+              continue;
+            }
+
+            parameterData[param.identifier] =
+              await promptForParameterValue(param);
+          }
+        }
 
         const body: Record<string, unknown> = {
           workflow_identifier: workflowIdentifier.trim(),
@@ -86,8 +114,8 @@ export function triggerCommand() {
         if (entityIdentifier !== undefined) {
           body.entity_identifier = entityIdentifier;
         }
-        if (params !== undefined && Object.keys(params).length > 0) {
-          body.data = params;
+        if (Object.keys(parameterData).length > 0) {
+          body.data = parameterData;
         }
 
         try {
@@ -120,6 +148,115 @@ export function triggerCommand() {
     );
 }
 
+// TODO: move somewhere central
+function isInteractive(): boolean {
+  return process.stdin.isTTY && process.stderr.isTTY;
+}
+
+async function promptForParameterValue(
+  param: WorkflowParameter,
+): Promise<unknown> {
+  const message = param.description
+    ? `${param.name}: ${param.description}`
+    : param.name;
+
+  switch (param.type) {
+    case "STRING": {
+      const rawValue = await input({
+        message,
+        default: param.default_value
+          ? (param.default_value as string)
+          : undefined,
+        validate: (value) => {
+          if (value === "" && !param.is_required) {
+            return true;
+          } else if (value === "") {
+            return "Value is required";
+          }
+          return true;
+        },
+      });
+
+      return rawValue === "" ? undefined : rawValue;
+    }
+    case "INTEGER": {
+      const rawValue = await input({
+        message,
+        default: param.default_value
+          ? (param.default_value as string)
+          : undefined,
+        validate: (value) => {
+          if (value === "" && !param.is_required) {
+            return true;
+          } else if (value === "") {
+            return "Value is required";
+          }
+
+          const num = Number(value);
+          if (isNaN(num)) {
+            return "Value must be a number";
+          } else if (num % 1 !== 0) {
+            return "Value must be an integer";
+          } else {
+            return true;
+          }
+        },
+      });
+
+      return rawValue === "" ? undefined : Number(rawValue);
+    }
+    case "FLOAT": {
+      const rawValue = await input({
+        message,
+        default: param.default_value
+          ? (param.default_value as string)
+          : undefined,
+        validate: (value) => {
+          if (value === "" && !param.is_required) {
+            return true;
+          } else if (value === "") {
+            return "Value is required";
+          }
+
+          const num = Number(value);
+          if (isNaN(num)) {
+            return "Value must be a number";
+          } else {
+            return true;
+          }
+        },
+      });
+
+      return rawValue === "" ? undefined : Number(rawValue);
+    }
+    case "BOOLEAN":
+      throw new CliError("FIXME: implement");
+    case "SELECT": {
+      return await select({
+        message,
+        default: param.default_value
+          ? (param.default_value as string)
+          : undefined,
+        choices: param.definition!.options.map((option) => ({
+          name: option,
+          value: option,
+        })),
+      });
+    }
+    case "USER":
+      throw new CliError("FIXME: implement");
+    case "TEAM":
+      throw new CliError("FIXME: implement");
+    case "EMAIL":
+      throw new CliError("FIXME: implement");
+    default:
+      throw new CliError(
+        `Unknown parameter type: ${param.type}`,
+        EXIT_CODES.ARGUMENT_ERROR,
+      );
+  }
+}
+
 function parseOptionalTrimmed(value: unknown): string | undefined {
   if (typeof value !== "string") {
     return undefined;
@@ -128,11 +265,9 @@ function parseOptionalTrimmed(value: unknown): string | undefined {
   return t.length > 0 ? t : undefined;
 }
 
-function parseWorkflowParams(
-  pairs: string[],
-): Record<string, unknown> | undefined {
+function parseParameterData(pairs: string[]): Record<string, unknown> {
   if (pairs.length === 0) {
-    return undefined;
+    return {};
   }
 
   const result: Record<string, unknown> = {};
