@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix the `dx auth login` and `dx init` commands so the process exits promptly after a completed browser login.
+- Improved error messages and docs for headless systems without secret stores.
 
 ## 0.3.1 - 2026-05-01
 
