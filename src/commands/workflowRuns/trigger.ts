@@ -110,7 +110,7 @@ export function triggerCommand() {
             progress.stop(
               `${ui.success(ui.GLYPHS.CHECK)} Workflow run ${ui.code(finalRun.id)} completed with status ${ui.bold(finalRun.status)}.`,
             );
-            renderRichText(renderWorkflowRunSummary(finalRun));
+            renderRichText(renderWorkflowRunSummary(finalRun, runtime));
           }
         } catch (error) {
           progress.stop(`${ui.error(ui.GLYPHS.ERROR)} Workflow run failed.`);
@@ -361,11 +361,23 @@ function findLastPostMessage(
   return undefined;
 }
 
-function renderWorkflowRunSummary(run: WorkflowRunDetail) {
-  const items = [ui.dli("Run ID", run.id), ui.dli("Status", run.status)];
+function renderWorkflowRunSummary(run: WorkflowRunDetail, runtime: Runtime) {
+  const items = [
+    ui.dli("Run ID", ui.code(run.id)),
+    ui.dli("Status", run.status),
+  ];
   if (run.workflow) {
     items.push(
-      ui.dli("Workflow", `${run.workflow.name} (${run.workflow.identifier})`),
+      ui.dli(
+        "Workflow",
+        `${run.workflow.name} (${ui.code(run.workflow.identifier)})`,
+      ),
+    );
+    items.push(
+      ui.dli(
+        "Web link",
+        ui.link(ui.webLink(`/self-service/workflow-runs/${run.id}`, runtime)),
+      ),
     );
   }
   if (run.entity) {
