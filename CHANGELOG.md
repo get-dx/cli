@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Replace the boring green welcome banner in `dx init` with an awesome welcome animation! Set `DX_DISABLE_WELCOME_ANIMATION="true"` to disable.
+
 ## 0.3.2 - 2026-05-05
 
 ### Fixed
