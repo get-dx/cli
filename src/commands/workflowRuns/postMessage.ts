@@ -13,29 +13,31 @@ export function postMessageCommand() {
     .name("postMessage")
     .description("Post a message to a workflow run")
     .argument("<workflow-run-id>", "The ID of the workflow run")
-    .argument("<message>", "The message to post")
+    .requiredOption("--message <message>", "The message to post")
     .action(
-      wrapAction(
-        async (workflowRunId: string, message: string, options, command) => {
-          const context = getContext(command);
-          const runtime = buildRuntime(context);
+      wrapAction(async (workflowRunId: string, options, command) => {
+        const context = getContext(command);
+        const runtime = buildRuntime(context);
 
-          const response = await postMessage(runtime, workflowRunId, message);
+        const response = await postMessage(
+          runtime,
+          workflowRunId,
+          options.message,
+        );
 
-          if (runtime.context.json) {
-            renderJson(response);
-          } else {
-            renderRichText([
-              ui.p(
-                `${ui.success(ui.GLYPHS.CHECK)} Posted message to workflow run ${ui.code(workflowRunId)}.`,
-              ),
-              ui.p(
-                `Web link: ${ui.link(ui.webLink(`/self-service/workflow-runs/${workflowRunId}`, runtime))}`,
-              ),
-            ]);
-          }
-        },
-      ),
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderRichText([
+            ui.p(
+              `${ui.success(ui.GLYPHS.CHECK)} Posted message to workflow run ${ui.code(workflowRunId)}.`,
+            ),
+            ui.p(
+              `Web link: ${ui.link(ui.webLink(`/self-service/workflow-runs/${workflowRunId}`, runtime))}`,
+            ),
+          ]);
+        }
+      }),
     );
 }
 

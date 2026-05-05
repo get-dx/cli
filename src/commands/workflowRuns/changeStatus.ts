@@ -14,45 +14,38 @@ export function changeStatusCommand() {
     .name("changeStatus")
     .description("Change the status of a workflow run")
     .argument("<workflow-run-id>", "The ID of the workflow run")
-    .argument("<updated-status>", "The status to change to")
+    .requiredOption("--status <updated-status>", "The status to change to")
     .action(
-      wrapAction(
-        async (
-          workflowRunId: string,
-          updatedStatus: string,
-          options,
-          command,
-        ) => {
-          const context = getContext(command);
-          const runtime = buildRuntime(context);
+      wrapAction(async (workflowRunId: string, options, command) => {
+        const context = getContext(command);
+        const runtime = buildRuntime(context);
 
-          if (!isValidStatus(updatedStatus)) {
-            throw new CliError(
-              `Invalid status: ${updatedStatus}. Must be one of: SUCCEEDED, FAILED.`,
-              EXIT_CODES.ARGUMENT_ERROR,
-            );
-          }
-
-          const response = await changeStatus(
-            runtime,
-            workflowRunId,
-            updatedStatus,
+        if (!isValidStatus(options.status)) {
+          throw new CliError(
+            `Invalid status: ${options.status}. Must be one of: SUCCEEDED, FAILED.`,
+            EXIT_CODES.ARGUMENT_ERROR,
           );
+        }
 
-          if (runtime.context.json) {
-            renderJson(response);
-          } else {
-            renderRichText([
-              ui.p(
-                `${ui.success(ui.GLYPHS.CHECK)} Changed status of workflow run ${ui.code(workflowRunId)} to ${ui.code(updatedStatus)}.`,
-              ),
-              ui.p(
-                `Web link: ${ui.link(ui.webLink(`/self-service/workflow-runs/${workflowRunId}`, runtime))}`,
-              ),
-            ]);
-          }
-        },
-      ),
+        const response = await changeStatus(
+          runtime,
+          workflowRunId,
+          options.status,
+        );
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderRichText([
+            ui.p(
+              `${ui.success(ui.GLYPHS.CHECK)} Changed status of workflow run ${ui.code(workflowRunId)} to ${ui.code(options.status)}.`,
+            ),
+            ui.p(
+              `Web link: ${ui.link(ui.webLink(`/self-service/workflow-runs/${workflowRunId}`, runtime))}`,
+            ),
+          ]);
+        }
+      }),
     );
 }
 
