@@ -32,7 +32,7 @@ export default defineConfig(
       "src/renderers.ts",
       "src/commandHelpers.ts",
       "src/logger.ts",
-      "src/welcomeBanner.ts",
+      "src/welcomeAnimation.ts",
       // Tests and test helpers
       "**/*.test.ts",
       "src/testSetup.ts",
