@@ -13,7 +13,7 @@ const COLOR_BACKGROUND: Color = [0, 0, 0];
 const SEQUENCE_CLEAR_SCREEN = "\x1b[2J\x1b[3J\x1b[H";
 const SEQUENCE_CURSOR_HOME = "\x1b[H";
 
-export async function renderWelcomeBanner() {
+export async function renderWelcomeAnimation() {
   const assets = getAssets();
 
   const LOGO_D_CONTENT = assets["logoD"];

@@ -17,7 +17,7 @@ import { CliError } from "../errors.js";
 import { CliContext, Runtime } from "../types.js";
 import { deriveBaseUrlsFromEnv, persistBaseUrls } from "../config.js";
 import { setToken } from "../secrets.js";
-import { renderWelcomeBanner } from "../welcomeBanner.js";
+import { renderWelcomeAnimation } from "../welcomeAnimation.js";
 
 export function initCommand() {
   const init = new Command()
@@ -30,7 +30,7 @@ export function initCommand() {
 
         ensureInteractive();
 
-        await renderWelcomeBanner();
+        await renderWelcomeAnimation();
 
         runtime = await ensureLoggedIn(context, runtime);
 
