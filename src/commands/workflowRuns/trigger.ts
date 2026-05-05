@@ -1,5 +1,4 @@
 import { Command } from "commander";
-import { input, select, confirm, search } from "@inquirer/prompts";
 
 import {
   createExampleText,
@@ -18,6 +17,12 @@ import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
 import { listWorkflows } from "../workflows.js";
 import { promptForParameterValue } from "./parameters.js";
+import {
+  getWorkflowRun,
+  renderWorkflowRunSummary,
+  WorkflowRunDetail,
+  WorkflowRunEvent,
+} from "./info.js";
 
 const DEFAULT_RETRY_AFTER_MS = 1000;
 
@@ -162,7 +167,7 @@ export function triggerCommand() {
           progress.start(ui.bold("Waiting for completion..."));
           await waitForRetryAfter();
 
-          const finalRun = await waitForWorkflowRun(
+          const finalDetail = await waitForWorkflowRun(
             runtime,
             progress,
             runId,
@@ -171,12 +176,12 @@ export function triggerCommand() {
 
           if (runtime.context.json) {
             progress.stop();
-            renderJson({ ok: true, workflow_run: finalRun });
+            renderJson({ ok: true, workflow_run: finalDetail });
           } else {
             progress.stop(
-              `${ui.success(ui.GLYPHS.CHECK)} Workflow run ${ui.code(finalRun.id)} completed with status ${ui.bold(finalRun.status)}.`,
+              `${ui.success(ui.GLYPHS.CHECK)} Workflow run ${ui.code(finalDetail.id)} completed with status ${ui.bold(finalDetail.status)}.`,
             );
-            renderRichText(renderWorkflowRunSummary(finalRun, runtime));
+            renderWorkflowRunSummary(finalDetail, runtime);
           }
         } catch (error) {
           progress.stop(`${ui.error(ui.GLYPHS.ERROR)} Workflow run failed.`);
@@ -253,39 +258,9 @@ function coerceParamValue(raw: string): unknown {
   return raw;
 }
 
-type WorkflowRunEvent = {
-  id: string;
-  type: string;
-  occurred_at: string;
-  message: string | null;
-  data?: Record<string, unknown>;
-};
-
-type WorkflowRunDetail = {
-  id: string;
-  status: string;
-  started_at?: string;
-  completed_at?: string | null;
-  data?: Record<string, unknown>;
-  links?: Array<{ url: string; icon?: string; label?: string }>;
-  workflow?: {
-    identifier: string;
-    name: string;
-    description?: string | null;
-    scope?: string;
-  };
-  entity?: { identifier: string; name: string };
-  events?: WorkflowRunEvent[];
-};
-
 type TriggerWorkflowRunResponse = {
   ok: true;
   workflow_run: { id: string };
-};
-
-type InfoWorkflowRunResponse = {
-  ok: true;
-  workflow_run: WorkflowRunDetail;
 };
 
 async function triggerWorkflowRun(
@@ -295,16 +270,6 @@ async function triggerWorkflowRun(
   return request<TriggerWorkflowRunResponse>(runtime, "/workflowRuns.trigger", {
     method: "POST",
     body,
-  });
-}
-
-async function getWorkflowRun(
-  runtime: Runtime,
-  id: string,
-): Promise<{ body: InfoWorkflowRunResponse; retryAfterMs?: number }> {
-  return request<InfoWorkflowRunResponse>(runtime, "/workflowRuns.info", {
-    method: "GET",
-    query: { id },
   });
 }
 
@@ -428,49 +393,6 @@ function findLastPostMessage(
     }
   }
   return undefined;
-}
-
-function renderWorkflowRunSummary(run: WorkflowRunDetail, runtime: Runtime) {
-  const items = [
-    ui.dli("Run ID", ui.code(run.id)),
-    ui.dli("Status", run.status),
-  ];
-  if (run.workflow) {
-    items.push(
-      ui.dli(
-        "Workflow",
-        `${run.workflow.name} (${ui.code(run.workflow.identifier)})`,
-      ),
-    );
-    items.push(
-      ui.dli(
-        "Web link",
-        ui.link(ui.webLink(`/self-service/workflow-runs/${run.id}`, runtime)),
-      ),
-    );
-  }
-  if (run.entity) {
-    items.push(
-      ui.dli("Entity", `${run.entity.name} (${run.entity.identifier})`),
-    );
-  }
-  if (run.started_at) {
-    items.push(ui.dli("Started", ui.timestampSummary(run.started_at)));
-  }
-  if (run.completed_at) {
-    items.push(ui.dli("Completed", ui.timestampSummary(run.completed_at)));
-  }
-  if (run.links?.length) {
-    const linkLines = run.links.map((l) =>
-      l.label ? `${l.label}: ${ui.link(l.url)}` : ui.link(l.url),
-    );
-    items.push(ui.dli("Links", linkLines.join("\n")));
-  }
-  return [
-    ui.h2("Workflow run"),
-    ui.dl(items, { termWidth: 14 }),
-    ui.blankLine(),
-  ];
 }
 
 async function waitForRetryAfter(retryAfterMs?: number): Promise<void> {
