@@ -157,34 +157,37 @@ export function triggerCommand() {
             ui.p(
               `Web link: ${ui.link(ui.webLink(`/self-service/workflow-runs/${runId}`, runtime))}`,
             ),
+            ui.blankLine(),
           ],
           { useStderr: true },
         );
 
         // Poll for updates
-        const progress = new AsyncProgressReporter();
         try {
-          progress.start(ui.bold("Waiting for completion..."));
           await waitForRetryAfter();
 
-          const finalDetail = await waitForWorkflowRun(
-            runtime,
-            progress,
-            runId,
-            context.json,
-          );
+          const finalDetail = await pollForWorkflowRunInfo(runtime, runId);
 
           if (runtime.context.json) {
-            progress.stop();
             renderJson({ ok: true, workflow_run: finalDetail });
           } else {
-            progress.stop(
-              `${ui.success(ui.GLYPHS.CHECK)} Workflow run ${ui.code(finalDetail.id)} completed with status ${ui.bold(finalDetail.status)}.`,
-            );
+            renderRichText([
+              ui.blankLine(),
+              ui.p(
+                `${ui.success(ui.GLYPHS.CHECK)} Workflow run ${ui.code(finalDetail.id)} completed with status ${ui.bold(finalDetail.status)}.`,
+              ),
+              ui.blankLine(),
+            ]);
             renderWorkflowRunSummary(finalDetail, runtime);
           }
         } catch (error) {
-          progress.stop(`${ui.error(ui.GLYPHS.ERROR)} Workflow run failed.`);
+          renderRichText(
+            [
+              ui.blankLine(),
+              ui.p(`${ui.error(ui.GLYPHS.ERROR)} Workflow run failed.`),
+            ],
+            { useStderr: true },
+          );
           throw error;
         }
       }),
@@ -273,28 +276,25 @@ async function triggerWorkflowRun(
   });
 }
 
-async function waitForWorkflowRun(
+const POLL_INTERVAL_MS = 1000;
+
+async function pollForWorkflowRunInfo(
   runtime: Runtime,
-  progress: AsyncProgressReporter,
   workflowRunId: string,
-  jsonMode: boolean,
 ): Promise<WorkflowRunDetail> {
   const seenEventIds = new Set<string>();
-  let eventStreamPrimed = false;
 
   while (true) {
-    let retryAfterMs: number | undefined;
     try {
       const infoResponse = await getWorkflowRun(runtime, workflowRunId);
       const workflowRun = infoResponse.body.workflow_run;
-      retryAfterMs = infoResponse.retryAfterMs;
 
-      if (!jsonMode) {
-        if (!eventStreamPrimed) {
-          primeEventIds(workflowRun.events, seenEventIds);
-          eventStreamPrimed = true;
-        } else {
-          emitNewPostMessages(workflowRun.events, seenEventIds);
+      if (workflowRun.events) {
+        for (const event of workflowRun.events) {
+          if (!seenEventIds.has(event.id)) {
+            emitWorkflowRunEvent(event, runtime);
+            seenEventIds.add(event.id);
+          }
         }
       }
 
@@ -313,17 +313,17 @@ async function waitForWorkflowRun(
         );
       }
 
-      progress.update(
-        `${ui.bold("Workflow running")} ${ui.dim(`(${workflowRunId})`)} — ${workflowRun.status}`,
-      );
+      // progress.update(
+      //   `${ui.bold("Workflow running")} ${ui.dim(`(${workflowRunId})`)} — ${workflowRun.status}`,
+      // );
 
-      await waitForRetryAfter(retryAfterMs);
+      await waitForRetryAfter(POLL_INTERVAL_MS);
     } catch (error) {
       if (error instanceof HttpError && error.status === 429) {
-        progress.update(
-          `${ui.warning(ui.GLYPHS.WARNING)} Rate limited while polling ${ui.dim(`(${workflowRunId})`)}; retrying`,
-        );
-        await waitForRetryAfter(retryAfterMs);
+        // progress.update(
+        //   `${ui.warning(ui.GLYPHS.WARNING)} Rate limited while polling ${ui.dim(`(${workflowRunId})`)}; retrying`,
+        // );
+        await waitForRetryAfter(POLL_INTERVAL_MS * 5);
         continue;
       }
       throw error;
@@ -331,68 +331,21 @@ async function waitForWorkflowRun(
   }
 }
 
-function primeEventIds(
-  events: WorkflowRunEvent[] | undefined,
-  seenEventIds: Set<string>,
-): void {
-  if (!events?.length) {
-    return;
-  }
-  for (const event of events) {
-    seenEventIds.add(event.id);
-  }
-}
-
-function emitNewPostMessages(
-  events: WorkflowRunEvent[] | undefined,
-  seenEventIds: Set<string>,
-): void {
-  if (!events?.length) {
-    return;
-  }
-
-  for (const event of events) {
-    if (seenEventIds.has(event.id)) {
-      continue;
-    }
-    seenEventIds.add(event.id);
-    if (event.type === "POST_MESSAGE" && event.message) {
-      renderRichText([ui.p(event.message)], { useStderr: true });
-    }
-  }
+function emitWorkflowRunEvent(event: WorkflowRunEvent, runtime: Runtime): void {
+  renderRichText(
+    [ui.p(`${ui.dim(event.occurred_at)} Received event: ${event.type}`)],
+    { useStderr: true },
+  );
 }
 
 function buildTerminalStatusError(run: WorkflowRunDetail): CliError {
   if (run.status === "FAILED") {
-    return new CliError(
-      `Workflow run ${run.id} failed${formatStatusSuffix(run)}.`,
-      1,
-    );
+    return new CliError(`Workflow run ${run.id} failed.`, 1);
   }
   return new CliError(
-    `Workflow run ${run.id} ended with status ${run.status}${formatStatusSuffix(run)}.`,
+    `Workflow run ${run.id} ended with status ${run.status}.`,
     1,
   );
-}
-
-function formatStatusSuffix(run: WorkflowRunDetail): string {
-  const lastMessage = findLastPostMessage(run.events);
-  return lastMessage ? `: ${lastMessage}` : "";
-}
-
-function findLastPostMessage(
-  events: WorkflowRunEvent[] | undefined,
-): string | undefined {
-  if (!events?.length) {
-    return undefined;
-  }
-  for (let i = events.length - 1; i >= 0; i--) {
-    const ev = events[i];
-    if (ev.type === "POST_MESSAGE" && ev.message) {
-      return ev.message;
-    }
-  }
-  return undefined;
 }
 
 async function waitForRetryAfter(retryAfterMs?: number): Promise<void> {
