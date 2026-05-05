@@ -7,11 +7,7 @@ import {
 } from "../../commandHelpers.js";
 import { CliError, EXIT_CODES, HttpError } from "../../errors.js";
 import { request } from "../../http.js";
-import {
-  AsyncProgressReporter,
-  renderJson,
-  renderRichText,
-} from "../../renderers.js";
+import { renderJson, renderRichText } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
@@ -24,7 +20,7 @@ import {
   WorkflowRunEvent,
 } from "./info.js";
 
-const DEFAULT_RETRY_AFTER_MS = 1000;
+const POLL_INTERVAL_MS = 1000;
 
 const PENDING_WORKFLOW_RUN_STATUSES = new Set([
   "PENDING_RUN",
@@ -164,7 +160,7 @@ export function triggerCommand() {
 
         // Poll for updates
         try {
-          await waitForRetryAfter();
+          await sleep(POLL_INTERVAL_MS);
 
           const finalDetail = await pollForWorkflowRunInfo(runtime, runId);
 
@@ -276,8 +272,6 @@ async function triggerWorkflowRun(
   });
 }
 
-const POLL_INTERVAL_MS = 1000;
-
 async function pollForWorkflowRunInfo(
   runtime: Runtime,
   workflowRunId: string,
@@ -317,13 +311,13 @@ async function pollForWorkflowRunInfo(
       //   `${ui.bold("Workflow running")} ${ui.dim(`(${workflowRunId})`)} — ${workflowRun.status}`,
       // );
 
-      await waitForRetryAfter(POLL_INTERVAL_MS);
+      await sleep(POLL_INTERVAL_MS);
     } catch (error) {
       if (error instanceof HttpError && error.status === 429) {
         // progress.update(
         //   `${ui.warning(ui.GLYPHS.WARNING)} Rate limited while polling ${ui.dim(`(${workflowRunId})`)}; retrying`,
         // );
-        await waitForRetryAfter(POLL_INTERVAL_MS * 5);
+        await sleep(POLL_INTERVAL_MS * 5);
         continue;
       }
       throw error;
@@ -348,9 +342,8 @@ function buildTerminalStatusError(run: WorkflowRunDetail): CliError {
   );
 }
 
-async function waitForRetryAfter(retryAfterMs?: number): Promise<void> {
-  const delayMs = retryAfterMs ?? DEFAULT_RETRY_AFTER_MS;
+async function sleep(ms: number): Promise<void> {
   await new Promise<void>((resolve) => {
-    setTimeout(resolve, delayMs);
+    setTimeout(resolve, ms);
   });
 }
