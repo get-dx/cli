@@ -16,20 +16,12 @@ export async function renderWelcomeBanner() {
   const LOGO_D_CONTENT = assets["logoD"];
   const LOGO_X_CONTENT = assets["logoX"];
 
-  console.clear();
-  console.log("Hello World");
+  clearScreen();
 
-  // TODO: print out the rows and columns for the terminal
-  const canvasRows = process.stdout.rows;
   const canvasColumns = process.stdout.columns;
-  console.log(`Terminal Rows: ${canvasRows}, Columns: ${canvasColumns}`);
-
-  const logoRows = getMaxRows(LOGO_D_CONTENT, LOGO_X_CONTENT);
-  const logoColumns = getMaxColumns(LOGO_X_CONTENT);
-  console.log(`Logo Rows: ${logoRows}, Columns: ${logoColumns}`);
 
   await sleep(1000);
-  console.clear();
+  clearScreen();
 
   const compositeWidth = getMaxColumns(LOGO_X_CONTENT);
   const centeredLogoD = center(
@@ -61,10 +53,10 @@ export async function renderWelcomeBanner() {
     );
     const showX = progress >= 0.5;
 
-    console.clear();
-    console.log("");
-    console.log("");
-    console.log(
+    clearScreen();
+    process.stderr.write("\n");
+    process.stderr.write("\n");
+    process.stderr.write(
       colorizeComposite(
         centeredLogoD,
         centeredLogoX,
@@ -72,13 +64,17 @@ export async function renderWelcomeBanner() {
         colorX,
         COLOR_BACKGROUND,
         showX,
-      ),
+      ) + "\n",
     );
-    console.log("");
-    console.log("");
+    process.stderr.write("\n");
+    process.stderr.write("\n");
 
     await sleep(FRAME_DELAY_MS);
   }
+}
+
+function clearScreen() {
+  process.stderr.write("\x1b[2J\x1b[3J\x1b[H");
 }
 
 function center(
@@ -169,10 +165,6 @@ function colorToAnsi(colorForeground: Color): string {
   return `\x1b[38;2;${fr};${fg};${fb}m`;
 }
 
-function getMaxRows(...texts: string[]): number {
-  return Math.max(...texts.map((text) => text.split("\n").length));
-}
-
 function getMaxColumns(...texts: string[]): number {
   return Math.max(
     ...texts.map((text) =>
@@ -183,16 +175,6 @@ function getMaxColumns(...texts: string[]): number {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-function colorize(
-  text: string,
-  colorForeground: Color,
-  colorBackground: Color,
-): string {
-  const [br, bg, bb] = colorBackground;
-
-  return `${colorToAnsi(colorForeground)}\x1b[48;2;${br};${bg};${bb}m${text}\x1b[0m`;
 }
 
 function sleep(ms: number): Promise<void> {
