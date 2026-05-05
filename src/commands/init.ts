@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { password, confirm, select } from "@inquirer/prompts";
 import { Command } from "commander";
 import { execa } from "execa";
+
 import { buildLogger, buildRuntime, buildRuntimeSafe } from "../runtime.js";
 import { getAuthInfo, type AuthInfoResponse } from "./auth.js";
 import { renderAuthInfo } from "./authRendering.js";
@@ -16,21 +17,7 @@ import { CliError } from "../errors.js";
 import { CliContext, Runtime } from "../types.js";
 import { deriveBaseUrlsFromEnv, persistBaseUrls } from "../config.js";
 import { setToken } from "../secrets.js";
-
-// FIXME: make this WAY more glam
-// Choose a more interesting ASCII art font from https://patorjk.com/software/taag/
-const WELCOME_BANNER = ui.indent(
-  `\
-▄▄▄▄▄     ▄▄▄  ▄▄▄
-██▀▀▀██    ██▄▄██
-██    ██    ████
-██    ██     ██
-██    ██    ████
-██▄▄▄██    ██  ██
-▀▀▀▀▀     ▀▀▀  ▀▀▀
-`,
-  2,
-);
+import { renderWelcomeBanner } from "./welcomeBanner.js";
 
 export function initCommand() {
   const init = new Command()
@@ -43,7 +30,7 @@ export function initCommand() {
 
         ensureInteractive();
 
-        showWelcomeBanner();
+        await renderWelcomeBanner();
 
         runtime = await ensureLoggedIn(context, runtime);
 
@@ -65,10 +52,6 @@ function ensureInteractive() {
   if (!process.stdin.isTTY || !process.stderr.isTTY) {
     throw new CliError("`dx init` must be run interactively");
   }
-}
-
-function showWelcomeBanner() {
-  renderRichText([ui.p(ui.success(WELCOME_BANNER))]);
 }
 
 async function ensureLoggedIn(
