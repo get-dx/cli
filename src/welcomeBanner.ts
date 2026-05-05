@@ -10,18 +10,20 @@ const COLOR_HALFWAY: Color = [95, 89, 237]; // Indigo
 const COLOR_END: Color = [255, 255, 255];
 const COLOR_BACKGROUND: Color = [0, 0, 0];
 
+const SEQUENCE_CLEAR_SCREEN = "\x1b[2J\x1b[3J\x1b[H";
+const SEQUENCE_CURSOR_HOME = "\x1b[H";
+
 export async function renderWelcomeBanner() {
   const assets = getAssets();
 
   const LOGO_D_CONTENT = assets["logoD"];
   const LOGO_X_CONTENT = assets["logoX"];
 
-  clearScreen();
-
   const canvasColumns = process.stdout.columns;
 
-  await sleep(1000);
-  clearScreen();
+  process.stderr.write(SEQUENCE_CLEAR_SCREEN);
+
+  await sleep(100);
 
   const compositeWidth = getMaxColumns(LOGO_X_CONTENT);
   const centeredLogoD = center(
@@ -53,28 +55,22 @@ export async function renderWelcomeBanner() {
     );
     const showX = progress >= 0.5;
 
-    clearScreen();
-    process.stderr.write("\n");
-    process.stderr.write("\n");
     process.stderr.write(
-      colorizeComposite(
-        centeredLogoD,
-        centeredLogoX,
-        colorD,
-        colorX,
-        COLOR_BACKGROUND,
-        showX,
-      ) + "\n",
+      SEQUENCE_CURSOR_HOME +
+        "\n\n" +
+        colorizeComposite(
+          centeredLogoD,
+          centeredLogoX,
+          colorD,
+          colorX,
+          COLOR_BACKGROUND,
+          showX,
+        ) +
+        "\n\n\n",
     );
-    process.stderr.write("\n");
-    process.stderr.write("\n");
 
     await sleep(FRAME_DELAY_MS);
   }
-}
-
-function clearScreen() {
-  process.stderr.write("\x1b[2J\x1b[3J\x1b[H");
 }
 
 function center(
