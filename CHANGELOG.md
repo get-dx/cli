@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.3.2 - 2026-05-05
+
 ### Fixed
 
 - Fix the `dx auth login` and `dx init` commands so the process exits promptly after a completed browser login.
