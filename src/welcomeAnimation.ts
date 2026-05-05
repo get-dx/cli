@@ -14,6 +14,10 @@ const SEQUENCE_CLEAR_SCREEN = "\x1b[2J\x1b[3J\x1b[H";
 const SEQUENCE_CURSOR_HOME = "\x1b[H";
 
 export async function renderWelcomeAnimation() {
+  if (process.env.DX_DISABLE_WELCOME_ANIMATION) {
+    return;
+  }
+
   const assets = getAssets();
 
   const LOGO_D_CONTENT = assets["logoD"];
