@@ -17,7 +17,7 @@ import { CliError } from "../errors.js";
 import { CliContext, Runtime } from "../types.js";
 import { deriveBaseUrlsFromEnv, persistBaseUrls } from "../config.js";
 import { setToken } from "../secrets.js";
-import { renderWelcomeBanner } from "./welcomeBanner.js";
+import { renderWelcomeBanner } from "../welcomeBanner.js";
 
 export function initCommand() {
   const init = new Command()
