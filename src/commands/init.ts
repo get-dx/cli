@@ -34,6 +34,9 @@ export function initCommand() {
 
         runtime = await ensureLoggedIn(context, runtime);
 
+        // Sleep for a bit to help with visual chunking
+        await sleep(500);
+
         await optionallySetupSkill(runtime);
 
         renderRichText([
@@ -189,4 +192,8 @@ async function optionallySetupSkill(runtime: Runtime) {
   if (result.exitCode !== 0) {
     throw new CliError(`Failed to setup the DX skill: ${result.stderr}`);
   }
+}
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
