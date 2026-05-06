@@ -10,6 +10,7 @@ import { renderJson, renderRichText } from "../../renderers.js";
 import * as ui from "../../ui.js";
 import { request } from "../../http.js";
 import { Runtime } from "../../types.js";
+import { workflowRunEventContent } from "./events.js";
 
 export function infoCommand() {
   return new Command()
@@ -36,16 +37,30 @@ export function infoCommand() {
         if (runtime.context.json) {
           renderJson({ ok: true, workflow_run: workflowRun });
         } else {
-          renderWorkflowRunSummary(workflowRun, runtime);
+          renderWorkflowRunInfo(workflowRun, runtime);
         }
       }),
     );
+}
+
+function renderWorkflowRunInfo(run: WorkflowRunDetail, runtime: Runtime): void {
+  renderRichText([
+    ui.h2("Workflow run"),
+    ui.h3("Summary"),
+    ...summaryContent(run, runtime),
+    ui.h3("Events"),
+    ...eventsContent(run, runtime),
+  ]);
 }
 
 export function renderWorkflowRunSummary(
   run: WorkflowRunDetail,
   runtime: Runtime,
 ) {
+  renderRichText([ui.h2("Workflow run"), ...summaryContent(run, runtime)]);
+}
+
+function summaryContent(run: WorkflowRunDetail, runtime: Runtime): ui.Block[] {
   const items = [
     ui.dli("Run ID", ui.code(run.id)),
     ui.dli("Status", run.status),
@@ -88,11 +103,19 @@ export function renderWorkflowRunSummary(
     items.push(ui.dli("Links", linkSummaries));
   }
 
-  renderRichText([
-    ui.h2("Workflow run"),
-    ui.dl(items, { termWidth: 14 }),
-    ui.blankLine(),
-  ]);
+  return [ui.dl(items, { termWidth: 14 })];
+}
+
+function eventsContent(run: WorkflowRunDetail, runtime: Runtime): ui.Block[] {
+  const items = [];
+
+  for (const event of run.events ?? []) {
+    items.push(workflowRunEventContent(event));
+  }
+
+  items.push(ui.blankLine());
+
+  return items;
 }
 
 export type WorkflowRunEventType =

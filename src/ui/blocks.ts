@@ -97,7 +97,7 @@ export class DescriptionListItemContainer extends AbstractBlock {
 
   render(): string {
     if (!this.options) {
-      throw new Error("Options are not set");
+      throw new Error("DescriptionListItemContainer: Options are not set");
     }
 
     const termPart = pc.bold(padEnd(`${this.term}:`, this.options.termWidth));

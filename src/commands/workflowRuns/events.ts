@@ -1,11 +1,10 @@
 import { WorkflowRunEvent } from "./info.js";
-import { renderRichText } from "../../renderers.js";
 import * as ui from "../../ui.js";
 
-export function renderWorkflowRunEvent(event: WorkflowRunEvent): void {
+export function workflowRunEventContent(event: WorkflowRunEvent): ui.Block {
   const ts = ui.dim(event.occurred_at);
   const message = formatEventMessage(event);
-  renderRichText([ui.p(`${ts} ${message}`)], { useStderr: true });
+  return ui.p(`${ts} ${message}`, false);
 }
 
 function formatEventMessage(event: WorkflowRunEvent): string {
