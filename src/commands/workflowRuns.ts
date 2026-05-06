@@ -4,6 +4,7 @@ import { addLinkCommand } from "./workflowRuns/addLink.js";
 import { changeStatusCommand } from "./workflowRuns/changeStatus.js";
 import { infoCommand } from "./workflowRuns/info.js";
 import { postMessageCommand } from "./workflowRuns/postMessage.js";
+import { triggerCommand } from "./workflowRuns/trigger.js";
 
 export function workflowRunsCommand(): Command {
   const workflowRuns = new Command()
@@ -14,6 +15,7 @@ export function workflowRunsCommand(): Command {
   workflowRuns.addCommand(changeStatusCommand());
   workflowRuns.addCommand(infoCommand());
   workflowRuns.addCommand(postMessageCommand());
+  workflowRuns.addCommand(triggerCommand());
 
   return workflowRuns;
 }
