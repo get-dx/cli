@@ -72,14 +72,20 @@ export function renderWorkflowRunSummary(
   if (run.started_at) {
     items.push(ui.dli("Started", ui.timestampSummary(run.started_at)));
   }
-  if (run.completed_at) {
+  if (run.started_at && run.completed_at) {
     items.push(ui.dli("Completed", ui.timestampSummary(run.completed_at)));
+    items.push(
+      ui.dli("Duration", ui.durationSummary(run.started_at, run.completed_at)),
+    );
   }
   if (run.links?.length) {
-    const linkLines = run.links.map((l) =>
-      l.label ? `${l.label}: ${ui.link(l.url)}` : ui.link(l.url),
+    const linkSummaries: ui.Block[] = run.links.map((l) =>
+      ui.p(
+        l.label ? `${ui.bold(l.label)} ${ui.link(l.url)}` : ui.link(l.url),
+        false,
+      ),
     );
-    items.push(ui.dli("Links", linkLines.join("\n")));
+    items.push(ui.dli("Links", linkSummaries));
   }
 
   renderRichText([

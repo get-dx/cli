@@ -152,6 +152,21 @@ export function timestampSummary(timestamp: string): string {
   return `${ts.fromNow()} ${dim(`(${timestamp})`)}`;
 }
 
+export function durationSummary(start: string, end: string): string {
+  const pluralizeWithCount = (word: string, n: number) =>
+    `${n} ${word}${n === 1 ? "" : "s"}`;
+
+  const duration = dayjs(end).diff(dayjs(start), "seconds");
+
+  if (duration < 60) {
+    return pluralizeWithCount("second", duration);
+  }
+
+  const minutes = Math.floor(duration / 60);
+  const seconds = duration % 60;
+  return `${pluralizeWithCount("minute", minutes)}, ${pluralizeWithCount("second", seconds)}`;
+}
+
 // Other helpers
 
 export function indent(text: string, level: number): string {
