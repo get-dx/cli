@@ -49,7 +49,7 @@ function renderWorkflowRunInfo(run: WorkflowRunDetail, runtime: Runtime): void {
     ui.h3("Summary"),
     ...summaryContent(run, runtime),
     ui.h3("Events"),
-    ...eventsContent(run, runtime),
+    ...eventsContent(run),
   ]);
 }
 
@@ -106,7 +106,7 @@ function summaryContent(run: WorkflowRunDetail, runtime: Runtime): ui.Block[] {
   return [ui.dl(items, { termWidth: 14 })];
 }
 
-function eventsContent(run: WorkflowRunDetail, runtime: Runtime): ui.Block[] {
+function eventsContent(run: WorkflowRunDetail): ui.Block[] {
   const items = [];
 
   for (const event of run.events ?? []) {
