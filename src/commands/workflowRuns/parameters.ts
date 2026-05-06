@@ -158,6 +158,33 @@ export async function promptForParameterValue(
   }
 }
 
+export function renderParameterData(
+  parameters: WorkflowParameter[],
+  data: Record<string, unknown>,
+): void {
+  const items: ui.Block[] = [];
+
+  for (const parameter of parameters) {
+    items.push(
+      ui.p(
+        parameter.description
+          ? `${ui.bold(parameter.name)}  ${ui.dim(parameter.description)}`
+          : ui.bold(parameter.name),
+        false,
+      ),
+    );
+    if (data[parameter.identifier] !== undefined) {
+      items.push(ui.p(`  ${ui.code(String(data[parameter.identifier]))}`));
+    } else {
+      items.push(ui.p(`  ${ui.dim("(none)")}`));
+    }
+  }
+
+  items.push(ui.blankLine());
+
+  renderRichText(items, { useStderr: true });
+}
+
 function decodeBase64(value: string): string {
   return Buffer.from(value, "base64").toString("utf-8");
 }

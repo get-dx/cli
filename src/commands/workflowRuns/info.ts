@@ -57,7 +57,7 @@ export function renderWorkflowRunSummary(
   run: WorkflowRunDetail,
   runtime: Runtime,
 ) {
-  renderRichText([ui.h2("Workflow run"), ...summaryContent(run, runtime)]);
+  renderRichText([ui.h3("Workflow run"), ...summaryContent(run, runtime)]);
 }
 
 function summaryContent(run: WorkflowRunDetail, runtime: Runtime): ui.Block[] {

@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import { confirm } from "@inquirer/prompts";
 
 import {
   createExampleText,
@@ -12,7 +13,7 @@ import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
 import { listWorkflows } from "../workflows.js";
-import { promptForParameterValue } from "./parameters.js";
+import { promptForParameterValue, renderParameterData } from "./parameters.js";
 import {
   getWorkflowRun,
   renderWorkflowRunSummary,
@@ -117,6 +118,41 @@ export function triggerCommand() {
           }
         }
 
+        if (isInteractive()) {
+          // Confirm everything looks right
+          renderRichText([ui.blankLine(), ui.h3("Confirm"), ui.blankLine()], {
+            useStderr: true,
+          });
+
+          if (entityIdentifier !== undefined) {
+            renderRichText(
+              [
+                ui.p(`${ui.bold("Entity")}`, false),
+                ui.p(`  ${ui.code(entityIdentifier)}`),
+                ui.blankLine(),
+              ],
+              {
+                useStderr: true,
+              },
+            );
+          }
+          if (workflow.parameters.length > 0) {
+            renderParameterData(workflow.parameters, parameterData);
+          }
+
+          const isConfirmed = await confirm({
+            message: "Trigger this workflow run with these settings?",
+            default: true,
+          });
+
+          if (!isConfirmed) {
+            throw new CliError(
+              "Workflow run not confirmed",
+              EXIT_CODES.RETRY_RECOMMENDED,
+            );
+          }
+        }
+
         // Trigger the workflow
         const triggerRequestBody: Record<string, unknown> = {
           workflow_identifier: workflowIdentifier.trim(),
@@ -149,6 +185,7 @@ export function triggerCommand() {
 
         renderRichText(
           [
+            ui.blankLine(),
             ui.p(`Workflow run ${ui.code(runId)} triggered.`, false),
             ui.p(
               `Web link: ${ui.link(ui.webLink(`/self-service/workflow-runs/${runId}`, runtime))}`,
