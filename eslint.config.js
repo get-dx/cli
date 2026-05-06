@@ -58,6 +58,7 @@ export default defineConfig(
     },
   },
   {
+    // Custom rule defined in this repo: Make sure each "leaf node" command displays examples in its help text
     files: ["src/commands/**/*.ts"],
     plugins: {
       local: {
