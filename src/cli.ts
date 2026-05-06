@@ -7,6 +7,7 @@ import { scorecardsCommand } from "./commands/scorecards.js";
 import { snapshotsCommand } from "./commands/snapshots.js";
 import { studioCommand } from "./commands/studio.js";
 import { teamsCommand } from "./commands/teams.js";
+import { workflowRunsCommand } from "./commands/workflowRuns.js";
 import { workflowsCommand } from "./commands/workflows.js";
 import { handleError } from "./commandHelpers.js";
 
@@ -54,6 +55,7 @@ function createProgram(): Command {
   program.addCommand(snapshotsCommand());
   program.addCommand(studioCommand());
   program.addCommand(teamsCommand());
+  program.addCommand(workflowRunsCommand());
   program.addCommand(workflowsCommand());
 
   applyExitOverride(program);

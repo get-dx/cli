@@ -214,7 +214,7 @@ async function getTeamInfo(
   return response.body;
 }
 
-async function listTeams(runtime: Runtime): Promise<ListTeamsResponse> {
+export async function listTeams(runtime: Runtime): Promise<ListTeamsResponse> {
   const response = await request<ListTeamsResponse>(runtime, "/teams.list", {
     method: "GET",
   });

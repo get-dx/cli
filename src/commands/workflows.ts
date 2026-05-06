@@ -119,7 +119,7 @@ export type WorkflowParameter = {
   default_value: unknown;
   is_required: boolean;
   type: WorkflowParameterType;
-  definition: unknown;
+  definition: null | { options: string[] };
 };
 
 export type WorkflowSummary = {
@@ -149,7 +149,7 @@ type ListWorkflowsResponse = {
 
 // --- API ---
 
-async function listWorkflows(
+export async function listWorkflows(
   runtime: Runtime,
   params: ListWorkflowsParams,
 ): Promise<ListWorkflowsResponse> {

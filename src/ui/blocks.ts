@@ -97,13 +97,13 @@ export class DescriptionListItemContainer extends AbstractBlock {
 
   render(): string {
     if (!this.options) {
-      throw new Error("Options are not set");
+      throw new Error("DescriptionListItemContainer: Options are not set");
     }
 
-    return (
-      pc.bold(padEnd(`${this.term}:`, this.options.termWidth)) +
-      this.detailItems.map((item) => item.render()).join("\n")
-    );
+    const termPart = pc.bold(padEnd(`${this.term}:`, this.options.termWidth));
+    const detailText = this.detailItems.map((item) => item.render()).join("\n");
+    const padding = " ".repeat(this.options.termWidth);
+    return termPart + detailText.replace(/\n/g, `\n${padding}`);
   }
 
   setOptions(options?: DescriptionListBlockOptions): void {
