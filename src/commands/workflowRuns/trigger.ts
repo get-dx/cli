@@ -42,7 +42,7 @@ export function triggerCommand() {
   return new Command()
     .name("trigger")
     .description(
-      "Trigger a Self-service workflow run and wait until it succeeds or fails",
+      "Trigger a Self-service workflow run and wait until it succeeds or fails. If the workflow requires approval, this command will submit a request and notify approvers.",
     )
     .argument(
       "<workflow-identifier>",
@@ -57,6 +57,10 @@ export function triggerCommand() {
       "Workflow parameter value (repeatable). Value after the first '=' is kept verbatim",
       (val: string, prev: string[]) => [...prev, val],
       [] as string[],
+    )
+    .option(
+      "--notify-approvers <boolean>",
+      "For workflows that require approval, send a message to each approver requesting review",
     )
     .addHelpText(
       "afterAll",
@@ -74,6 +78,12 @@ export function triggerCommand() {
           label: "Trigger with machine-readable output",
           command:
             "dx workflowRuns trigger my-workflow --json --entity svc-1 --param count=3",
+        },
+        {
+          label:
+            "Request approval to trigger a workflow but do not notify approvers",
+          command:
+            "dx workflowRuns trigger workflow-requiring-approval --notify-approvers false",
         },
       ]),
     )
@@ -94,6 +104,8 @@ export function triggerCommand() {
             EXIT_CODES.ARGUMENT_ERROR,
           );
         }
+
+        const requiresApproval = workflow.trigger_type === "APPROVAL";
 
         const entityIdentifier = parseOptionalTrimmed(options.entity);
         if (entityIdentifier === undefined && workflow.scope === "ENTITY") {
@@ -118,6 +130,16 @@ export function triggerCommand() {
           }
         }
 
+        let notifyApprovers: boolean | undefined = true;
+        if (requiresApproval && options.notifyApprovers !== undefined) {
+          notifyApprovers = options.notifyApprovers === "true";
+        } else if (requiresApproval && isInteractive()) {
+          notifyApprovers = await confirm({
+            message: "Notify approvers?",
+            default: true,
+          });
+        }
+
         if (isInteractive()) {
           // Confirm everything looks right
           renderRichText([ui.blankLine(), ui.h3("Confirm"), ui.blankLine()], {
@@ -140,8 +162,11 @@ export function triggerCommand() {
             renderParameterData(workflow.parameters, parameterData);
           }
 
+          const confirmationMessage = requiresApproval
+            ? "Request approval to trigger this workflow run with these settings?"
+            : "Trigger this workflow run with these settings?";
           const isConfirmed = await confirm({
-            message: "Trigger this workflow run with these settings?",
+            message: confirmationMessage,
             default: true,
           });
 
@@ -153,8 +178,8 @@ export function triggerCommand() {
           }
         }
 
-        // Trigger the workflow
-        const triggerRequestBody: Record<string, unknown> = {
+        // Create the request body
+        const triggerRequestBody: TriggerWorkflowRunRequestBody = {
           workflow_identifier: workflowIdentifier.trim(),
         };
         if (entityIdentifier !== undefined) {
@@ -163,7 +188,11 @@ export function triggerCommand() {
         if (Object.keys(parameterData).length > 0) {
           triggerRequestBody.data = parameterData;
         }
+        if (requiresApproval) {
+          triggerRequestBody.notify_approvers = notifyApprovers;
+        }
 
+        // Trigger the workflow
         let runId: string;
         try {
           const triggerResponse = await triggerWorkflowRun(
@@ -297,6 +326,13 @@ function coerceParamValue(raw: string): unknown {
   return raw;
 }
 
+export type TriggerWorkflowRunRequestBody = {
+  workflow_identifier: string;
+  entity_identifier?: string;
+  data?: Record<string, unknown>;
+  notify_approvers?: boolean;
+};
+
 type TriggerWorkflowRunResponse = {
   ok: true;
   workflow_run: { id: string };
@@ -304,7 +340,7 @@ type TriggerWorkflowRunResponse = {
 
 async function triggerWorkflowRun(
   runtime: Runtime,
-  body: Record<string, unknown>,
+  body: TriggerWorkflowRunRequestBody,
 ): Promise<{ body: TriggerWorkflowRunResponse; retryAfterMs?: number }> {
   return request<TriggerWorkflowRunResponse>(runtime, "/workflowRuns.trigger", {
     method: "POST",
