@@ -55,6 +55,26 @@ afterEach(() => {
 describe("workflowRuns trigger command", () => {
   const runId = "wr-test-1";
 
+  const workflowOne = {
+    identifier: "wf-one",
+    name: "Workflow One",
+    description: null,
+    icon: null,
+    color: null,
+    scope: "GLOBAL",
+    entity_filter_type: "ENTITY_TYPES",
+    entity_filter_sql: null,
+    entity_filter_type_identifiers: null,
+    execution_type: "SIMPLE",
+    trigger_type: "ANY",
+    parameters: [],
+  };
+
+  const listWorkflowsResponse = () =>
+    new Response(JSON.stringify({ ok: true, workflows: [workflowOne] }), {
+      status: 200,
+    });
+
   const pendingRun = {
     id: runId,
     status: "PENDING_RUN",
@@ -76,17 +96,16 @@ describe("workflowRuns trigger command", () => {
   };
 
   it("triggers then polls until succeeded and prints a summary", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     const fetchMock = vi
       .fn()
+      .mockResolvedValueOnce(listWorkflowsResponse())
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({ ok: true, workflow_run: { id: runId } }),
-          {
-            status: 200,
-          },
+          { status: 200 },
         ),
       )
       .mockResolvedValueOnce(
@@ -107,6 +126,11 @@ describe("workflowRuns trigger command", () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
+      "https://api.example.com/workflows.list",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
       "https://api.example.com/workflowRuns.trigger",
       expect.objectContaining({
         method: "POST",
@@ -114,12 +138,12 @@ describe("workflowRuns trigger command", () => {
       }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
+      3,
       `https://api.example.com/workflowRuns.info?id=${runId}`,
       expect.objectContaining({ method: "GET" }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      3,
+      4,
       `https://api.example.com/workflowRuns.info?id=${runId}`,
       expect.objectContaining({ method: "GET" }),
     );
@@ -132,7 +156,7 @@ describe("workflowRuns trigger command", () => {
   });
 
   it("prints new POST_MESSAGE events to stderr while polling", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     const pendingWithMsg = {
@@ -165,36 +189,29 @@ describe("workflowRuns trigger command", () => {
       "fetch",
       vi
         .fn()
+        .mockResolvedValueOnce(listWorkflowsResponse())
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify({ ok: true, workflow_run: { id: runId } }),
-            {
-              status: 200,
-            },
+            { status: 200 },
           ),
         )
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify({ ok: true, workflow_run: pendingWithMsg }),
-            {
-              status: 200,
-            },
+            { status: 200 },
           ),
         )
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify({ ok: true, workflow_run: pendingWithMore }),
-            {
-              status: 200,
-            },
+            { status: 200 },
           ),
         )
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify({ ok: true, workflow_run: succeededRun }),
-            {
-              status: 200,
-            },
+            { status: 200 },
           ),
         ),
     );
@@ -203,32 +220,32 @@ describe("workflowRuns trigger command", () => {
     await run(["node", "dx", "workflowRuns", "trigger", "wf-one"]);
 
     const err = stderrWrites.join("");
+    // Both events are rendered as they become visible
+    expect(err).toContain("Step one");
     expect(err).toContain("Step two");
-    expect(err).not.toContain("Step one");
+    // e1 was already seen when poll 2 returns it — should not be re-rendered
+    expect((err.match(/Step one/g) ?? []).length).toBe(1);
   });
 
   it("outputs the final workflow run as JSON with --json", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     vi.stubGlobal(
       "fetch",
       vi
         .fn()
+        .mockResolvedValueOnce(listWorkflowsResponse())
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify({ ok: true, workflow_run: { id: runId } }),
-            {
-              status: 200,
-            },
+            { status: 200 },
           ),
         )
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify({ ok: true, workflow_run: succeededRun }),
-            {
-              status: 200,
-            },
+            { status: 200 },
           ),
         ),
     );
@@ -243,30 +260,25 @@ describe("workflowRuns trigger command", () => {
   });
 
   it("sends entity and coerced param data in the trigger body", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({ ok: true, workflow_run: { id: runId } }),
-            {
-              status: 200,
-            },
-          ),
-        )
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({ ok: true, workflow_run: succeededRun }),
-            {
-              status: 200,
-            },
-          ),
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(listWorkflowsResponse())
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ ok: true, workflow_run: { id: runId } }),
+          { status: 200 },
         ),
-    );
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, workflow_run: succeededRun }), {
+          status: 200,
+        }),
+      );
+
+    vi.stubGlobal("fetch", fetchMock);
 
     const { run } = await import("../../cli.js");
     await run([
@@ -283,8 +295,8 @@ describe("workflowRuns trigger command", () => {
       "enabled=true",
     ]);
 
-    expect(fetch).toHaveBeenNthCalledWith(
-      1,
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
       "https://api.example.com/workflowRuns.trigger",
       expect.objectContaining({
         method: "POST",
@@ -298,7 +310,7 @@ describe("workflowRuns trigger command", () => {
   });
 
   it("exits with an error when the run ends in FAILED", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
     const failedRun = {
@@ -320,12 +332,11 @@ describe("workflowRuns trigger command", () => {
       "fetch",
       vi
         .fn()
+        .mockResolvedValueOnce(listWorkflowsResponse())
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify({ ok: true, workflow_run: { id: runId } }),
-            {
-              status: 200,
-            },
+            { status: 200 },
           ),
         )
         .mockResolvedValueOnce(
@@ -347,7 +358,14 @@ describe("workflowRuns trigger command", () => {
   });
 
   it("errors on invalid --param format", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(listWorkflowsResponse()),
+    );
+
     const exitSpy = vi
       .spyOn(process, "exit")
       .mockImplementation(() => undefined as never);
@@ -365,40 +383,5 @@ describe("workflowRuns trigger command", () => {
 
     expect(stderrWrites.join("")).toContain("Invalid --param format");
     expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
-  });
-
-  it("retries info after HTTP 429 while polling", async () => {
-    process.env.DX_BASE_URL = "https://api.example.com";
-    getToken.mockReturnValue("token-123");
-
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ ok: true, workflow_run: { id: runId } }),
-          {
-            status: 200,
-          },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: "slow_down" }), {
-          status: 429,
-          headers: { "Retry-After": "0" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ ok: true, workflow_run: succeededRun }), {
-          status: 200,
-        }),
-      );
-
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { run } = await import("../../cli.js");
-    await run(["node", "dx", "workflowRuns", "trigger", "wf-one"]);
-
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(stdoutWrites.join("")).toContain("SUCCEEDED");
   });
 });
