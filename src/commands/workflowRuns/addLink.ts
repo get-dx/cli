@@ -1,7 +1,10 @@
 import { Command } from "commander";
 
-import { wrapAction } from "../../commandHelpers.js";
-import { getContext } from "../../commandHelpers.js";
+import {
+  createExampleText,
+  getContext,
+  wrapAction,
+} from "../../commandHelpers.js";
 import { buildRuntime } from "../../runtime.js";
 import { renderJson, renderRichText } from "../../renderers.js";
 import * as ui from "../../ui.js";
@@ -15,6 +18,16 @@ export function addLinkCommand() {
     .argument("<workflow-run-id>", "The ID of the workflow run")
     .requiredOption("--url <url>", "The URL of the link")
     .requiredOption("--label <label>", "The label of the link")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Add a link to a workflow run",
+          command:
+            'dx workflowRuns addLink hvserjgz5lo7 --url https://www.example.com --label "Example Website"',
+        },
+      ]),
+    )
     .action(
       wrapAction(async (workflowRunId: string, options, command) => {
         const context = getContext(command);

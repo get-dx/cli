@@ -1,7 +1,10 @@
 import { Command } from "commander";
 
-import { wrapAction } from "../../commandHelpers.js";
-import { getContext } from "../../commandHelpers.js";
+import {
+  createExampleText,
+  getContext,
+  wrapAction,
+} from "../../commandHelpers.js";
 import { buildRuntime } from "../../runtime.js";
 import { renderJson, renderRichText } from "../../renderers.js";
 import * as ui from "../../ui.js";
@@ -14,6 +17,21 @@ export function postMessageCommand() {
     .description("Post a message to a workflow run")
     .argument("<workflow-run-id>", "The ID of the workflow run")
     .requiredOption("--message <message>", "The message to post")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Post a message to a workflow run",
+          command:
+            'dx workflowRuns postMessage hvserjgz5lo7 --message "Hello from the CLI"',
+        },
+        {
+          label: "Post the contents of a markdown file to a workflow run",
+          command:
+            'dx workflowRuns postMessage hvserjgz5lo7 --message "$(cat message.md)"',
+        },
+      ]),
+    )
     .action(
       wrapAction(async (workflowRunId: string, options, command) => {
         const context = getContext(command);

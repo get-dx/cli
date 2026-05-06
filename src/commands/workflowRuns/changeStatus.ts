@@ -1,7 +1,10 @@
 import { Command } from "commander";
 
-import { wrapAction } from "../../commandHelpers.js";
-import { getContext } from "../../commandHelpers.js";
+import {
+  createExampleText,
+  getContext,
+  wrapAction,
+} from "../../commandHelpers.js";
 import { buildRuntime } from "../../runtime.js";
 import { renderJson, renderRichText } from "../../renderers.js";
 import * as ui from "../../ui.js";
@@ -15,6 +18,20 @@ export function changeStatusCommand() {
     .description("Change the status of a workflow run")
     .argument("<workflow-run-id>", "The ID of the workflow run")
     .requiredOption("--status <updated-status>", "The status to change to")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Mark a workflow run as succeeded",
+          command:
+            "dx workflowRuns changeStatus hvserjgz5lo7 --status SUCCEEDED",
+        },
+        {
+          label: "Mark a workflow run as failed",
+          command: "dx workflowRuns changeStatus hvserjgz5lo7 --status FAILED",
+        },
+      ]),
+    )
     .action(
       wrapAction(async (workflowRunId: string, options, command) => {
         const context = getContext(command);
