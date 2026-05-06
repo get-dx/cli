@@ -232,7 +232,7 @@ export function triggerCommand() {
 
 // TODO: move somewhere central
 function isInteractive(): boolean {
-  return process.stdin.isTTY && process.stderr.isTTY;
+  return process.stdin.isTTY && process.stdout.isTTY && process.stderr.isTTY;
 }
 
 function parseOptionalTrimmed(value: unknown): string | undefined {
