@@ -6,7 +6,7 @@ export default defineConfig({
     env: {
       NO_COLOR: "1",
     },
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "config/eslint/*.test.js"],
     setupFiles: ["./src/testSetup.ts"],
   },
 });

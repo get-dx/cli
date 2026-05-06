@@ -5,6 +5,8 @@ import { defineConfig } from "eslint/config";
 import eslintConfigPrettier from "eslint-config-prettier/flat";
 import tseslint from "typescript-eslint";
 
+import requireCliExamples from "./config/eslint/require-cli-examples.js";
+
 export default defineConfig(
   { ignores: ["dist/**"] },
   eslint.configs.recommended,
@@ -53,6 +55,20 @@ export default defineConfig(
             "Use the shared logger, renderRichText, or the other allowlisted output sites instead of process.stderr.write().",
         },
       ],
+    },
+  },
+  {
+    // Custom rule defined in this repo: Make sure each "leaf node" command displays examples in its help text
+    files: ["src/commands/**/*.ts"],
+    plugins: {
+      local: {
+        rules: {
+          "require-cli-examples": requireCliExamples,
+        },
+      },
+    },
+    rules: {
+      "local/require-cli-examples": "error",
     },
   },
   eslintConfigPrettier,
