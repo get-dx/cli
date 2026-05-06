@@ -159,7 +159,8 @@ export type WorkflowRunDetail = {
     identifier: string;
     name: string;
     description?: string | null;
-    scope?: string;
+    scope: "GLOBAL" | "ENTITY";
+    execution_type: "SIMPLE" | "EVENT_DRIVEN";
   };
   entity?: { identifier: string; name: string };
   events?: WorkflowRunEvent[];

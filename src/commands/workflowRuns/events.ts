@@ -8,7 +8,7 @@ export function workflowRunEventContent(event: WorkflowRunEvent): ui.Block {
 }
 
 function formatEventMessage(event: WorkflowRunEvent): string {
-  const userName = event.user?.name ?? event.user?.email ?? "unknown user";
+  const userName = event.user?.name ?? event.user?.email ?? "API";
 
   switch (event.type) {
     case "WORKFLOW_TRIGGERED":
