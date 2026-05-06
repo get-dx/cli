@@ -4,38 +4,43 @@ import { join } from "node:path";
 import { password, confirm, select } from "@inquirer/prompts";
 import { Command } from "commander";
 import { execa } from "execa";
+
 import { buildLogger, buildRuntime, buildRuntimeSafe } from "../runtime.js";
 import { getAuthInfo, type AuthInfoResponse } from "./auth.js";
 import { renderAuthInfo } from "./authRendering.js";
 import { loginViaBrowser } from "../loginViaBrowser.js";
-import { getContext } from "../commandHelpers.js";
-import { wrapAction } from "../commandHelpers.js";
+import {
+  createExampleText,
+  getContext,
+  wrapAction,
+} from "../commandHelpers.js";
 import { renderRichText } from "../renderers.js";
 import * as ui from "../ui.js";
 import { CliError } from "../errors.js";
 import { CliContext, Runtime } from "../types.js";
 import { deriveBaseUrlsFromEnv, persistBaseUrls } from "../config.js";
 import { setToken } from "../secrets.js";
-
-// FIXME: make this WAY more glam
-// Choose a more interesting ASCII art font from https://patorjk.com/software/taag/
-const WELCOME_BANNER = ui.indent(
-  `\
-▄▄▄▄▄     ▄▄▄  ▄▄▄
-██▀▀▀██    ██▄▄██
-██    ██    ████
-██    ██     ██
-██    ██    ████
-██▄▄▄██    ██  ██
-▀▀▀▀▀     ▀▀▀  ▀▀▀
-`,
-  2,
-);
+import { renderWelcomeAnimation } from "../welcomeAnimation.js";
 
 export function initCommand() {
   const init = new Command()
     .name("init")
     .description("Initialize the DX CLI")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Initialize the CLI",
+          command: "dx init",
+        },
+        {
+          label:
+            "Initialize the CLI for a managed deployment with custom base URLs",
+          command:
+            "DX_API_BASE_URL=https://api.dx.example.com DX_WEB_BASE_URL=https://dx.example.com dx init",
+        },
+      ]),
+    )
     .action(
       wrapAction(async (commandOptions, command) => {
         const context = getContext(command);
@@ -43,9 +48,12 @@ export function initCommand() {
 
         ensureInteractive();
 
-        showWelcomeBanner();
+        await renderWelcomeAnimation();
 
         runtime = await ensureLoggedIn(context, runtime);
+
+        // Sleep for a bit to help with visual chunking
+        await sleep(500);
 
         await optionallySetupSkill(runtime);
 
@@ -65,10 +73,6 @@ function ensureInteractive() {
   if (!process.stdin.isTTY || !process.stderr.isTTY) {
     throw new CliError("`dx init` must be run interactively");
   }
-}
-
-function showWelcomeBanner() {
-  renderRichText([ui.p(ui.success(WELCOME_BANNER))]);
 }
 
 async function ensureLoggedIn(
@@ -206,4 +210,8 @@ async function optionallySetupSkill(runtime: Runtime) {
   if (result.exitCode !== 0) {
     throw new CliError(`Failed to setup the DX skill: ${result.stderr}`);
   }
+}
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

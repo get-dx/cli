@@ -4,7 +4,11 @@ import { Command } from "commander";
 import { deleteToken, setToken } from "../secrets.js";
 import { renderJson } from "../renderers.js";
 import { renderAuthInfo, renderLoggedOut } from "./authRendering.js";
-import { getContext, wrapAction } from "../commandHelpers.js";
+import {
+  createExampleText,
+  getContext,
+  wrapAction,
+} from "../commandHelpers.js";
 import {
   persistBaseUrls,
   resolveApiBaseUrl,
@@ -27,6 +31,24 @@ export function authCommand(): Command {
     .option(
       "--token <token>",
       "Account web API token or personal access token. Omit this option to login interactively by web browser or pasting.",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Log in interactively via browser or by pasting a token",
+          command: "dx auth login",
+        },
+        {
+          label: "Log in non-interactively with a token",
+          command: "dx auth login --token <token>",
+        },
+        {
+          label: "Log in to a managed deployment with custom base URLs",
+          command:
+            "DX_API_BASE_URL=https://api.dx.example.com DX_WEB_BASE_URL=https://dx.example.com dx auth login --token <token>",
+        },
+      ]),
     )
     .action(
       wrapAction(async (commandOptions: { token?: string }, command) => {
@@ -87,23 +109,51 @@ export function authCommand(): Command {
       }),
     );
 
-  auth.command("logout").action(
-    wrapAction(async (_options, command) => {
-      const context = getContext(command);
-      const apiBaseUrl = resolveApiBaseUrl();
-      deleteToken(apiBaseUrl);
+  auth
+    .command("logout")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Log out and remove the stored token",
+          command: "dx auth logout",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (_options, command) => {
+        const context = getContext(command);
+        const apiBaseUrl = resolveApiBaseUrl();
+        deleteToken(apiBaseUrl);
 
-      if (context.json) {
-        renderJson({ ok: true, api_base_url: apiBaseUrl, logged_out: true });
-      } else {
-        renderLoggedOut(apiBaseUrl);
-      }
-    }),
-  );
+        if (context.json) {
+          renderJson({ ok: true, api_base_url: apiBaseUrl, logged_out: true });
+        } else {
+          renderLoggedOut(apiBaseUrl);
+        }
+      }),
+    );
 
   auth
     .command("status")
     .alias("info")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Show the currently authenticated user and token details",
+          command: "dx auth status",
+        },
+        {
+          label: "Return auth details as JSON",
+          command: "dx auth status --json",
+        },
+        {
+          label: "Pipe auth details into `jq` and list scopes",
+          command: "dx auth status --json | jq --raw-output '.auth.scopes[]'",
+        },
+      ]),
+    )
     .action(
       wrapAction(async (_options, command) => {
         const runtime = buildRuntime(getContext(command));

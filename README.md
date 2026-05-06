@@ -18,6 +18,13 @@ Interactively login and install the AI agent skill:
 dx init
 ```
 
+For CI, Docker/dev containers, or other headless environments, pass the token
+through the environment instead of storing it in the OS credential store:
+
+```shell
+DX_API_TOKEN="$DX_TOKEN" dx auth status
+```
+
 Show help text:
 
 ```shell
@@ -42,8 +49,8 @@ Set the env vars once when initializing:
 # Interactive login
 DX_WEB_BASE_URL="https://mycompany.getdx.io" DX_API_BASE_URL="https://api.mycompany.getdx.io" dx init
 
-# Non-interactive login for CI or remote agents
-DX_WEB_BASE_URL="https://mycompany.getdx.io" DX_API_BASE_URL="https://api.mycompany.getdx.io" dx auth login --token $DX_TOKEN
+# Non-interactive use for CI, containers, or remote agents
+DX_WEB_BASE_URL="https://mycompany.getdx.io" DX_API_BASE_URL="https://api.mycompany.getdx.io" DX_API_TOKEN="$DX_TOKEN" dx auth status
 ```
 
 #### For managed deployments
@@ -54,8 +61,8 @@ Set the env vars once when initializing:
 # Interactive login
 DX_WEB_BASE_URL="https://dx.some-example-subdomain.example.com" DX_API_BASE_URL="https://api.dx.some-example-subdomain.example.com" dx init
 
-# Non-interactive login for CI or remote agents
-DX_WEB_BASE_URL="https://dx.some-example-subdomain.example.com" DX_API_BASE_URL="https://api.dx.some-example-subdomain.example.com" dx auth login --token $DX_TOKEN
+# Non-interactive use for CI, containers, or remote agents
+DX_WEB_BASE_URL="https://dx.some-example-subdomain.example.com" DX_API_BASE_URL="https://api.dx.some-example-subdomain.example.com" DX_API_TOKEN="$DX_TOKEN" dx auth status
 ```
 
 ## Logging
