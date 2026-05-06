@@ -42,7 +42,7 @@ export function triggerCommand() {
   return new Command()
     .name("trigger")
     .description(
-      "Trigger a Self-service workflow run and wait until it succeeds or fails. If the workflow requires approval, this command will submit a request and notify approvers.",
+      "Trigger a Self-service workflow run and wait until it succeeds or fails. If the workflow requires approval, this command will submit a request and optionally notify approvers.",
     )
     .argument(
       "<workflow-identifier>",
