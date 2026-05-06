@@ -497,7 +497,7 @@ describe("catalog entities commands", () => {
           body: JSON.stringify({
             identifier: "my-service",
             type: "service",
-            aliases: { github_repo: [{ identifier: "12345" }] },
+            aliases: { github_repo: [{ lookup: "12345" }] },
           }),
         }),
       );
@@ -1822,7 +1822,7 @@ describe("catalog entities commands", () => {
           method: "POST",
           body: JSON.stringify({
             identifier: "my-service",
-            aliases: { github_repo: [{ identifier: "12345" }] },
+            aliases: { github_repo: [{ lookup: "12345" }] },
           }),
         }),
       );
@@ -2276,7 +2276,7 @@ describe("catalog entities commands", () => {
           body: JSON.stringify({
             identifier: "my-service",
             type: "service",
-            aliases: { github_repo: [{ identifier: "12345" }] },
+            aliases: { github_repo: [{ lookup: "12345" }] },
           }),
         }),
       );

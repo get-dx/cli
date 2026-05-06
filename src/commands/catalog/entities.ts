@@ -615,7 +615,7 @@ type EntityMutationOptionValues = {
   aliases?: EntityMutationAliases;
 };
 
-type EntityMutationAlias = { identifier: string };
+type EntityMutationAlias = { lookup: string };
 type EntityMutationAliases = Record<string, EntityMutationAlias[]>;
 
 async function createEntity(
@@ -973,7 +973,7 @@ function parseEntityAliases(
       continue;
     }
 
-    result[key] = [...(result[key] ?? []), { identifier: rawValue }];
+    result[key] = [...(result[key] ?? []), { lookup: rawValue }];
   }
 
   return result;
