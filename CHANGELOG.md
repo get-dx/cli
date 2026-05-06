@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `dx workflowRuns changeStatus`: Add support for changing the status of an event-driven workflow run to either succeeded or failed.
 - `dx workflowRuns postMessage`: Add support for posting a message to an event-driven workflow run.
 
+## 0.3.3 - 2026-05-06
+
 ### Changed
 
 - Replace the boring green welcome banner in `dx init` with an awesome welcome animation! Set `DX_DISABLE_WELCOME_ANIMATION="true"` to disable.
