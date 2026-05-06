@@ -17,8 +17,8 @@ import {
   getWorkflowRun,
   renderWorkflowRunSummary,
   WorkflowRunDetail,
-  WorkflowRunEvent,
 } from "./info.js";
+import { renderWorkflowRunEvent } from "./events.js";
 
 const POLL_INTERVAL_MS = 1000;
 
@@ -286,7 +286,7 @@ async function pollForWorkflowRunInfo(
       if (workflowRun.events) {
         for (const event of workflowRun.events) {
           if (!seenEventIds.has(event.id)) {
-            emitWorkflowRunEvent(event, runtime);
+            renderWorkflowRunEvent(event, runtime);
             seenEventIds.add(event.id);
           }
         }
@@ -323,13 +323,6 @@ async function pollForWorkflowRunInfo(
       throw error;
     }
   }
-}
-
-function emitWorkflowRunEvent(event: WorkflowRunEvent, runtime: Runtime): void {
-  renderRichText(
-    [ui.p(`${ui.dim(event.occurred_at)} Received event: ${event.type}`)],
-    { useStderr: true },
-  );
 }
 
 function buildTerminalStatusError(run: WorkflowRunDetail): CliError {
