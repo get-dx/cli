@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Use the `lookup` param instead of `identifier` when setting aliases so fuzzy matches work. i.e. `dx catalog entities create ai --alias github_repo=get-dx/ai` instead of `dx catalog entities create ai --alias github_repo=1234`
+## 0.3.3 - 2026-05-06
 
 ### Changed
 
 - Replace the boring green welcome banner in `dx init` with an awesome welcome animation! Set `DX_DISABLE_WELCOME_ANIMATION="true"` to disable.
+- Use the `lookup` param instead of `identifier` when setting aliases so fuzzy matches work. i.e. `dx catalog entities create ai --alias github_repo=get-dx/ai` instead of `dx catalog entities create ai --alias github_repo=1234`
 
 ## 0.3.2 - 2026-05-05
 
