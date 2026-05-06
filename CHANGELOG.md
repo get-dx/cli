@@ -7,11 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Use the `lookup` param instead of `identifier` when setting aliases so fuzzy matches work. i.e. `dx catalog entities create ai --alias github_repo=get-dx/ai` instead of `dx catalog entities create ai --alias github_repo=1234`
+### Added
+
+- `dx workflowRuns trigger`: Add support for triggering a workflow run.
+- `dx workflowRuns info`: Add support for getting info about the current state of a workflow run.
+- `dx workflowRuns addLink`: Add support for adding a clickable link to an event-driven workflow run.
+- `dx workflowRuns changeStatus`: Add support for changing the status of an event-driven workflow run to either succeeded or failed.
+- `dx workflowRuns postMessage`: Add support for posting a message to an event-driven workflow run.
 
 ### Changed
 
 - Replace the boring green welcome banner in `dx init` with an awesome welcome animation! Set `DX_DISABLE_WELCOME_ANIMATION="true"` to disable.
+- Use the `lookup` param instead of `identifier` when setting aliases so fuzzy matches work. i.e. `dx catalog entities create ai --alias github_repo=get-dx/ai` instead of `dx catalog entities create ai --alias github_repo=1234`
 
 ## 0.3.2 - 2026-05-05
 
