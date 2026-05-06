@@ -89,12 +89,34 @@ export function renderWorkflowRunSummary(
   ]);
 }
 
+export type WorkflowRunEventType =
+  | "POST_MESSAGE"
+  | "ADD_LINK"
+  | "CHANGE_STATUS"
+  | "WORKFLOW_TRIGGERED"
+  | "WORKFLOW_RUN_REQUESTED"
+  | "APPROVERS_NOTIFIED"
+  | "APPROVAL_PERFORMED"
+  | "REJECTION_PERFORMED"
+  | "HTTP_REQUEST_COMPLETED"
+  | "WORKFLOW_SUCCEEDED"
+  | "WORKFLOW_FAILED"
+  | "WORKFLOW_TIMEOUT"
+  | "WORKFLOW_CANCELLED";
+
 export type WorkflowRunEvent = {
   id: string;
-  type: string;
+  type: WorkflowRunEventType;
   occurred_at: string;
   message: string | null;
-  data?: Record<string, unknown>;
+  user?: { name: string; email?: string };
+  data?: {
+    status?: string;
+    link?: { url: string; label?: string };
+    request?: { method?: string; url?: string };
+    response?: { status?: number };
+    [key: string]: unknown;
+  };
 };
 
 export type WorkflowRunDetail = {

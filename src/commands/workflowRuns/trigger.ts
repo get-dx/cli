@@ -162,6 +162,7 @@ export function triggerCommand() {
         try {
           await sleep(POLL_INTERVAL_MS);
 
+          renderRichText([ui.h3("Events")], { useStderr: true });
           const finalDetail = await pollForWorkflowRunInfo(runtime, runId);
 
           if (runtime.context.json) {
@@ -286,7 +287,7 @@ async function pollForWorkflowRunInfo(
       if (workflowRun.events) {
         for (const event of workflowRun.events) {
           if (!seenEventIds.has(event.id)) {
-            renderWorkflowRunEvent(event, runtime);
+            renderWorkflowRunEvent(event);
             seenEventIds.add(event.id);
           }
         }
