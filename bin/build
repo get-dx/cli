@@ -11,3 +11,4 @@ cp src/commands/scorecard-blank-template.yaml dist/commands/
 cp src/commands/catalog/entity-type-blank-template.yaml dist/commands/catalog/
 
 cp node_modules/tree-sitter-python/tree-sitter-python.wasm dist/
+cp node_modules/tree-sitter-typescript/tree-sitter-tsx.wasm dist/
