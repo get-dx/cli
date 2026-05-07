@@ -3,6 +3,7 @@ import { Command, Option } from "commander";
 import { authCommand } from "./commands/auth.js";
 import { catalogCommand } from "./commands/catalog.js";
 import { initCommand } from "./commands/init.js";
+import { repoIntegrationsCommand } from "./commands/repoIntegrations.js";
 import { scorecardsCommand } from "./commands/scorecards.js";
 import { snapshotsCommand } from "./commands/snapshots.js";
 import { studioCommand } from "./commands/studio.js";
@@ -51,6 +52,7 @@ function createProgram(): Command {
   program.addCommand(authCommand());
   program.addCommand(catalogCommand());
   program.addCommand(initCommand());
+  program.addCommand(repoIntegrationsCommand());
   program.addCommand(scorecardsCommand());
   program.addCommand(snapshotsCommand());
   program.addCommand(studioCommand());

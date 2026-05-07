@@ -44,6 +44,7 @@
     "execa": "^9.6.1",
     "open": "^11.0.0",
     "picocolors": "^1.1.1",
+    "web-tree-sitter": "^0.26.8",
     "yaml": "^2.8.3"
   },
   "devDependencies": {
