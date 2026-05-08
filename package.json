@@ -11,6 +11,7 @@
     "dx": "dist/index.js"
   },
   "files": [
+    "assets",
     "dist"
   ],
   "homepage": "https://github.com/get-dx/cli#readme",
