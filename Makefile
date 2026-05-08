@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := reinstall
 
-.PHONY: reinstall install deps build link test lint typecheck verify format format-check dev
+.PHONY: reinstall install uninstall deps build link test lint typecheck verify format format-check dev
 
 reinstall: deps build link
 
@@ -16,6 +16,9 @@ build:
 
 link:
 	pnpm link --global
+
+uninstall:
+	pnpm uninstall --global @get-dx/cli
 
 test:
 	pnpm test
