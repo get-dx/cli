@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.3.5 - 2026-05-08
+
+### Fixed
+
+- Fix `dx init` by publishing the `assets` directory to NPM
+
 ## 0.3.4 - 2026-05-07
 
 ### Added
