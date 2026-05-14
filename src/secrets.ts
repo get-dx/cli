@@ -144,14 +144,21 @@ function windowsSecretStore(): SecretStore {
   return {
     async get(baseUrl) {
       try {
-        return await crossKeychain.getPassword(SERVICE, baseUrl);
+        return await crossKeychain.getPassword(
+          SERVICE,
+          encodeAccountName(baseUrl),
+        );
       } catch {
         return null;
       }
     },
     async set(baseUrl, token) {
       try {
-        await crossKeychain.setPassword(SERVICE, baseUrl, token);
+        await crossKeychain.setPassword(
+          SERVICE,
+          encodeAccountName(baseUrl),
+          token,
+        );
       } catch (error) {
         throw new CliError(
           [
@@ -166,9 +173,16 @@ function windowsSecretStore(): SecretStore {
       }
     },
     async delete(baseUrl) {
-      await crossKeychain.deletePassword(SERVICE, baseUrl);
+      await crossKeychain.deletePassword(SERVICE, encodeAccountName(baseUrl));
     },
   };
+}
+
+/**
+ * Encode an account name so it has only valid characters for Windows.
+ */
+function encodeAccountName(baseUrl: string): string {
+  return Buffer.from(baseUrl).toString("base64");
 }
 
 function buildLinuxTokenStorageError(error: unknown): CliError {
