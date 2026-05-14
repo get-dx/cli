@@ -44,7 +44,7 @@ export function initCommand() {
     .action(
       wrapAction(async (commandOptions, command) => {
         const context = getContext(command);
-        let runtime = buildRuntimeSafe(context);
+        let runtime = await buildRuntimeSafe(context);
 
         ensureInteractive();
 
@@ -134,7 +134,7 @@ async function attemptLogin(
     throw new CliError("Account web API token is required");
   }
 
-  const runtime = buildRuntime(context, {
+  const runtime = await buildRuntime(context, {
     apiBaseUrl,
     token,
     webBaseUrl,
@@ -148,7 +148,7 @@ async function attemptLogin(
   }
 
   persistBaseUrls(apiBaseUrl, webBaseUrl);
-  setToken(apiBaseUrl, token);
+  await setToken(apiBaseUrl, token);
 
   renderAuthInfo(response, token, apiBaseUrl);
 

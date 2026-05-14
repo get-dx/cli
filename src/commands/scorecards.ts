@@ -71,7 +71,7 @@ export function scorecardsCommand() {
           );
         }
 
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
 
         let raw: unknown;
         if (options.fromFile) {
@@ -115,7 +115,7 @@ export function scorecardsCommand() {
     )
     .action(
       wrapAction(async (id, _options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         await deleteScorecard(runtime, id);
 
         if (runtime.context.json) {
@@ -159,7 +159,7 @@ export function scorecardsCommand() {
       wrapAction(async (id, options, command) => {
         const includeSections = parseScorecardIncludeSections(options.include);
 
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await getScorecard(runtime, id);
 
         if (runtime.context.json) {
@@ -199,7 +199,7 @@ export function scorecardsCommand() {
     )
     .action(
       wrapAction(async (path, options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
 
         if (options.id) {
           const id = options.id as string;
@@ -294,7 +294,7 @@ export function scorecardsCommand() {
       wrapAction(async (options, command) => {
         const includeSections = parseScorecardIncludeSections(options.include);
 
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await listScorecards(runtime, {
           cursor: options.cursor,
           limit: options.limit,
@@ -368,7 +368,7 @@ export function scorecardsCommand() {
           );
         }
 
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
 
         let raw: unknown;
         if (options.fromFile) {

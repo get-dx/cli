@@ -11,13 +11,13 @@ export function buildLogger(context: CliContext): Logger {
   return createLogger({ json: context.json || !process.stderr.isTTY });
 }
 
-export function buildRuntime(
+export async function buildRuntime(
   context: CliContext,
   overrides?: Partial<Runtime>,
-): Runtime {
+): Promise<Runtime> {
   const apiBaseUrl = overrides?.apiBaseUrl ?? resolveApiBaseUrl();
   const webBaseUrl = overrides?.webBaseUrl ?? resolveWebBaseUrl();
-  const token = overrides?.token ?? getToken(apiBaseUrl);
+  const token = overrides?.token ?? (await getToken(apiBaseUrl));
 
   if (!token) {
     throw new CliError(
@@ -35,13 +35,13 @@ export function buildRuntime(
   };
 }
 
-export function buildRuntimeSafe(
+export async function buildRuntimeSafe(
   context: CliContext,
   overrides?: Partial<Runtime>,
-): Runtime | null {
+): Promise<Runtime | null> {
   const apiBaseUrl = overrides?.apiBaseUrl ?? resolveApiBaseUrl();
   const webBaseUrl = overrides?.webBaseUrl ?? resolveWebBaseUrl();
-  const token = overrides?.token ?? getToken(apiBaseUrl);
+  const token = overrides?.token ?? (await getToken(apiBaseUrl));
 
   if (!token) {
     return null;

@@ -11,14 +11,14 @@ afterEach(() => {
 });
 
 describe("runtime", () => {
-  it("uses environment overrides for base URLs and token", () => {
+  it("uses environment overrides for base URLs and token", async () => {
     process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-runtime-default";
     writeConfig({});
     process.env.DX_API_BASE_URL = "https://api.example.com/";
     process.env.DX_WEB_BASE_URL = "https://app.example.com/";
     process.env.DX_API_TOKEN = "abcd1234wxyz";
 
-    const runtime = buildRuntime({
+    const runtime = await buildRuntime({
       json: true,
     });
 
@@ -27,40 +27,40 @@ describe("runtime", () => {
     expect(runtime.token).toBe("abcd1234wxyz");
   });
 
-  it("uses DX_WEB_BASE_URL for webBaseUrl when set", () => {
+  it("uses DX_WEB_BASE_URL for webBaseUrl when set", async () => {
     process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-runtime-ui";
     writeConfig({});
     process.env.DX_API_BASE_URL = "https://api.example.com/";
     process.env.DX_API_TOKEN = "abcd1234wxyz";
     process.env.DX_WEB_BASE_URL = "https://app.custom.example/";
 
-    const runtime = buildRuntime({
+    const runtime = await buildRuntime({
       json: true,
     });
 
     expect(runtime.webBaseUrl).toBe("https://app.custom.example");
   });
 
-  it("uses persisted webBaseUrl when DX_WEB_BASE_URL is unset", () => {
+  it("uses persisted webBaseUrl when DX_WEB_BASE_URL is unset", async () => {
     process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-runtime-ui";
     writeConfig({ webBaseUrl: "https://ui.persisted.example.com" });
     process.env.DX_API_BASE_URL = "https://api.example.com/";
     process.env.DX_API_TOKEN = "abcd1234wxyz";
 
-    const runtime = buildRuntime({
+    const runtime = await buildRuntime({
       json: true,
     });
 
     expect(runtime.webBaseUrl).toBe("https://ui.persisted.example.com");
   });
 
-  it("reads persisted API base URL when env is absent", () => {
+  it("reads persisted API base URL when env is absent", async () => {
     const tmp = vi.fn();
     process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-config";
     writeConfig({ apiBaseUrl: "https://api.persisted.example.com" });
     process.env.DX_API_TOKEN = "persisted-token";
 
-    const runtime = buildRuntime({
+    const runtime = await buildRuntime({
       json: false,
     });
 

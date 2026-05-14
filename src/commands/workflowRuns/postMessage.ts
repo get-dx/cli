@@ -35,7 +35,7 @@ export function postMessageCommand() {
     .action(
       wrapAction(async (workflowRunId: string, options, command) => {
         const context = getContext(command);
-        const runtime = buildRuntime(context);
+        const runtime = await buildRuntime(context);
 
         const response = await postMessage(
           runtime,

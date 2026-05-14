@@ -40,7 +40,7 @@ export function teamsCommand(): Command {
     .action(
       wrapAction(async (options, command) => {
         const teamEmails = parseTeamEmails(options.teamEmails);
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await findTeamByMembers(runtime, teamEmails);
 
         if (runtime.context.json) {
@@ -80,7 +80,7 @@ export function teamsCommand(): Command {
     .action(
       wrapAction(async (options, command) => {
         const lookup = parseTeamInfoLookup(options);
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await getTeamInfo(runtime, lookup);
 
         if (runtime.context.json) {
@@ -109,7 +109,7 @@ export function teamsCommand(): Command {
     )
     .action(
       wrapAction(async (_options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await listTeams(runtime);
 
         if (runtime.context.json) {

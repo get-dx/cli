@@ -29,7 +29,7 @@ export function infoCommand() {
     .action(
       wrapAction(async (workflowRunId: string, options, command) => {
         const context = getContext(command);
-        const runtime = buildRuntime(context);
+        const runtime = await buildRuntime(context);
 
         const infoResponse = await getWorkflowRun(runtime, workflowRunId);
         const workflowRun = infoResponse.body.workflow_run;

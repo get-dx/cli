@@ -97,7 +97,7 @@ export function entitiesCommand() {
         if (!options.type) {
           throw new CliError("--type is required", EXIT_CODES.ARGUMENT_ERROR);
         }
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
 
         const resolvedValues = await resolveValuesForEntityType(
           runtime,
@@ -150,7 +150,7 @@ export function entitiesCommand() {
     )
     .action(
       wrapAction(async (identifier, _options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await deleteEntity(runtime, identifier);
 
         if (runtime.context.json) {
@@ -207,7 +207,7 @@ export function entitiesCommand() {
     )
     .action(
       wrapAction(async (identifier, options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
 
         const resolvedValues = await resolveValuesForExistingEntity(
           runtime,
@@ -296,7 +296,7 @@ export function entitiesCommand() {
           );
         }
 
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const resolvedValues = await resolveValuesForEntityType(
           runtime,
           options.type as string,
@@ -353,7 +353,7 @@ export function entitiesCommand() {
     )
     .action(
       wrapAction(async (identifier, options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await getEntity(runtime, identifier);
         const processedResponse = processIncludes(response, options);
 
@@ -405,7 +405,7 @@ export function entitiesCommand() {
     )
     .action(
       wrapAction(async (options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await listEntities(runtime, {
           cursor: options.cursor,
           limit: options.limit,
@@ -458,7 +458,7 @@ export function entitiesCommand() {
     )
     .action(
       wrapAction(async (identifier, options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await getEntityTasks(runtime, identifier, {
           cursor: options.cursor,
           limit: options.limit,
@@ -503,7 +503,7 @@ export function entitiesCommand() {
     )
     .action(
       wrapAction(async (identifier, options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await getEntityScorecards(runtime, identifier, {
           cursor: options.cursor,
           limit: options.limit,

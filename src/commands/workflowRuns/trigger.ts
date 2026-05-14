@@ -90,7 +90,7 @@ export function triggerCommand() {
     .action(
       wrapAction(async (workflowIdentifier: string, options, command) => {
         const context = getContext(command);
-        const runtime = buildRuntime(context);
+        const runtime = await buildRuntime(context);
 
         // Fetch list of all workflows, find the one that applies
         const workflowsResponse = await listWorkflows(runtime, {});
