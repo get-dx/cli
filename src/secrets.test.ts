@@ -3,12 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CliError } from "./errors.js";
 import { setToken } from "./secrets.js";
 
-const { mockExecaSync } = vi.hoisted(() => ({
-  mockExecaSync: vi.fn(),
+const { mockExeca } = vi.hoisted(() => ({
+  mockExeca: vi.fn(),
 }));
 
 vi.mock("execa", () => ({
-  execaSync: mockExecaSync,
+  execa: mockExeca,
 }));
 
 const originalEnv = { ...process.env };
@@ -16,7 +16,7 @@ const originalPlatform = process.platform;
 
 beforeEach(() => {
   process.env = { ...originalEnv };
-  mockExecaSync.mockReset();
+  mockExeca.mockReset();
   setPlatform("linux");
 });
 
@@ -27,10 +27,10 @@ afterEach(() => {
 
 describe("secrets", () => {
   describe("setToken", () => {
-    it("stores Linux tokens with secret-tool", () => {
-      setToken("https://api.getdx.com", "secret-token");
+    it("stores Linux tokens with secret-tool", async () => {
+      await setToken("https://api.getdx.com", "secret-token");
 
-      expect(mockExecaSync).toHaveBeenCalledWith(
+      expect(mockExeca).toHaveBeenCalledWith(
         "secret-tool",
         [
           "store",
@@ -44,14 +44,14 @@ describe("secrets", () => {
       );
     });
 
-    it("explains when secret-tool is missing on Linux", () => {
-      mockExecaSync.mockImplementation(() => {
-        throw Object.assign(new Error("spawnSync secret-tool ENOENT"), {
+    it("explains when secret-tool is missing on Linux", async () => {
+      mockExeca.mockRejectedValue(
+        Object.assign(new Error("spawnSync secret-tool ENOENT"), {
           code: "ENOENT",
-        });
-      });
+        }),
+      );
 
-      const error = captureError(() =>
+      const error = await captureError(() =>
         setToken("https://api.getdx.com", "secret-token"),
       );
 
@@ -62,11 +62,11 @@ describe("secrets", () => {
       expect(error.message).not.toContain("spawnSync secret-tool ENOENT");
     });
 
-    it("explains when the Linux Secret Service is unavailable", () => {
+    it("explains when the Linux Secret Service is unavailable", async () => {
       const stderr =
         "secret-tool: The name org.freedesktop.secrets was not provided by any .service files";
-      mockExecaSync.mockImplementation(() => {
-        throw Object.assign(
+      mockExeca.mockRejectedValue(
+        Object.assign(
           new Error(
             "Command failed with exit code 1: secret-tool store '--label=dx-cli'",
           ),
@@ -74,10 +74,10 @@ describe("secrets", () => {
             exitCode: 1,
             stderr,
           },
-        );
-      });
+        ),
+      );
 
-      const error = captureError(() =>
+      const error = await captureError(() =>
         setToken("https://api.getdx.com", "secret-token"),
       );
 
@@ -99,9 +99,9 @@ function setPlatform(platform: NodeJS.Platform): void {
   });
 }
 
-function captureError(action: () => void): Error {
+async function captureError(action: () => Promise<void>): Promise<Error> {
   try {
-    action();
+    await action();
   } catch (error) {
     if (error instanceof Error) {
       return error;
