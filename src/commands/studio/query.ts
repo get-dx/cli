@@ -80,7 +80,7 @@ export function queryCommand() {
         }
 
         const variables = parseVariables(options.variable as string[]);
-        const runtime = buildRuntime(context);
+        const runtime = await buildRuntime(context);
         const progress = new AsyncProgressReporter();
 
         const queryRun = await executeQuery(runtime, progress, sql, variables);

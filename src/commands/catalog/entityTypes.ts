@@ -76,7 +76,7 @@ export function entityTypesCommand() {
           );
         }
 
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
 
         let raw: unknown;
         if (options.fromFile) {
@@ -119,7 +119,7 @@ export function entityTypesCommand() {
     )
     .action(
       wrapAction(async (identifier, _options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await deleteEntityType(runtime, identifier);
 
         if (runtime.context.json) {
@@ -158,7 +158,7 @@ export function entityTypesCommand() {
     )
     .action(
       wrapAction(async (identifier, options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await getEntityType(runtime, identifier);
         const processedEntityType = processEntityTypeIncludes(
           response.entity_type as Record<string, unknown>,
@@ -199,7 +199,7 @@ export function entityTypesCommand() {
     )
     .action(
       wrapAction(async (path, options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
 
         if (options.identifier) {
           const identifier = options.identifier as string;
@@ -286,7 +286,7 @@ export function entityTypesCommand() {
     )
     .action(
       wrapAction(async (options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await listEntityTypes(runtime, {
           cursor: options.cursor,
           limit: options.limit,
@@ -361,7 +361,7 @@ export function entityTypesCommand() {
           );
         }
 
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
 
         let raw: unknown;
         if (options.fromFile) {

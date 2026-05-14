@@ -53,7 +53,7 @@ export function snapshotsCommand(): Command {
     .action(
       wrapAction(async (options, command) => {
         const id = parseRequiredTextOption(options.id, "--id");
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await listSnapshotCsatComments(runtime, {
           id,
           cursor: options.cursor,
@@ -110,7 +110,7 @@ export function snapshotsCommand(): Command {
     .action(
       wrapAction(async (options, command) => {
         const id = parseRequiredTextOption(options.id, "--id");
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await listSnapshotDriverComments(runtime, {
           id,
           cursor: options.cursor,
@@ -152,7 +152,7 @@ export function snapshotsCommand(): Command {
     .action(
       wrapAction(async (options, command) => {
         const snapshotId = parseRequiredTextOption(options.id, "--id");
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await getSnapshotInfo(runtime, snapshotId);
 
         if (runtime.context.json) {
@@ -181,7 +181,7 @@ export function snapshotsCommand(): Command {
     )
     .action(
       wrapAction(async (_options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await listSnapshots(runtime);
 
         if (runtime.context.json) {

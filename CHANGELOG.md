@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Add support for secret storage on Windows using [cross-keychain](https://github.com/magarcia/cross-keychain).
+
 ## 0.3.5 - 2026-05-08
 
 ### Fixed

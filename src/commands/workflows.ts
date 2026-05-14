@@ -61,7 +61,7 @@ export function workflowsCommand(): Command {
           );
         }
 
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await listWorkflows(runtime, {
           scope,
           entity_identifier: entityIdentifier,

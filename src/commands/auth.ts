@@ -88,7 +88,7 @@ export function authCommand(): Command {
           }
         }
 
-        const runtime = buildRuntime(context, {
+        const runtime = await buildRuntime(context, {
           apiBaseUrl,
           token,
           webBaseUrl,
@@ -96,7 +96,7 @@ export function authCommand(): Command {
 
         const response = await getAuthInfo(runtime);
         persistBaseUrls(apiBaseUrl, webBaseUrl);
-        setToken(apiBaseUrl, token);
+        await setToken(apiBaseUrl, token);
         if (context.json) {
           renderJson({
             ...response,
@@ -156,7 +156,7 @@ export function authCommand(): Command {
     )
     .action(
       wrapAction(async (_options, command) => {
-        const runtime = buildRuntime(getContext(command));
+        const runtime = await buildRuntime(getContext(command));
         const response = await getAuthInfo(runtime);
 
         if (runtime.context.json) {
