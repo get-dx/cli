@@ -1,29 +1,30 @@
-import { execaSync } from "execa";
+import { execa } from "execa";
+import * as keytar from "@github/keytar";
 
 import { CliError } from "./errors.js";
 
 const SERVICE = "dx-cli";
 
 interface SecretStore {
-  get(baseUrl: string): string | null;
-  set(baseUrl: string, token: string): void;
-  delete(baseUrl: string): void;
+  get(baseUrl: string): Promise<string | null>;
+  set(baseUrl: string, token: string): Promise<void>;
+  delete(baseUrl: string): Promise<void>;
 }
 
-export function getToken(baseUrl: string): string | null {
+export async function getToken(baseUrl: string): Promise<string | null> {
   if (process.env.DX_API_TOKEN) {
     return process.env.DX_API_TOKEN;
   }
 
-  return getSecretStore().get(baseUrl);
+  return await getSecretStore().get(baseUrl);
 }
 
-export function setToken(baseUrl: string, token: string): void {
-  getSecretStore().set(baseUrl, token);
+export async function setToken(baseUrl: string, token: string): Promise<void> {
+  await getSecretStore().set(baseUrl, token);
 }
 
-export function deleteToken(baseUrl: string): void {
-  getSecretStore().delete(baseUrl);
+export async function deleteToken(baseUrl: string): Promise<void> {
+  await getSecretStore().delete(baseUrl);
 }
 
 function getSecretStore(platform = process.platform): SecretStore {
@@ -35,6 +36,10 @@ function getSecretStore(platform = process.platform): SecretStore {
     return linuxSecretStore();
   }
 
+  if (platform === "win32") {
+    return windowsSecretStore();
+  }
+
   throw new CliError(
     `Unsupported platform for secure token storage: ${platform}`,
   );
@@ -42,23 +47,25 @@ function getSecretStore(platform = process.platform): SecretStore {
 
 function macosSecretStore(): SecretStore {
   return {
-    get(baseUrl) {
+    async get(baseUrl) {
       try {
-        return execaSync("security", [
+        const result = await execa("security", [
           "find-generic-password",
           "-s",
           SERVICE,
           "-a",
           baseUrl,
           "-w",
-        ]).stdout.trim();
+        ]);
+
+        return result.stdout?.trim() ?? null;
       } catch {
         return null;
       }
     },
-    set(baseUrl, token) {
+    async set(baseUrl, token) {
       try {
-        execaSync("security", [
+        await execa("security", [
           "add-generic-password",
           "-U",
           "-s",
@@ -81,9 +88,9 @@ function macosSecretStore(): SecretStore {
         );
       }
     },
-    delete(baseUrl) {
+    async delete(baseUrl) {
       try {
-        execaSync("security", [
+        await execa("security", [
           "delete-generic-password",
           "-s",
           SERVICE,
@@ -99,22 +106,24 @@ function macosSecretStore(): SecretStore {
 
 function linuxSecretStore(): SecretStore {
   return {
-    get(baseUrl) {
+    async get(baseUrl) {
       try {
-        return execaSync("secret-tool", [
+        const result = await execa("secret-tool", [
           "lookup",
           "service",
           SERVICE,
           "account",
           baseUrl,
-        ]).stdout.trim();
+        ]);
+
+        return result.stdout?.trim() ?? null;
       } catch {
         return null;
       }
     },
-    set(baseUrl, token) {
+    async set(baseUrl, token) {
       try {
-        execaSync(
+        await execa(
           "secret-tool",
           ["store", "--label=dx-cli", "service", SERVICE, "account", baseUrl],
           { input: token },
@@ -123,10 +132,41 @@ function linuxSecretStore(): SecretStore {
         throw buildLinuxTokenStorageError(error);
       }
     },
-    delete(_baseUrl) {
+    async delete(_baseUrl) {
       throw new CliError(
         "Linux token deletion is not supported by secret-tool in this implementation",
       );
+    },
+  };
+}
+
+function windowsSecretStore(): SecretStore {
+  return {
+    async get(baseUrl) {
+      try {
+        return await keytar.getPassword(SERVICE, baseUrl);
+      } catch {
+        return null;
+      }
+    },
+    async set(baseUrl, token) {
+      try {
+        await keytar.setPassword(SERVICE, baseUrl, token);
+      } catch (error) {
+        throw new CliError(
+          [
+            "Unable to save the DX API token securely using Windows Credential Manager.",
+            "",
+            "Set DX_API_TOKEN in the environment, or try again from a Windows session with Credential Manager access.",
+            formatErrorDetails(error),
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        );
+      }
+    },
+    async delete(baseUrl) {
+      await keytar.deletePassword(SERVICE, baseUrl);
     },
   };
 }
