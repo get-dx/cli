@@ -39,6 +39,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@github/keytar": "^7.10.6",
     "@inquirer/prompts": "^8.4.1",
     "commander": "^14.0.1",
     "dayjs": "^1.11.20",
