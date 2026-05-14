@@ -1,5 +1,5 @@
 import { execa } from "execa";
-import * as keytar from "@github/keytar";
+import * as crossKeychain from "cross-keychain";
 
 import { CliError } from "./errors.js";
 
@@ -144,14 +144,14 @@ function windowsSecretStore(): SecretStore {
   return {
     async get(baseUrl) {
       try {
-        return await keytar.getPassword(SERVICE, baseUrl);
+        return await crossKeychain.getPassword(SERVICE, baseUrl);
       } catch {
         return null;
       }
     },
     async set(baseUrl, token) {
       try {
-        await keytar.setPassword(SERVICE, baseUrl, token);
+        await crossKeychain.setPassword(SERVICE, baseUrl, token);
       } catch (error) {
         throw new CliError(
           [
@@ -166,7 +166,7 @@ function windowsSecretStore(): SecretStore {
       }
     },
     async delete(baseUrl) {
-      await keytar.deletePassword(SERVICE, baseUrl);
+      await crossKeychain.deletePassword(SERVICE, baseUrl);
     },
   };
 }
