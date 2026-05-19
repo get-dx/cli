@@ -176,6 +176,48 @@ describe("catalog entities commands", () => {
       );
     });
 
+    it("splits --owner-user-emails into an array in the request body", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+            status: 200,
+          }),
+        ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "create",
+        "--identifier",
+        "my-service",
+        "--type",
+        "service",
+        "--owner-user-emails",
+        "owner1@example.com, owner2@example.com",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.create",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            identifier: "my-service",
+            type: "service",
+            owner_user_emails: ["owner1@example.com", "owner2@example.com"],
+          }),
+        }),
+      );
+    });
+
     it("exits with code 2 when --identifier is missing", async () => {
       const stderrWrites: string[] = [];
       vi.spyOn(process.stderr, "write").mockImplementation(((
@@ -1636,6 +1678,8 @@ describe("catalog entities commands", () => {
         "A test service",
         "--owner-team-ids",
         "MzI1NTk,abc123",
+        "--owner-user-emails",
+        "owner1@example.com,owner2@example.com",
         "--owner-user-ids",
         "user-1,user-2",
       ]);
@@ -1648,6 +1692,7 @@ describe("catalog entities commands", () => {
             identifier: "my-service",
             description: "A test service",
             owner_team_ids: ["MzI1NTk", "abc123"],
+            owner_user_emails: ["owner1@example.com", "owner2@example.com"],
             owner_user_ids: ["user-1", "user-2"],
           }),
         }),
@@ -2199,6 +2244,8 @@ describe("catalog entities commands", () => {
         "tier=Tier-1",
         "--owner-team-ids",
         "MzI1NTk,abc123",
+        "--owner-user-emails",
+        "owner1@example.com,owner2@example.com",
       ]);
 
       expect(fetch).toHaveBeenNthCalledWith(
@@ -2215,6 +2262,7 @@ describe("catalog entities commands", () => {
             identifier: "my-service",
             type: "service",
             owner_team_ids: ["MzI1NTk", "abc123"],
+            owner_user_emails: ["owner1@example.com", "owner2@example.com"],
             properties: { tier: "Tier-1" },
           }),
         }),
