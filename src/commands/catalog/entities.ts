@@ -43,6 +43,7 @@ export function entitiesCommand() {
     .option("--name <name>", "Display name of the entity")
     .option("--description <desc>", "Description of the entity")
     .option("--owner-team-ids <ids>", "Comma-separated owner team IDs")
+    .option("--owner-user-emails <emails>", "Comma-separated owner user emails")
     .option("--owner-user-ids <ids>", "Comma-separated owner user IDs")
     .option(
       "--property <kv>",
@@ -113,12 +114,11 @@ export function entitiesCommand() {
             type: options.type as string,
             name: options.name,
             description: options.description,
-            owner_team_ids: options.ownerTeamIds
-              ?.split(",")
-              .map((s: string) => s.trim()),
-            owner_user_ids: options.ownerUserIds
-              ?.split(",")
-              .map((s: string) => s.trim()),
+            owner_team_ids: parseCommaSeparatedValues(options.ownerTeamIds),
+            owner_user_emails: parseCommaSeparatedValues(
+              options.ownerUserEmails,
+            ),
+            owner_user_ids: parseCommaSeparatedValues(options.ownerUserIds),
             ...resolvedValues,
           },
         );
@@ -168,6 +168,7 @@ export function entitiesCommand() {
     .option("--name <name>", "Display name of the entity")
     .option("--description <desc>", "Description of the entity")
     .option("--owner-team-ids <ids>", "Comma-separated owner team IDs")
+    .option("--owner-user-emails <emails>", "Comma-separated owner user emails")
     .option("--owner-user-ids <ids>", "Comma-separated owner user IDs")
     .option(
       "--property <kv>",
@@ -246,6 +247,7 @@ export function entitiesCommand() {
     .option("--name <name>", "Display name of the entity")
     .option("--description <desc>", "Description of the entity")
     .option("--owner-team-ids <ids>", "Comma-separated owner team IDs")
+    .option("--owner-user-emails <emails>", "Comma-separated owner user emails")
     .option("--owner-user-ids <ids>", "Comma-separated owner user IDs")
     .option(
       "--property <kv>",
@@ -601,6 +603,7 @@ type CreateEntityParams = {
   name?: string;
   description?: string;
   owner_team_ids?: string[];
+  owner_user_emails?: string[];
   owner_user_ids?: string[];
   properties?: Record<string, unknown>;
   aliases?: EntityMutationAliases;
@@ -610,6 +613,7 @@ type EntityMutationOptionValues = {
   name?: string;
   description?: string;
   owner_team_ids?: string[];
+  owner_user_emails?: string[];
   owner_user_ids?: string[];
   properties?: Record<string, unknown>;
   aliases?: EntityMutationAliases;
@@ -1128,17 +1132,19 @@ function getEntityMutationOptionValues(options: {
   name?: string;
   description?: string;
   ownerTeamIds?: string;
+  ownerUserEmails?: string;
   ownerUserIds?: string;
 }): EntityMutationOptionValues {
   return {
     name: options.name,
     description: options.description,
-    owner_team_ids: parseCommaSeparatedIds(options.ownerTeamIds),
-    owner_user_ids: parseCommaSeparatedIds(options.ownerUserIds),
+    owner_team_ids: parseCommaSeparatedValues(options.ownerTeamIds),
+    owner_user_emails: parseCommaSeparatedValues(options.ownerUserEmails),
+    owner_user_ids: parseCommaSeparatedValues(options.ownerUserIds),
   };
 }
 
-function parseCommaSeparatedIds(value?: string): string[] | undefined {
+function parseCommaSeparatedValues(value?: string): string[] | undefined {
   if (value === undefined) {
     return undefined;
   }
@@ -1164,6 +1170,8 @@ function buildEntityMutationBody(
   if (params.description !== undefined) body.description = params.description;
   if (params.owner_team_ids?.length)
     body.owner_team_ids = params.owner_team_ids;
+  if (params.owner_user_emails?.length)
+    body.owner_user_emails = params.owner_user_emails;
   if (params.owner_user_ids?.length)
     body.owner_user_ids = params.owner_user_ids;
   if (params.properties !== undefined) body.properties = params.properties;
