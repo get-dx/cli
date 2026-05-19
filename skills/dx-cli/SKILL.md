@@ -4,6 +4,8 @@ description: Interact with the DX (getdx.com) APIs to get and manage information
 user-invocable: false
 compatibility: Requires access to the internet
 allowed-tools: Bash(dx:*)
+metadata:
+  skill_version: 1
 ---
 
 # DX CLI
