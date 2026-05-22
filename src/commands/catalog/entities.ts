@@ -481,9 +481,17 @@ export function entitiesCommand() {
     .command("scorecards")
     .description("Get the current scorecard report for an entity")
     .argument("<identifier>", "Entity identifier")
+    .option(
+      "--check-ids <ids>",
+      "Comma-separated check IDs to filter the report to",
+    )
     .option("--cursor <cursor>", "Cursor for the next page of results")
     .option("--limit <n>", "Max scorecards per page (default is 50)", (value) =>
       parsePositiveIntOption(value, "--limit"),
+    )
+    .option(
+      "--only-failing",
+      "Return only checks that are not passing (exempted failing checks are still included)",
     )
     .addHelpText(
       "afterAll",
@@ -501,14 +509,26 @@ export function entitiesCommand() {
           command:
             "dx catalog entities scorecards login-frontend --cursor xuvkgfq9t0ty",
         },
+        {
+          label: "Show only checks that are not passing",
+          command:
+            "dx catalog entities scorecards login-frontend --only-failing",
+        },
+        {
+          label: "Filter the report to specific checks",
+          command:
+            "dx catalog entities scorecards login-frontend --check-ids NDQ,NTU",
+        },
       ]),
     )
     .action(
       wrapAction(async (identifier, options, command) => {
         const runtime = await buildRuntime(getContext(command));
         const response = await getEntityScorecards(runtime, identifier, {
+          check_ids: parseCommaSeparatedValues(options.checkIds),
           cursor: options.cursor,
           limit: options.limit,
+          only_failing: options.onlyFailing,
         });
 
         if (runtime.context.json) {
@@ -700,8 +720,10 @@ async function upsertEntity(
 }
 
 type GetEntityScorecardsParams = {
+  check_ids?: string[];
   cursor?: string;
   limit?: number;
+  only_failing?: boolean;
 };
 
 export type ScorecardEmptyLevel = {
@@ -755,9 +777,15 @@ async function getEntityScorecards(
   identifier: string,
   params: GetEntityScorecardsParams,
 ): Promise<GetEntityScorecardsResponse> {
-  const query: Record<string, string | number | undefined> = { identifier };
+  const query: Record<string, string | number | boolean | undefined> = {
+    identifier,
+  };
   if (params.cursor !== undefined) query.cursor = params.cursor;
   if (params.limit !== undefined) query.limit = params.limit;
+  if (params.only_failing) query.only_failing = true;
+  if (params.check_ids !== undefined && params.check_ids.length > 0) {
+    query.check_ids = params.check_ids.join(",");
+  }
 
   const response = await request<GetEntityScorecardsResponse>(
     runtime,
