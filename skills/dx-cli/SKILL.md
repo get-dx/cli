@@ -56,8 +56,11 @@ If this returns an error or shows that you are not logged in, stop and ask the u
 
 **Initiative** — A time-boxed project that groups failing scorecard checks into actionable tasks for teams. Tasks for a given entity can be fetched with `dx catalog entities tasks <identifier>`.
 
+**Exemption** — A time-bound approved pass on a failing check for a specific entity. A check result with a non-null `exemption_expires_at` is exempted: it may still be failing, but is not counted against the entity until the exemption expires.
+
 ## Reference Docs
 
 - [Catalog management](./references/catalog-management.md) — Entities and entity types: listing, inspecting, creating, updating, and deleting.
 - [Scorecards management](./references/scorecards-management.md) — Scorecards and checks: listing, inspecting, creating, updating, and deleting via YAML.
+- [Failing checks](./references/failing-checks.md) — Review and resolve an entity's failing scorecard checks: triage, diagnosis, fixes, and re-evaluation.
 - [Snapshot analysis](./references/snapshot-analysis.md) — Analyze snapshot scores, driver comments, and CSAT comments.
