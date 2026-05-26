@@ -109,9 +109,11 @@ Treat initiative tasks as the top priority among failing checks, since they have
 
 ---
 
-## Diagnosing with `dx studio query` (optional)
+## Diagnosing with `dx studio query` (typically not needed)
 
 If you have access to the organization's Data Cloud through `dx studio query`, you can run a check's SQL directly against the live data to see exactly what the check engine sees for your entity. This is the fastest way to verify a fix locally before waiting for the next re-evaluation.
+
+Do not over-index on this step because the queries can often rely on data stores that are updated by external processes.
 
 > **Access caveat:** `dx studio query` is only available to users with Data Cloud / Data Studio access in their organization. If `dx studio query --help` errors out or the call returns an authorization error, skip this step and rely on `message`, `output`, and the check's `description` instead.
 
@@ -137,7 +139,6 @@ dx studio query "
 ```
 
 See [Scorecards management](./scorecards-management.md#writing-and-iterating-on-check-queries) for the full list of variables (`$entity_identifier`, `$entity_github_repo_ids`, etc.) the check engine interpolates.
-
 ---
 
 ## Applying a fix
@@ -175,10 +176,10 @@ dx catalog entities scorecards my-service --only-failing --json
 dx catalog entities tasks my-service --json
 
 # 3. For each failing check, start with the result's message and output.
-#    If that's enough, skip to step 5.
+#    If that's enough, skip to step 5 (most common)
 
-# 4. Otherwise, pull the check definition (sql, description, points/level) and,
-#    if available, run the SQL against the live data.
+# 4. Optionally, pull the check definition (sql, description, points/level) for
+#    more context.
 dx scorecards info <scorecard_id> --include core,checks --json
 dx studio query "<inlined SQL with $entity_identifier replaced>"   # optional
 
