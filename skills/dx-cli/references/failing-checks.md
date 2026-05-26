@@ -2,7 +2,7 @@
 
 This reference is written for an **entity owner** (typically a service owner) who needs to triage and resolve the failing scorecard checks on their entity.
 
-A **check definition** lives on a scorecard and specifies what to evaluate. A **check result** is the outcome of running one check definition against one entity. Each result carries a `status` (e.g., `PASS`, `WARN`, or `FAIL`), and may include an `output` value, a `message`, and an `exemption_expires_at` timestamp. Resolving a failing check usually means identifying *why* the check failed for the entity, applying a fix, and waiting for the scorecard to re-evaluate or manually triggering re-evaluation.
+A **check definition** lives on a scorecard and specifies what to evaluate. A **check result** is the outcome of running one check definition against one entity. Each result carries a `status` (e.g., `PASS`, `WARN`, or `FAIL`), and may include an `output` value, a `message`, and an `exemption_expires_at` timestamp. Resolving a failing check usually means identifying _why_ the check failed for the entity, applying a fix, and waiting for the scorecard to re-evaluate or manually triggering re-evaluation.
 
 ---
 
@@ -29,15 +29,15 @@ Pagination follows the standard pattern: when `response_metadata.next_cursor` is
 
 For each `ScorecardCheckResult` returned, the most useful fields for triage are:
 
-| Field                  | What it tells you                                                                                                                                                                              |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `status`               | `PASS`, `WARN`, or `FAIL`. `WARN` indicates an at-risk condition; treat it like a soft failure.                                                                                                |
-| `message`              | Per-entity diagnostic string (Markdown supported) emitted by the check's SQL. Often explains *exactly* why this entity failed — read this first.                                               |
-| `output`               | `{ value, type }` from the check's SQL. Useful when the check measures a number (uptime %, open-bug count, etc.). Compare this against the threshold in the check definition.                  |
-| `related_properties`   | Catalog property identifiers that the check author flagged as the fix target. When present, the failure can often be resolved with `dx catalog entities update --property <key>=<value>`.      |
-| `level` / `check_group`| Where this check sits in its scorecard. Drives triage order (see below).                                                                                                                       |
-| `exemption_expires_at` | If non-null, the entity has a valid approved exemption for this check. The check is failing but is not currently counted against the entity. (Visible in `--json` output.)                     |
-| `executed_at`          | When this result was last computed. Useful for sanity-checking whether a recent fix has been re-evaluated yet.                                                                                 |
+| Field                   | What it tells you                                                                                                                                                                         |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `status`                | `PASS`, `WARN`, or `FAIL`. `WARN` indicates an at-risk condition; treat it like a soft failure.                                                                                           |
+| `message`               | Per-entity diagnostic string (Markdown supported) emitted by the check's SQL. Often explains _exactly_ why this entity failed — read this first.                                          |
+| `output`                | `{ value, type }` from the check's SQL. Useful when the check measures a number (uptime %, open-bug count, etc.). Compare this against the threshold in the check definition.             |
+| `related_properties`    | Catalog property identifiers that the check author flagged as the fix target. When present, the failure can often be resolved with `dx catalog entities update --property <key>=<value>`. |
+| `level` / `check_group` | Where this check sits in its scorecard. Drives triage order (see below).                                                                                                                  |
+| `exemption_expires_at`  | If non-null, the entity has a valid approved exemption for this check. The check is failing but is not currently counted against the entity. (Visible in `--json` output.)                |
+| `executed_at`           | When this result was last computed. Useful for sanity-checking whether a recent fix has been re-evaluated yet.                                                                            |
 
 ### About exemptions
 
@@ -52,7 +52,7 @@ When listing failing checks, surface exempted ones separately from un-exempted o
 
 ## Inspecting the check definition
 
-A check result tells you *that* the entity failed, but not *what* the check is measuring. For that, look up the check definition on its scorecard:
+A check result tells you _that_ the entity failed, but not _what_ the check is measuring. For that, look up the check definition on its scorecard:
 
 ```
 dx scorecards info <scorecard_id> --include core,checks --json
@@ -138,8 +138,7 @@ dx studio query "
 #    include them in the SELECT so you can see what the next evaluation will report.
 ```
 
-See [Scorecards management](./scorecards-management.md#writing-and-iterating-on-check-queries) for the full list of variables (`$entity_identifier`, `$entity_github_repo_ids`, etc.) the check engine interpolates.
----
+## See [Scorecards management](./scorecards-management.md#writing-and-iterating-on-check-queries) for the full list of variables (`$entity_identifier`, `$entity_github_repo_ids`, etc.) the check engine interpolates.
 
 ## Applying a fix
 
