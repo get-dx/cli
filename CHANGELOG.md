@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Updated
+
+- `dx catalog entities scorecards` can now be run with new optional arguments `--check-ids` and `--only-failing`.
+
+### Added
+
+- New skill on "Reviewing & Resolving Failing Checks" with a step-by-step guide for triaging and resolving failing scorecard checks on a catalog entity.
+
 ## 0.3.7 - 2026-05-19
 
 ### Added
