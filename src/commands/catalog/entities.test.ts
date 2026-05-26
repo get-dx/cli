@@ -1320,6 +1320,137 @@ describe("catalog entities commands", () => {
       );
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
+
+    it("forwards --only-failing and renders only the returned failing checks", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              scorecards: [
+                {
+                  id: "7o75a314lejw",
+                  name: "Production Readiness",
+                  type: "POINTS",
+                  checks: [
+                    {
+                      id: "NDQ",
+                      name: "Wiki doc link",
+                      passed: false,
+                      status: "FAIL",
+                    },
+                  ],
+                  points_meta: { points_total: 10, points_achieved: 0 },
+                },
+              ],
+              response_metadata: { next_cursor: null },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "entities",
+        "scorecards",
+        "login-frontend",
+        "--only-failing",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.scorecards?identifier=login-frontend&only_failing=true",
+        expect.objectContaining({ method: "GET" }),
+      );
+      const out = writes.join("");
+      expect(out).toContain("Production Readiness");
+      expect(out).toContain("Wiki doc link");
+      expect(out).toContain("Not passed");
+    });
+
+    it("forwards --check-ids and renders details for the returned checks", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              scorecards: [
+                {
+                  id: "7o75a314lejw",
+                  name: "Production Readiness",
+                  type: "POINTS",
+                  checks: [
+                    {
+                      id: "NDQ",
+                      name: "Wiki doc link",
+                      passed: true,
+                      status: "PASS",
+                    },
+                    {
+                      id: "NTU",
+                      name: "On-call rotation defined",
+                      passed: false,
+                      status: "FAIL",
+                    },
+                  ],
+                  points_meta: { points_total: 10, points_achieved: 5 },
+                },
+              ],
+              response_metadata: { next_cursor: null },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "entities",
+        "scorecards",
+        "login-frontend",
+        "--check-ids",
+        "NDQ,NTU",
+      ]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/catalog.entities.scorecards?identifier=login-frontend&check_ids=NDQ%2CNTU",
+        expect.objectContaining({ method: "GET" }),
+      );
+      const out = writes.join("");
+      expect(out).toContain("Production Readiness");
+      expect(out).toContain("Wiki doc link");
+      expect(out).toContain("On-call rotation defined");
+    });
   });
 
   describe("tasks", () => {
