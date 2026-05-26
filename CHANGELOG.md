@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.3.8 - 2026-05-26
+
 ### Updated
 
 - `dx catalog entities scorecards` can now be run with new optional arguments `--check-ids` and `--only-failing`.
