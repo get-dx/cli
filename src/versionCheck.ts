@@ -221,7 +221,13 @@ async function maybePrompt(
 export async function performUpdate(latestVersion: string): Promise<void> {
   if (await isSkillInstalled()) {
     renderRichText(
-      [ui.blankLine(), ui.p(ui.bold("Updating the DX skill..."))],
+      [
+        ui.blankLine(),
+        ui.p(ui.bold("Updating the DX skill.")),
+        ui.p("This will run the following command:", false),
+        ui.codeBlock("npx --yes -- skills@latest update dx-cli --global"),
+        ui.blankLine(),
+      ],
       {
         useStderr: true,
       },
@@ -250,10 +256,14 @@ export async function performUpdate(latestVersion: string): Promise<void> {
   renderRichText(
     [
       ui.blankLine(),
-      ui.p(ui.bold(`Updating the DX CLI to ${latestVersion}...`)),
+      ui.p(ui.bold(`Updating the DX CLI to ${latestVersion}.`)),
+      ui.p("This will run the following command:", false),
+      ui.codeBlock(`npm install -g @get-dx/cli@${latestVersion}`),
+      ui.blankLine(),
     ],
     { useStderr: true },
   );
+
   try {
     await execa({
       stdout: "inherit",
