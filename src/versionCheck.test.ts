@@ -201,7 +201,7 @@ describe("checkVersionAndMaybePrompt", () => {
 
   it("returns no-update and writes to stderr when already on latest version", async () => {
     mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
-    mockRequest.mockResolvedValue({ body: { cli: "0.3.7" } }); // same as package.json
+    mockRequest.mockResolvedValue({ body: { versions: { cli: "0.3.7" } } }); // same as package.json
     const stderrSpy = vi
       .spyOn(process.stderr, "write")
       .mockImplementation(() => true);
@@ -219,7 +219,7 @@ describe("checkVersionAndMaybePrompt", () => {
 
   it("shows non-interactive warning to stderr when a new version exists and not a TTY", async () => {
     mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
-    mockRequest.mockResolvedValue({ body: { cli: "0.4.0" } });
+    mockRequest.mockResolvedValue({ body: { versions: { cli: "0.4.0" } } });
 
     // Test environment is non-TTY by default; just capture stderr writes
     const stderrChunks: string[] = [];
@@ -240,7 +240,7 @@ describe("checkVersionAndMaybePrompt", () => {
 
   it("returns shouldUpdate: true when user chooses 'update' interactively", async () => {
     mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
-    mockRequest.mockResolvedValue({ body: { cli: "0.4.0" } });
+    mockRequest.mockResolvedValue({ body: { versions: { cli: "0.4.0" } } });
     mockSelect.mockResolvedValue("update");
 
     // Force interactive mode for this test
@@ -273,7 +273,7 @@ describe("checkVersionAndMaybePrompt", () => {
 
   it("persists SNOOZE state and returns no-update when user chooses 'snooze'", async () => {
     mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
-    mockRequest.mockResolvedValue({ body: { cli: "0.4.0" } });
+    mockRequest.mockResolvedValue({ body: { versions: { cli: "0.4.0" } } });
     mockSelect.mockResolvedValue("snooze");
 
     Object.defineProperty(process.stdin, "isTTY", {
@@ -311,7 +311,7 @@ describe("checkVersionAndMaybePrompt", () => {
 
   it("persists SKIP state and returns no-update when user chooses 'skip'", async () => {
     mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
-    mockRequest.mockResolvedValue({ body: { cli: "0.4.0" } });
+    mockRequest.mockResolvedValue({ body: { versions: { cli: "0.4.0" } } });
     mockSelect.mockResolvedValue("skip");
 
     Object.defineProperty(process.stdin, "isTTY", {
@@ -357,7 +357,7 @@ describe("checkVersionAndMaybePrompt", () => {
     );
 
     mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
-    mockRequest.mockResolvedValue({ body: { cli: "0.4.0" } });
+    mockRequest.mockResolvedValue({ body: { versions: { cli: "0.4.0" } } });
 
     const result = await checkVersionAndMaybePrompt([
       "node",

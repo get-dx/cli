@@ -10,6 +10,7 @@ import {
 import { request } from "./http.js";
 import { renderRichText } from "./renderers.js";
 import { buildRuntimeSafe } from "./runtime.js";
+import { isSkillInstalled } from "./skill.js";
 import type {
   LatestVersionsCache,
   Runtime,
@@ -31,7 +32,9 @@ export interface VersionCheckResult {
 }
 
 interface CurrentVersionResponse extends Record<string, unknown> {
-  cli: string;
+  versions: {
+    cli: string;
+  };
 }
 
 /**
@@ -90,7 +93,7 @@ async function fetchLatestVersion(runtime: Runtime): Promise<string> {
     "/cli.currentVersion",
     { method: "GET" },
   );
-  return response.body.cli;
+  return response.body.versions.cli;
 }
 
 /**
@@ -174,8 +177,20 @@ async function maybePrompt(
     return noUpdate;
   }
 
+  renderRichText(
+    [
+      ui.blankLine(),
+      ui.p(
+        ui.warning(
+          `A new version of the DX CLI is available: ${currentVersion} → ${latestVersion}`,
+        ),
+      ),
+      ui.blankLine(),
+    ],
+    { useStderr: true },
+  );
   const choice = await select({
-    message: `A new version of the DX CLI is available (${currentVersion} → ${ui.success(latestVersion)}). What would you like to do?`,
+    message: "What would you like to do?",
     choices: [
       { name: "Update now", value: "update" },
       { name: `Remind me later (in ${SNOOZE_DAYS} days)`, value: "snooze" },
@@ -204,27 +219,32 @@ async function maybePrompt(
  * Performs the actual CLI + skill upgrade after the user's command has finished.
  */
 export async function performUpdate(latestVersion: string): Promise<void> {
-  renderRichText([ui.blankLine(), ui.p(ui.bold("Updating the DX skill..."))], {
-    useStderr: true,
-  });
-  try {
-    await execa({
-      stdout: "inherit",
-      stderr: "inherit",
-      stdin: "inherit",
-    })`npx --yes -- skills@latest update dx-cli --global`;
-  } catch {
+  if (await isSkillInstalled()) {
     renderRichText(
-      [
-        ui.p(
-          ui.warning(
-            "Warning: failed to update the DX skill. You can update it manually with: " +
-              ui.code("npx skills update dx-cli --global"),
-          ),
-        ),
-      ],
-      { useStderr: true },
+      [ui.blankLine(), ui.p(ui.bold("Updating the DX skill..."))],
+      {
+        useStderr: true,
+      },
     );
+    try {
+      await execa({
+        stdout: "inherit",
+        stderr: "inherit",
+        stdin: "inherit",
+      })`npx --yes -- skills@latest update dx-cli --global`;
+    } catch {
+      renderRichText(
+        [
+          ui.p(
+            ui.warning(
+              "Warning: failed to update the DX skill. You can update it manually with: " +
+                ui.code("npx skills update dx-cli --global"),
+            ),
+          ),
+        ],
+        { useStderr: true },
+      );
+    }
   }
 
   renderRichText(
