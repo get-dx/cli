@@ -106,6 +106,10 @@ export async function checkVersionAndMaybePrompt(
 ): Promise<VersionCheckResult> {
   const noUpdate: VersionCheckResult = { shouldUpdate: false };
 
+  if (process.env.DX_DISABLE_VERSION_CHECK) {
+    return noUpdate;
+  }
+
   const topLevelCommand = argv[2];
   if (topLevelCommand && SKIP_COMMANDS.has(topLevelCommand)) {
     return noUpdate;
