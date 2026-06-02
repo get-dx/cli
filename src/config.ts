@@ -4,9 +4,9 @@ import path from "node:path";
 
 import { CliError, EXIT_CODES } from "./errors.js";
 import type {
-  LatestVersionsCache,
+  CurrentVersionCache,
   StoredConfig,
-  VersionPrompt,
+  VersionPromptSelection,
 } from "./types.js";
 
 const DEFAULT_API_BASE_URL = "https://api.getdx.com";
@@ -34,25 +34,31 @@ export function readConfig(): StoredConfig {
   if (typeof raw.apiBaseUrl === "string") {
     stored.apiBaseUrl = raw.apiBaseUrl;
   }
-  if (raw.latestVersionsCache && typeof raw.latestVersionsCache === "object") {
-    stored.latestVersionsCache = raw.latestVersionsCache as LatestVersionsCache;
+  if (raw.currentVersionCache && typeof raw.currentVersionCache === "object") {
+    stored.currentVersionCache = raw.currentVersionCache as CurrentVersionCache;
   }
-  if (raw.versionPrompt && typeof raw.versionPrompt === "object") {
-    stored.versionPrompt = raw.versionPrompt as VersionPrompt;
+  if (
+    raw.versionPromptSelection &&
+    typeof raw.versionPromptSelection === "object"
+  ) {
+    stored.versionPromptSelection =
+      raw.versionPromptSelection as VersionPromptSelection;
   }
   return stored;
 }
 
-export function persistLatestVersionsCache(cache: LatestVersionsCache): void {
-  writeConfig({ ...readConfig(), latestVersionsCache: cache });
+export function persistCurrentVersionCache(cache: CurrentVersionCache): void {
+  writeConfig({ ...readConfig(), currentVersionCache: cache });
 }
 
-export function persistVersionPrompt(prompt: VersionPrompt | undefined): void {
+export function persistVersionPromptSelection(
+  prompt: VersionPromptSelection | undefined,
+): void {
   const config = readConfig();
   if (prompt === undefined) {
-    delete config.versionPrompt;
+    delete config.versionPromptSelection;
   } else {
-    config.versionPrompt = prompt;
+    config.versionPromptSelection = prompt;
   }
   writeConfig(config);
 }

@@ -21,19 +21,18 @@ export interface RequestOptions {
   body?: unknown;
 }
 
-export interface LatestVersionsCache {
+export interface CurrentVersionCache {
   updatedAt: string;
   contents: { cli: string };
 }
 
-export type VersionPrompt =
+export type VersionPromptSelection =
   | { type: "SKIP"; skipVersion: string }
   | { type: "SNOOZE"; snoozeUntil: string };
 
 export interface StoredConfig {
   apiBaseUrl?: string;
   webBaseUrl?: string;
-  // TODO: maybe rename fields to have same prefix
-  latestVersionsCache?: LatestVersionsCache;
-  versionPrompt?: VersionPrompt;
+  currentVersionCache?: CurrentVersionCache;
+  versionPromptSelection?: VersionPromptSelection;
 }

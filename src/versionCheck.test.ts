@@ -94,7 +94,7 @@ describe("shouldPerformVersionCheck", () => {
     const twoDaysAgo = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
     expect(
       shouldPerformVersionCheck({
-        latestVersionsCache: {
+        currentVersionCache: {
           updatedAt: twoDaysAgo,
           contents: { cli: "0.3.7" },
         },
@@ -106,7 +106,7 @@ describe("shouldPerformVersionCheck", () => {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     expect(
       shouldPerformVersionCheck({
-        latestVersionsCache: {
+        currentVersionCache: {
           updatedAt: oneHourAgo,
           contents: { cli: "0.3.7" },
         },
@@ -120,7 +120,7 @@ describe("shouldPerformVersionCheck", () => {
     ).toISOString();
     expect(
       shouldPerformVersionCheck({
-        latestVersionsCache: {
+        currentVersionCache: {
           updatedAt: twentyThreeHoursAgo,
           contents: { cli: "0.3.7" },
         },
@@ -305,8 +305,8 @@ describe("checkVersionAndMaybePrompt", () => {
     // Check config was persisted
     const configPath = path.join(testConfigDir, "dx", "config.json");
     const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    expect(config.versionPrompt.type).toBe("SNOOZE");
-    expect(config.versionPrompt.snoozeUntil).toBeDefined();
+    expect(config.versionPromptSelection.type).toBe("SNOOZE");
+    expect(config.versionPromptSelection.snoozeUntil).toBeDefined();
   });
 
   it("persists SKIP state and returns no-update when user chooses 'skip'", async () => {
@@ -342,7 +342,7 @@ describe("checkVersionAndMaybePrompt", () => {
 
     const configPath = path.join(testConfigDir, "dx", "config.json");
     const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    expect(config.versionPrompt).toEqual({
+    expect(config.versionPromptSelection).toEqual({
       type: "SKIP",
       skipVersion: "0.4.0",
     });
@@ -353,7 +353,9 @@ describe("checkVersionAndMaybePrompt", () => {
     fs.mkdirSync(path.join(testConfigDir, "dx"), { recursive: true });
     fs.writeFileSync(
       path.join(testConfigDir, "dx", "config.json"),
-      JSON.stringify({ versionPrompt: { type: "SKIP", skipVersion: "0.4.0" } }),
+      JSON.stringify({
+        versionPromptSelection: { type: "SKIP", skipVersion: "0.4.0" },
+      }),
     );
 
     mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
@@ -375,7 +377,7 @@ describe("checkVersionAndMaybePrompt", () => {
     fs.writeFileSync(
       path.join(testConfigDir, "dx", "config.json"),
       JSON.stringify({
-        latestVersionsCache: {
+        currentVersionCache: {
           updatedAt: oneHourAgo,
           contents: { cli: "0.3.7" },
         },

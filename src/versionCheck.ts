@@ -3,8 +3,8 @@ import dayjs from "dayjs";
 import { execa } from "execa";
 
 import {
-  persistLatestVersionsCache,
-  persistVersionPrompt,
+  persistCurrentVersionCache,
+  persistVersionPromptSelection,
   readConfig,
 } from "./config.js";
 import { request } from "./http.js";
@@ -12,10 +12,10 @@ import { renderRichText } from "./renderers.js";
 import { buildRuntimeSafe } from "./runtime.js";
 import { isSkillInstalled } from "./skill.js";
 import type {
-  LatestVersionsCache,
+  CurrentVersionCache,
   Runtime,
   StoredConfig,
-  VersionPrompt,
+  VersionPromptSelection,
 } from "./types.js";
 import * as ui from "./ui.js";
 
@@ -53,7 +53,7 @@ export function compareVersions(a: string, b: string): number {
  * exists or the cached result is older than VERSION_CHECK_INTERVAL_HOURS.
  */
 export function shouldPerformVersionCheck(config: StoredConfig): boolean {
-  const cache = config.latestVersionsCache;
+  const cache = config.currentVersionCache;
   if (!cache?.updatedAt) {
     return true;
   }
@@ -67,20 +67,20 @@ export function shouldPerformVersionCheck(config: StoredConfig): boolean {
  */
 export function shouldShowVersionPrompt(
   latestVersion: string,
-  versionPrompt?: VersionPrompt,
+  versionPromptSelection?: VersionPromptSelection,
 ): boolean {
-  if (!versionPrompt) {
+  if (!versionPromptSelection) {
     return true;
   }
   if (
-    versionPrompt.type === "SKIP" &&
-    versionPrompt.skipVersion === latestVersion
+    versionPromptSelection.type === "SKIP" &&
+    versionPromptSelection.skipVersion === latestVersion
   ) {
     return false;
   }
   if (
-    versionPrompt.type === "SNOOZE" &&
-    dayjs().isBefore(dayjs(versionPrompt.snoozeUntil))
+    versionPromptSelection.type === "SNOOZE" &&
+    dayjs().isBefore(dayjs(versionPromptSelection.snoozeUntil))
   ) {
     return false;
   }
@@ -127,8 +127,8 @@ export async function checkVersionAndMaybePrompt(
 
   const config = readConfig();
   if (!shouldPerformVersionCheck(config)) {
-    const cached = config.latestVersionsCache!;
-    return maybePrompt(cached.contents.cli, config.versionPrompt);
+    const cached = config.currentVersionCache!;
+    return maybePrompt(cached.contents.cli, config.versionPromptSelection);
   }
 
   let latestVersion: string;
@@ -138,18 +138,18 @@ export async function checkVersionAndMaybePrompt(
     return noUpdate;
   }
 
-  const cache: LatestVersionsCache = {
+  const cache: CurrentVersionCache = {
     updatedAt: new Date().toISOString(),
     contents: { cli: latestVersion },
   };
-  persistLatestVersionsCache(cache);
+  persistCurrentVersionCache(cache);
 
-  return maybePrompt(latestVersion, readConfig().versionPrompt);
+  return maybePrompt(latestVersion, readConfig().versionPromptSelection);
 }
 
 async function maybePrompt(
   latestVersion: string,
-  versionPrompt: VersionPrompt | undefined,
+  versionPromptSelection: VersionPromptSelection | undefined,
 ): Promise<VersionCheckResult> {
   const noUpdate: VersionCheckResult = { shouldUpdate: false };
   const currentVersion = cliPackage.version;
@@ -158,7 +158,7 @@ async function maybePrompt(
     return noUpdate;
   }
 
-  if (!shouldShowVersionPrompt(latestVersion, versionPrompt)) {
+  if (!shouldShowVersionPrompt(latestVersion, versionPromptSelection)) {
     return noUpdate;
   }
 
@@ -203,17 +203,17 @@ async function maybePrompt(
   });
 
   if (choice === "update") {
-    persistVersionPrompt(undefined);
+    persistVersionPromptSelection(undefined);
     return { shouldUpdate: true, latestVersion };
   }
 
   if (choice === "snooze") {
-    persistVersionPrompt({
+    persistVersionPromptSelection({
       type: "SNOOZE",
       snoozeUntil: dayjs().add(SNOOZE_DAYS, "day").toISOString(),
     });
   } else {
-    persistVersionPrompt({ type: "SKIP", skipVersion: latestVersion });
+    persistVersionPromptSelection({ type: "SKIP", skipVersion: latestVersion });
   }
 
   return noUpdate;
