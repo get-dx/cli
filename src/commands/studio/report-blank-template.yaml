@@ -1,0 +1,49 @@
+# Data Studio report configuration
+#
+# Edit this file, then run:
+#
+# ```
+# dx studio reports create --from-file <path>
+# ```
+
+name: ""
+owner_email: ""
+description: ""
+markdown_notes: ""
+
+# view_access_type: owner_and_direct_url_only, specific_users, or everyone
+view_access_type: owner_and_direct_url_only
+# Required only when view_access_type is specific_users
+viewer_emails: []
+
+# edit_access_type: read_only, owner_only, specific_users, or everyone
+edit_access_type: read_only
+# Required only when edit_access_type is specific_users
+editor_emails: []
+
+# Supported chart_type values: line, pie, stacked_bar, scatter, table
+tiles:
+  - title: ""
+    sql: |-
+      SELECT 1 AS value
+    chart_type: table
+    chart_config: {}
+
+  # Line, stacked_bar, and scatter tiles require xAxis and yAxes.
+  # - title: ""
+  #   sql: |-
+  #     SELECT CURRENT_DATE AS week_start, 1 AS value
+  #   chart_type: line
+  #   chart_config:
+  #     xAxis: week_start
+  #     yAxes:
+  #       - value
+
+  # Pie tiles require labelColumn and valueColumn.
+  # - title: ""
+  #   sql: |-
+  #     SELECT 'Example' AS label, 1 AS value
+  #   chart_type: pie
+  #   chart_config:
+  #     labelColumn: label
+  #     valueColumn: value

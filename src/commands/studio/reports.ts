@@ -1,4 +1,7 @@
+import fs from "fs";
+
 import { Command } from "commander";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 import {
   createExampleText,
@@ -6,7 +9,7 @@ import {
   parsePositiveIntOption,
   wrapAction,
 } from "../../commandHelpers.js";
-import { CliError, EXIT_CODES } from "../../errors.js";
+import { CliError, EXIT_CODES, HttpError } from "../../errors.js";
 import { request } from "../../http.js";
 import { renderJson, renderRichText } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
@@ -17,6 +20,64 @@ export function reportsCommand() {
   const reports = new Command()
     .name("reports")
     .description("Manage Data Studio reports");
+
+  reports
+    .command("create")
+    .description("Create a Data Studio report from a YAML file or stdin")
+    .option(
+      "--from-file <path>",
+      "Read a YAML file and create a report from its contents",
+    )
+    .option(
+      "--from-stdin",
+      "Read YAML from stdin and create a report from its contents",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Create a studio report from a YAML file",
+          command: "dx studio reports create --from-file ./my-report.yaml",
+        },
+        {
+          label: "Create a studio report from stdin",
+          command:
+            "cat ./my-report.yaml | dx studio reports create --from-stdin",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (options, command) => {
+        const modeCount = [options.fromFile, options.fromStdin].filter(
+          Boolean,
+        ).length;
+        if (modeCount === 0) {
+          throw new CliError(
+            "One of --from-file or --from-stdin is required",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+        if (modeCount > 1) {
+          throw new CliError(
+            "--from-file and --from-stdin are mutually exclusive",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+
+        const runtime = await buildRuntime(getContext(command));
+        const raw = options.fromFile
+          ? readYamlFile(options.fromFile as string)
+          : await readYamlStdin();
+        const payload = buildCreateReportPayload(raw);
+        const response = await createStudioReport(runtime, payload);
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderStudioReportCreated(response.report);
+        }
+      }),
+    );
 
   reports
     .command("info")
@@ -44,6 +105,87 @@ export function reportsCommand() {
           renderJson(response);
         } else {
           renderStudioReportInfo(response.report);
+        }
+      }),
+    );
+
+  reports
+    .command("init")
+    .description(
+      "Write a Data Studio report YAML file, either from an existing report or as a blank template",
+    )
+    .argument("<path>", "File path to write the YAML to")
+    .option("--id <id>", "Fetch an existing report and use it as the template")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Write a blank studio report template",
+          command: "dx studio reports init ./my-report.yaml",
+        },
+        {
+          label: "Initialize from an existing studio report",
+          command: "dx studio reports init ./my-report.yaml --id s4525phi3dud",
+        },
+        {
+          label: "Create a studio report from the template",
+          command: "dx studio reports create --from-file ./my-report.yaml",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (path, options, command) => {
+        const runtime = await buildRuntime(getContext(command));
+
+        if (options.id) {
+          const id = options.id as string;
+          let reportResponse;
+          try {
+            reportResponse = await getStudioReportInfo(runtime, id);
+          } catch (err) {
+            const exitCode =
+              err instanceof HttpError &&
+              err.status !== undefined &&
+              err.status < 500
+                ? EXIT_CODES.ARGUMENT_ERROR
+                : EXIT_CODES.RETRY_RECOMMENDED;
+            throw new CliError(
+              `Failed to fetch studio report "${id}": ${err instanceof Error ? err.message : String(err)}`,
+              exitCode,
+            );
+          }
+
+          fs.writeFileSync(
+            path,
+            studioReportToYaml(reportResponse.report),
+            "utf8",
+          );
+          if (runtime.context.json) {
+            renderJson({ ok: true, id, path });
+          } else {
+            renderRichText([
+              ui.p(
+                `${ui.success(ui.GLYPHS.CHECK)} Studio report template written to ${ui.code(path)}.`,
+              ),
+              ui.p(
+                `Edit the file, then run: ${ui.code(`dx studio reports create --from-file ${path}`)}`,
+              ),
+            ]);
+          }
+        } else {
+          fs.writeFileSync(path, STUDIO_REPORT_BLANK_TEMPLATE_YAML, "utf8");
+          if (runtime.context.json) {
+            renderJson({ ok: true, path });
+          } else {
+            renderRichText([
+              ui.p(
+                `${ui.success(ui.GLYPHS.CHECK)} Blank template written to ${ui.code(path)}.`,
+              ),
+              ui.p(
+                `Edit the file, then run: ${ui.code(`dx studio reports create --from-file ${path}`)}`,
+              ),
+            ]);
+          }
         }
       }),
     );
@@ -120,8 +262,27 @@ type StudioReport = {
   updated_at: string;
 };
 
+type StudioReportTilePayload = {
+  title: string | null;
+  sql: string | null;
+  chart_type: string;
+  chart_config: Record<string, unknown>;
+};
+
 type ResponseMetadata = {
   next_cursor?: string | null;
+};
+
+type CreateStudioReportPayload = {
+  name?: string;
+  owner_email?: string;
+  description?: string | null;
+  markdown_notes?: string | null;
+  view_access_type?: string;
+  edit_access_type?: string;
+  viewer_emails?: string[];
+  editor_emails?: string[];
+  tiles?: StudioReportTilePayload[];
 };
 
 type ListStudioReportsOptions = {
@@ -140,6 +301,27 @@ type GetStudioReportInfoResponse = {
   ok: true;
   report: StudioReport;
 };
+
+type CreateStudioReportResponse = {
+  ok: true;
+  report: StudioReport;
+};
+
+async function createStudioReport(
+  runtime: Runtime,
+  payload: CreateStudioReportPayload,
+): Promise<CreateStudioReportResponse> {
+  const response = await request<CreateStudioReportResponse>(
+    runtime,
+    "/studio.reports.create",
+    {
+      method: "POST",
+      body: payload,
+    },
+  );
+
+  return response.body;
+}
 
 async function getStudioReportInfo(
   runtime: Runtime,
@@ -171,6 +353,13 @@ async function listStudioReports(
   );
 
   return response.body;
+}
+
+function renderStudioReportCreated(report: StudioReport): void {
+  renderRichText([
+    ui.p(`${ui.success(ui.GLYPHS.CHECK)} Studio report created`),
+    renderStudioReport(report),
+  ]);
 }
 
 function renderStudioReportInfo(report: StudioReport): void {
@@ -254,6 +443,77 @@ function parseLimitOption(value: string, flag: string): number {
   }
 
   return limit;
+}
+
+function readYamlFile(filePath: string): unknown {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, "utf8");
+  } catch (err) {
+    throw new CliError(
+      `Could not read file "${filePath}": ${(err as Error).message}`,
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+  return parseYaml(content);
+}
+
+async function readYamlStdin(): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk));
+    process.stdin.on("end", () => {
+      const content = Buffer.concat(chunks).toString("utf8");
+      try {
+        resolve(parseYaml(content));
+      } catch (err) {
+        reject(
+          new CliError(
+            `Could not parse YAML from stdin: ${(err as Error).message}`,
+            EXIT_CODES.ARGUMENT_ERROR,
+          ),
+        );
+      }
+    });
+    process.stdin.on("error", reject);
+  });
+}
+
+function buildCreateReportPayload(raw: unknown): CreateStudioReportPayload {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new CliError(
+      "YAML content must be an object",
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+  const { id: _id, ...rest } = raw as Record<string, unknown>;
+  return rest as CreateStudioReportPayload;
+}
+
+const STUDIO_REPORT_BLANK_TEMPLATE_YAML = fs.readFileSync(
+  new URL("./report-blank-template.yaml", import.meta.url),
+  "utf8",
+);
+
+function studioReportToYaml(report: StudioReport): string {
+  const payload: CreateStudioReportPayload = {
+    name: report.name ?? "",
+    owner_email: "",
+    description: report.description ?? "",
+    markdown_notes: report.markdown_notes ?? "",
+    view_access_type: report.view_access_type,
+    viewer_emails: [],
+    edit_access_type: report.edit_access_type,
+    editor_emails: [],
+    tiles: report.tiles.map((tile) => ({
+      title: tile.title,
+      sql: tile.sql,
+      chart_type: tile.chart_type,
+      chart_config: tile.chart_config,
+    })),
+  };
+
+  return stringifyYaml(payload, { blockQuote: "literal" });
 }
 
 function formatReportName(report: StudioReport): string {
