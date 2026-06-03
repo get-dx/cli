@@ -11,12 +11,7 @@ import { request } from "./http.js";
 import { renderRichText } from "./renderers.js";
 import { buildRuntimeSafe } from "./runtime.js";
 import { isSkillInstalled } from "./skill.js";
-import type {
-  CurrentVersionCache,
-  Runtime,
-  StoredConfig,
-  VersionPromptSelection,
-} from "./types.js";
+import type { Runtime, StoredConfig, VersionPromptSelection } from "./types.js";
 import * as ui from "./ui.js";
 
 import cliPackage from "../package.json" with { type: "json" };
@@ -30,6 +25,11 @@ export interface VersionCheckResult {
   shouldUpdate: boolean;
   latestVersion?: string;
 }
+
+export type VersionStatus =
+  | { status: "available"; latestVersion: string }
+  | { status: "up-to-date" }
+  | { status: "disabled" };
 
 interface CurrentVersionResponse extends Record<string, unknown> {
   versions: {
@@ -97,22 +97,23 @@ async function fetchLatestVersion(runtime: Runtime): Promise<string> {
 }
 
 /**
- * Core version-check orchestration. Call this before running any command.
- * Returns a result that indicates whether the user chose to update (and the
- * target version), so the caller can invoke performUpdate() after the command.
+ * Checks whether a newer CLI version is available.
+ *
+ * Returns:
+ *   "available"  — a newer version exists and the user should be prompted
+ *   "up-to-date" — the installed version is current (or the user has snoozed/skipped)
+ *   "disabled"   — the check was skipped or could not run (env var, skip command, no token, network error)
  */
-export async function checkVersionAndMaybePrompt(
+export async function checkForNewVersion(
   argv: string[],
-): Promise<VersionCheckResult> {
-  const noUpdate: VersionCheckResult = { shouldUpdate: false };
-
+): Promise<VersionStatus> {
   if (process.env.DX_DISABLE_VERSION_CHECK) {
-    return noUpdate;
+    return { status: "disabled" };
   }
 
   const topLevelCommand = argv.slice(2).find((arg) => !arg.startsWith("-"));
   if (topLevelCommand && SKIP_COMMANDS.has(topLevelCommand)) {
-    return noUpdate;
+    return { status: "disabled" };
   }
 
   const context = {
@@ -122,46 +123,50 @@ export async function checkVersionAndMaybePrompt(
   };
   const runtime = await buildRuntimeSafe(context);
   if (!runtime) {
-    return noUpdate;
+    return { status: "disabled" };
   }
 
   const config = readConfig();
-  if (!shouldPerformVersionCheck(config)) {
-    const cached = config.currentVersionCache!;
-    return maybePrompt(cached.contents.cli, config.versionPromptSelection);
-  }
-
   let latestVersion: string;
-  try {
-    latestVersion = await fetchLatestVersion(runtime);
-  } catch {
-    return noUpdate;
+  if (!shouldPerformVersionCheck(config)) {
+    latestVersion = config.currentVersionCache!.contents.cli;
+  } else {
+    try {
+      latestVersion = await fetchLatestVersion(runtime);
+    } catch {
+      return { status: "disabled" };
+    }
+    persistCurrentVersionCache({
+      updatedAt: new Date().toISOString(),
+      contents: { cli: latestVersion },
+    });
   }
 
-  const cache: CurrentVersionCache = {
-    updatedAt: new Date().toISOString(),
-    contents: { cli: latestVersion },
-  };
-  persistCurrentVersionCache(cache);
+  if (compareVersions(latestVersion, cliPackage.version) <= 0) {
+    return { status: "up-to-date" };
+  }
 
-  return maybePrompt(latestVersion, readConfig().versionPromptSelection);
+  if (
+    !shouldShowVersionPrompt(latestVersion, readConfig().versionPromptSelection)
+  ) {
+    return { status: "up-to-date" };
+  }
+
+  return { status: "available", latestVersion };
 }
 
-async function maybePrompt(
+/**
+ * Notifies the user that a new version is available and, in interactive
+ * sessions, prompts them to update, snooze, or skip.
+ *
+ * Returns a result indicating whether the user chose to update immediately,
+ * so the caller can invoke performUpdate() after the command finishes.
+ */
+export async function promptVersionUpdate(
   latestVersion: string,
-  versionPromptSelection: VersionPromptSelection | undefined,
 ): Promise<VersionCheckResult> {
   const noUpdate: VersionCheckResult = { shouldUpdate: false };
   const currentVersion = cliPackage.version;
-
-  if (compareVersions(latestVersion, currentVersion) <= 0) {
-    return noUpdate;
-  }
-
-  if (!shouldShowVersionPrompt(latestVersion, versionPromptSelection)) {
-    return noUpdate;
-  }
-
   const isInteractive = process.stdin.isTTY && process.stderr.isTTY;
 
   if (!isInteractive) {

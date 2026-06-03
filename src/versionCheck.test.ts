@@ -40,8 +40,9 @@ vi.mock("picocolors", () => ({
 }));
 
 import {
-  checkVersionAndMaybePrompt,
+  checkForNewVersion,
   compareVersions,
+  promptVersionUpdate,
   shouldPerformVersionCheck,
   shouldShowVersionPrompt,
 } from "./versionCheck.js";
@@ -173,80 +174,97 @@ const fakeRuntime = {
   logger: { debug: vi.fn(), info: vi.fn(), error: vi.fn() },
 };
 
-describe("checkVersionAndMaybePrompt", () => {
-  it("skips version check for 'auth' command", async () => {
-    const result = await checkVersionAndMaybePrompt([
-      "node",
-      "dx",
-      "auth",
-      "login",
-    ]);
-    expect(result).toEqual({ shouldUpdate: false });
+const scorecardsList = ["node", "dx", "scorecards", "list"];
+
+describe("checkForNewVersion", () => {
+  it("returns 'disabled' for 'auth' command", async () => {
+    const result = await checkForNewVersion(["node", "dx", "auth", "login"]);
+    expect(result).toEqual({ status: "disabled" });
     expect(mockBuildRuntimeSafe).not.toHaveBeenCalled();
   });
 
-  it("skips version check for 'init' command", async () => {
-    const result = await checkVersionAndMaybePrompt(["node", "dx", "init"]);
-    expect(result).toEqual({ shouldUpdate: false });
+  it("returns 'disabled' for 'init' command", async () => {
+    const result = await checkForNewVersion(["node", "dx", "init"]);
+    expect(result).toEqual({ status: "disabled" });
     expect(mockBuildRuntimeSafe).not.toHaveBeenCalled();
   });
 
-  it("returns no-update when user is not logged in", async () => {
+  it("returns 'disabled' when user is not logged in", async () => {
     mockBuildRuntimeSafe.mockResolvedValue(null);
-    const result = await checkVersionAndMaybePrompt([
-      "node",
-      "dx",
-      "scorecards",
-      "list",
-    ]);
-    expect(result).toEqual({ shouldUpdate: false });
+    const result = await checkForNewVersion(scorecardsList);
+    expect(result).toEqual({ status: "disabled" });
   });
 
-  it("returns no-update and writes to stderr when already on latest version", async () => {
+  it("returns 'disabled' gracefully when fetch fails", async () => {
+    mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
+    mockRequest.mockRejectedValue(new Error("network error"));
+    const result = await checkForNewVersion(scorecardsList);
+    expect(result).toEqual({ status: "disabled" });
+  });
+
+  it("returns 'up-to-date' when already on latest version", async () => {
     mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
     mockRequest.mockResolvedValue({ body: { versions: { cli: "0.3.7" } } }); // same as package.json
-    const stderrSpy = vi
-      .spyOn(process.stderr, "write")
-      .mockImplementation(() => true);
-
-    const result = await checkVersionAndMaybePrompt([
-      "node",
-      "dx",
-      "scorecards",
-      "list",
-    ]);
-
-    expect(result).toEqual({ shouldUpdate: false });
-    expect(stderrSpy).not.toHaveBeenCalled();
+    const result = await checkForNewVersion(scorecardsList);
+    expect(result).toEqual({ status: "up-to-date" });
   });
 
-  it("shows non-interactive warning to stderr when a new version exists and not a TTY", async () => {
+  it("returns 'up-to-date' when the version is already skipped in config", async () => {
+    fs.mkdirSync(path.join(testConfigDir, "dx"), { recursive: true });
+    fs.writeFileSync(
+      path.join(testConfigDir, "dx", "config.json"),
+      JSON.stringify({
+        versionPromptSelection: { type: "SKIP", skipVersion: "0.4.0" },
+      }),
+    );
     mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
     mockRequest.mockResolvedValue({ body: { versions: { cli: "0.4.0" } } });
+    const result = await checkForNewVersion(scorecardsList);
+    expect(result).toEqual({ status: "up-to-date" });
+  });
 
-    // Test environment is non-TTY by default; just capture stderr writes
+  it("returns 'available' when a newer version exists", async () => {
+    mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
+    mockRequest.mockResolvedValue({ body: { versions: { cli: "0.4.0" } } });
+    const result = await checkForNewVersion(scorecardsList);
+    expect(result).toEqual({ status: "available", latestVersion: "0.4.0" });
+  });
+
+  it("uses cached version and skips fetch when cache is fresh", async () => {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    fs.mkdirSync(path.join(testConfigDir, "dx"), { recursive: true });
+    fs.writeFileSync(
+      path.join(testConfigDir, "dx", "config.json"),
+      JSON.stringify({
+        currentVersionCache: {
+          updatedAt: oneHourAgo,
+          contents: { cli: "0.3.7" },
+        },
+      }),
+    );
+    mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
+    const result = await checkForNewVersion(scorecardsList);
+    expect(result).toEqual({ status: "up-to-date" });
+    expect(mockRequest).not.toHaveBeenCalled();
+  });
+});
+
+describe("promptVersionUpdate", () => {
+  it("shows non-interactive warning to stderr when not a TTY", async () => {
+    // Test environment is non-TTY by default
     const stderrChunks: string[] = [];
     vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
       stderrChunks.push(String(chunk));
       return true;
     });
 
-    const result = await checkVersionAndMaybePrompt([
-      "node",
-      "dx",
-      "scorecards",
-      "list",
-    ]);
+    const result = await promptVersionUpdate("0.4.0");
     expect(result).toEqual({ shouldUpdate: false });
     expect(stderrChunks.join("")).toContain("0.4.0");
   });
 
-  it("returns shouldUpdate: true when user chooses 'update' interactively", async () => {
-    mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
-    mockRequest.mockResolvedValue({ body: { versions: { cli: "0.4.0" } } });
+  it("returns { shouldUpdate: true } when user chooses 'update'", async () => {
     mockSelect.mockResolvedValue("update");
-
-    // Force interactive mode for this test
     Object.defineProperty(process.stdin, "isTTY", {
       value: true,
       configurable: true,
@@ -256,12 +274,7 @@ describe("checkVersionAndMaybePrompt", () => {
       configurable: true,
     });
 
-    const result = await checkVersionAndMaybePrompt([
-      "node",
-      "dx",
-      "scorecards",
-      "list",
-    ]);
+    const result = await promptVersionUpdate("0.4.0");
     expect(result).toEqual({ shouldUpdate: true, latestVersion: "0.4.0" });
 
     Object.defineProperty(process.stdin, "isTTY", {
@@ -275,10 +288,7 @@ describe("checkVersionAndMaybePrompt", () => {
   });
 
   it("persists SNOOZE state and returns no-update when user chooses 'snooze'", async () => {
-    mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
-    mockRequest.mockResolvedValue({ body: { versions: { cli: "0.4.0" } } });
     mockSelect.mockResolvedValue("snooze");
-
     Object.defineProperty(process.stdin, "isTTY", {
       value: true,
       configurable: true,
@@ -288,12 +298,7 @@ describe("checkVersionAndMaybePrompt", () => {
       configurable: true,
     });
 
-    const result = await checkVersionAndMaybePrompt([
-      "node",
-      "dx",
-      "scorecards",
-      "list",
-    ]);
+    const result = await promptVersionUpdate("0.4.0");
     expect(result).toEqual({ shouldUpdate: false });
 
     Object.defineProperty(process.stdin, "isTTY", {
@@ -305,7 +310,6 @@ describe("checkVersionAndMaybePrompt", () => {
       configurable: true,
     });
 
-    // Check config was persisted
     const configPath = path.join(testConfigDir, "dx", "config.json");
     const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
     expect(config.versionPromptSelection.type).toBe("SNOOZE");
@@ -313,10 +317,7 @@ describe("checkVersionAndMaybePrompt", () => {
   });
 
   it("persists SKIP state and returns no-update when user chooses 'skip'", async () => {
-    mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
-    mockRequest.mockResolvedValue({ body: { versions: { cli: "0.4.0" } } });
     mockSelect.mockResolvedValue("skip");
-
     Object.defineProperty(process.stdin, "isTTY", {
       value: true,
       configurable: true,
@@ -326,12 +327,7 @@ describe("checkVersionAndMaybePrompt", () => {
       configurable: true,
     });
 
-    const result = await checkVersionAndMaybePrompt([
-      "node",
-      "dx",
-      "scorecards",
-      "list",
-    ]);
+    const result = await promptVersionUpdate("0.4.0");
     expect(result).toEqual({ shouldUpdate: false });
 
     Object.defineProperty(process.stdin, "isTTY", {
@@ -349,66 +345,5 @@ describe("checkVersionAndMaybePrompt", () => {
       type: "SKIP",
       skipVersion: "0.4.0",
     });
-  });
-
-  it("skips the prompt when version is already skipped in config", async () => {
-    // Pre-write config with SKIP for the version we'll get back
-    fs.mkdirSync(path.join(testConfigDir, "dx"), { recursive: true });
-    fs.writeFileSync(
-      path.join(testConfigDir, "dx", "config.json"),
-      JSON.stringify({
-        versionPromptSelection: { type: "SKIP", skipVersion: "0.4.0" },
-      }),
-    );
-
-    mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
-    mockRequest.mockResolvedValue({ body: { versions: { cli: "0.4.0" } } });
-
-    const result = await checkVersionAndMaybePrompt([
-      "node",
-      "dx",
-      "scorecards",
-      "list",
-    ]);
-    expect(result).toEqual({ shouldUpdate: false });
-    expect(mockSelect).not.toHaveBeenCalled();
-  });
-
-  it("uses cached version and skips fetch when cache is fresh", async () => {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    fs.mkdirSync(path.join(testConfigDir, "dx"), { recursive: true });
-    fs.writeFileSync(
-      path.join(testConfigDir, "dx", "config.json"),
-      JSON.stringify({
-        currentVersionCache: {
-          updatedAt: oneHourAgo,
-          contents: { cli: "0.3.7" },
-        },
-      }),
-    );
-
-    mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
-
-    const result = await checkVersionAndMaybePrompt([
-      "node",
-      "dx",
-      "scorecards",
-      "list",
-    ]);
-    expect(result).toEqual({ shouldUpdate: false });
-    expect(mockRequest).not.toHaveBeenCalled();
-  });
-
-  it("returns no-update gracefully when fetch fails", async () => {
-    mockBuildRuntimeSafe.mockResolvedValue(fakeRuntime);
-    mockRequest.mockRejectedValue(new Error("network error"));
-
-    const result = await checkVersionAndMaybePrompt([
-      "node",
-      "dx",
-      "scorecards",
-      "list",
-    ]);
-    expect(result).toEqual({ shouldUpdate: false });
   });
 });
