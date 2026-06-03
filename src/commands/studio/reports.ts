@@ -19,6 +19,36 @@ export function reportsCommand() {
     .description("Manage Data Studio reports");
 
   reports
+    .command("info")
+    .description("Retrieve details for an individual Data Studio report")
+    .argument("<id>", "Studio report ID")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Fetch info for a studio report",
+          command: "dx studio reports info s4525phi3dud",
+        },
+        {
+          label: "Fetch studio report info as JSON",
+          command: "dx --json studio reports info s4525phi3dud",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (id, _options, command) => {
+        const runtime = await buildRuntime(getContext(command));
+        const response = await getStudioReportInfo(runtime, id);
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderStudioReportInfo(response.report);
+        }
+      }),
+    );
+
+  reports
     .command("list")
     .description("List Data Studio reports")
     .option("--cursor <cursor>", "Cursor for the next page of results")
@@ -106,6 +136,27 @@ type ListStudioReportsResponse = {
   response_metadata?: ResponseMetadata;
 };
 
+type GetStudioReportInfoResponse = {
+  ok: true;
+  report: StudioReport;
+};
+
+async function getStudioReportInfo(
+  runtime: Runtime,
+  id: string,
+): Promise<GetStudioReportInfoResponse> {
+  const response = await request<GetStudioReportInfoResponse>(
+    runtime,
+    "/studio.reports.info",
+    {
+      method: "GET",
+      query: { id },
+    },
+  );
+
+  return response.body;
+}
+
 async function listStudioReports(
   runtime: Runtime,
   options: ListStudioReportsOptions,
@@ -122,6 +173,10 @@ async function listStudioReports(
   return response.body;
 }
 
+function renderStudioReportInfo(report: StudioReport): void {
+  renderRichText([ui.h1("Studio Report"), renderStudioReport(report)]);
+}
+
 function renderStudioReports(response: ListStudioReportsResponse): void {
   const blocks: ui.Block[] = [ui.h1("Studio Reports")];
 
@@ -134,32 +189,7 @@ function renderStudioReports(response: ListStudioReportsResponse): void {
   }
 
   for (const report of response.reports) {
-    blocks.push(
-      ui.h2(`${formatReportName(report)} (${ui.code(report.id)})`),
-      ui.dl(
-        [
-          ui.dli("URL", ui.link(report.url)),
-          ui.dli("Description", formatOptionalText(report.description)),
-          ui.dli("View access", report.view_access_type),
-          ui.dli("Edit access", report.edit_access_type),
-          ui.dli("Tiles", report.tiles.length.toString()),
-          ui.dli("Created", ui.timestampSummary(report.created_at)),
-          ui.dli("Updated", ui.timestampSummary(report.updated_at)),
-        ],
-        { termWidth: 13 },
-      ),
-    );
-
-    if (report.tiles.length > 0) {
-      blocks.push(
-        ui.h3("Tiles"),
-        ui.ul(
-          report.tiles.map((tile) =>
-            ui.li(`${formatTileTitle(tile)} ${ui.dim(`(${tile.chart_type})`)}`),
-          ),
-        ),
-      );
-    }
+    blocks.push(...renderStudioReport(report));
   }
 
   const nextCursor = response.response_metadata?.next_cursor;
@@ -172,6 +202,37 @@ function renderStudioReports(response: ListStudioReportsResponse): void {
   }
 
   renderRichText(blocks);
+}
+
+function renderStudioReport(report: StudioReport): ui.Block[] {
+  const blocks: ui.Block[] = [
+    ui.h2(`${formatReportName(report)} (${ui.code(report.id)})`),
+    ui.dl(
+      [
+        ui.dli("URL", ui.link(report.url)),
+        ui.dli("Description", formatOptionalText(report.description)),
+        ui.dli("View access", formatViewAccessType(report.view_access_type)),
+        ui.dli("Edit access", formatEditAccessType(report.edit_access_type)),
+        ui.dli("Tiles", report.tiles.length.toString()),
+        ui.dli("Created", ui.timestampSummary(report.created_at)),
+        ui.dli("Updated", ui.timestampSummary(report.updated_at)),
+      ],
+      { termWidth: 13 },
+    ),
+  ];
+
+  if (report.tiles.length > 0) {
+    blocks.push(
+      ui.h3("Tiles"),
+      ui.ul(
+        report.tiles.map((tile) =>
+          ui.li(`${formatTileTitle(tile)} ${ui.dim(`(${tile.chart_type})`)}`),
+        ),
+      ),
+    );
+  }
+
+  return blocks;
 }
 
 function parseOptionalTextOption(value: unknown): string | undefined {
@@ -209,4 +270,30 @@ function formatTileTitle(tile: StudioReportTile): string {
 
 function formatOptionalText(value: string | null): string {
   return value && value.trim().length > 0 ? value : ui.dim("(None)");
+}
+
+function formatViewAccessType(value: string): string {
+  switch (value) {
+    case "owner_and_direct_url_only":
+      return "Visible via direct URL";
+    case "specific_users":
+      return "Visible to specific users";
+    case "everyone":
+      return "Visible to everyone";
+    default:
+      return value;
+  }
+}
+
+function formatEditAccessType(value: string): string {
+  switch (value) {
+    case "everyone":
+      return "Editable by everyone";
+    case "specific_users":
+      return "Editable by specific users";
+    case "owner_only":
+      return "Editable by owner only";
+    default:
+      return value;
+  }
 }
