@@ -211,8 +211,8 @@ function renderStudioReport(report: StudioReport): ui.Block[] {
       [
         ui.dli("URL", ui.link(report.url)),
         ui.dli("Description", formatOptionalText(report.description)),
-        ui.dli("View access", report.view_access_type),
-        ui.dli("Edit access", report.edit_access_type),
+        ui.dli("View access", formatViewAccessType(report.view_access_type)),
+        ui.dli("Edit access", formatEditAccessType(report.edit_access_type)),
         ui.dli("Tiles", report.tiles.length.toString()),
         ui.dli("Created", ui.timestampSummary(report.created_at)),
         ui.dli("Updated", ui.timestampSummary(report.updated_at)),
@@ -270,4 +270,30 @@ function formatTileTitle(tile: StudioReportTile): string {
 
 function formatOptionalText(value: string | null): string {
   return value && value.trim().length > 0 ? value : ui.dim("(None)");
+}
+
+function formatViewAccessType(value: string): string {
+  switch (value) {
+    case "owner_and_direct_url_only":
+      return "Visible via direct URL";
+    case "specific_users":
+      return "Visible to specific users";
+    case "everyone":
+      return "Visible to everyone";
+    default:
+      return value;
+  }
+}
+
+function formatEditAccessType(value: string): string {
+  switch (value) {
+    case "everyone":
+      return "Editable by everyone";
+    case "specific_users":
+      return "Editable by specific users";
+    case "owner_only":
+      return "Editable by owner only";
+    default:
+      return value;
+  }
 }

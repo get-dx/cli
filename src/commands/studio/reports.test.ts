@@ -116,7 +116,10 @@ describe("studio reports command", () => {
       expect(output).toContain("### Tiles");
       expect(output).toContain("Weekly deploys (line)");
       expect(output).not.toContain("Weekly deploys (line, tile_line)");
-      expect(output).toContain("View access: ");
+      expect(output).toContain("Visible to everyone");
+      expect(output).toContain("Editable by specific users");
+      expect(output).not.toContain("View access: everyone");
+      expect(output).not.toContain("Edit access: specific_users");
     });
 
     it("prints the JSON info payload with --json", async () => {
@@ -195,8 +198,75 @@ describe("studio reports command", () => {
       expect(output).toContain("### Tiles");
       expect(output).toContain("Weekly deploys (line)");
       expect(output).not.toContain("Weekly deploys (line, tile_line)");
-      expect(output).toContain("View access: ");
+      expect(output).toContain("Visible to everyone");
+      expect(output).toContain("Editable by specific users");
+      expect(output).not.toContain("View access: everyone");
+      expect(output).not.toContain("Edit access: specific_users");
       expect(output).toContain("Next cursor:");
+    });
+
+    it("renders access labels for direct URL and owner-only reports", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              reports: [
+                {
+                  ...report,
+                  view_access_type: "owner_and_direct_url_only",
+                  edit_access_type: "owner_only",
+                },
+              ],
+              response_metadata: { next_cursor: null },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run(["node", "dx", "studio", "reports", "list"]);
+
+      const output = stdoutWrites.join("");
+      expect(output).toContain("Visible via direct URL");
+      expect(output).toContain("Editable by owner only");
+    });
+
+    it("renders access labels for specific-user reports", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              reports: [
+                {
+                  ...report,
+                  view_access_type: "specific_users",
+                  edit_access_type: "specific_users",
+                },
+              ],
+              response_metadata: { next_cursor: null },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run(["node", "dx", "studio", "reports", "list"]);
+
+      const output = stdoutWrites.join("");
+      expect(output).toContain("Visible to specific users");
+      expect(output).toContain("Editable by specific users");
     });
 
     it("passes pagination and search options to the API", async () => {
