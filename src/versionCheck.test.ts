@@ -165,18 +165,18 @@ describe("shouldShowVersionPrompt", () => {
   });
 });
 
-const fakeRuntime = {
-  apiBaseUrl: "https://api.getdx.com",
-  webBaseUrl: "https://app.getdx.com",
-  token: "tok",
-  context: { json: false },
-  version: "0.3.7",
-  logger: { debug: vi.fn(), info: vi.fn(), error: vi.fn() },
-};
-
-const scorecardsList = ["node", "dx", "scorecards", "list"];
-
 describe("checkForNewVersion", () => {
+  const fakeRuntime = {
+    apiBaseUrl: "https://api.getdx.com",
+    webBaseUrl: "https://app.getdx.com",
+    token: "tok",
+    context: { json: false },
+    version: "0.3.7",
+    logger: { debug: vi.fn(), info: vi.fn(), error: vi.fn() },
+  };
+
+  const scorecardsList = ["node", "dx", "scorecards", "list"];
+
   it("returns 'disabled' for 'auth' command", async () => {
     const result = await checkForNewVersion(["node", "dx", "auth", "login"]);
     expect(result).toEqual({ status: "disabled" });
