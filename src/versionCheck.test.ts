@@ -54,6 +54,9 @@ const testConfigDir = path.join(
 
 beforeEach(() => {
   process.env.XDG_CONFIG_HOME = testConfigDir;
+  // testSetup.ts sets DX_DISABLE_VERSION_CHECK globally; clear it here so
+  // these tests exercise the real version-check code path.
+  delete process.env.DX_DISABLE_VERSION_CHECK;
   mockBuildRuntimeSafe.mockReset();
   mockRequest.mockReset();
   mockSelect.mockReset();
