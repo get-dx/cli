@@ -110,7 +110,7 @@ export async function checkVersionAndMaybePrompt(
     return noUpdate;
   }
 
-  const topLevelCommand = argv[2];
+  const topLevelCommand = argv.slice(2).find((arg) => !arg.startsWith("-"));
   if (topLevelCommand && SKIP_COMMANDS.has(topLevelCommand)) {
     return noUpdate;
   }
