@@ -238,6 +238,72 @@ export function reportsCommand() {
       }),
     );
 
+  reports
+    .command("update")
+    .description(
+      "Update a Data Studio report from a YAML file or stdin. The `init` command can be used to initialize the report file.",
+    )
+    .argument("<id>", "Studio report ID")
+    .option(
+      "--from-file <path>",
+      "Read a YAML file and update the report with its contents",
+    )
+    .option(
+      "--from-stdin",
+      "Read YAML from stdin and update the report with its contents",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Initialize a file first",
+          command: "dx studio reports init ./my-report.yaml --id s4525phi3dud",
+        },
+        {
+          label: "Update a studio report from a YAML file",
+          command:
+            "dx studio reports update s4525phi3dud --from-file ./my-report.yaml",
+        },
+        {
+          label: "Update a studio report from stdin",
+          command:
+            "cat ./my-report.yaml | dx studio reports update s4525phi3dud --from-stdin",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (id, options, command) => {
+        const modeCount = [options.fromFile, options.fromStdin].filter(
+          Boolean,
+        ).length;
+        if (modeCount === 0) {
+          throw new CliError(
+            "One of --from-file or --from-stdin is required",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+        if (modeCount > 1) {
+          throw new CliError(
+            "--from-file and --from-stdin are mutually exclusive",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+
+        const runtime = await buildRuntime(getContext(command));
+        const raw = options.fromFile
+          ? readYamlFile(options.fromFile as string)
+          : await readYamlStdin();
+        const payload = buildUpdateReportPayload(id, raw);
+        const response = await updateStudioReport(runtime, payload);
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderStudioReportUpdated(response.report);
+        }
+      }),
+    );
+
   return reports;
 }
 
@@ -285,6 +351,10 @@ type CreateStudioReportPayload = {
   tiles?: StudioReportTilePayload[];
 };
 
+type UpdateStudioReportPayload = CreateStudioReportPayload & {
+  id: string;
+};
+
 type ListStudioReportsOptions = {
   cursor?: string;
   limit?: number;
@@ -307,6 +377,11 @@ type CreateStudioReportResponse = {
   report: StudioReport;
 };
 
+type UpdateStudioReportResponse = {
+  ok: true;
+  report: StudioReport;
+};
+
 async function createStudioReport(
   runtime: Runtime,
   payload: CreateStudioReportPayload,
@@ -314,6 +389,22 @@ async function createStudioReport(
   const response = await request<CreateStudioReportResponse>(
     runtime,
     "/studio.reports.create",
+    {
+      method: "POST",
+      body: payload,
+    },
+  );
+
+  return response.body;
+}
+
+async function updateStudioReport(
+  runtime: Runtime,
+  payload: UpdateStudioReportPayload,
+): Promise<UpdateStudioReportResponse> {
+  const response = await request<UpdateStudioReportResponse>(
+    runtime,
+    "/studio.reports.update",
     {
       method: "POST",
       body: payload,
@@ -364,6 +455,13 @@ function renderStudioReportCreated(report: StudioReport): void {
 
 function renderStudioReportInfo(report: StudioReport): void {
   renderRichText([ui.h1("Studio Report"), renderStudioReport(report)]);
+}
+
+function renderStudioReportUpdated(report: StudioReport): void {
+  renderRichText([
+    ui.p(`${ui.success(ui.GLYPHS.CHECK)} Studio report updated`),
+    renderStudioReport(report),
+  ]);
 }
 
 function renderStudioReports(response: ListStudioReportsResponse): void {
@@ -480,14 +578,26 @@ async function readYamlStdin(): Promise<unknown> {
 }
 
 function buildCreateReportPayload(raw: unknown): CreateStudioReportPayload {
+  const { id: _id, ...rest } = parseYamlObject(raw);
+  return rest as CreateStudioReportPayload;
+}
+
+function buildUpdateReportPayload(
+  id: string,
+  raw: unknown,
+): UpdateStudioReportPayload {
+  return { ...parseYamlObject(raw), id } as UpdateStudioReportPayload;
+}
+
+function parseYamlObject(raw: unknown): Record<string, unknown> {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw new CliError(
       "YAML content must be an object",
       EXIT_CODES.ARGUMENT_ERROR,
     );
   }
-  const { id: _id, ...rest } = raw as Record<string, unknown>;
-  return rest as CreateStudioReportPayload;
+
+  return raw as Record<string, unknown>;
 }
 
 const STUDIO_REPORT_BLANK_TEMPLATE_YAML = fs.readFileSync(
