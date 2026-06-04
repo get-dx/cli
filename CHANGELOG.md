@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- New `dx studio reports update` command.
 - New `dx studio reports create` command.
 - New `dx studio reports init` command.
 - New `dx studio reports info <id>` command.
