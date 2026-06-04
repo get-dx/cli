@@ -857,4 +857,308 @@ describe("studio reports command", () => {
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.RETRY_RECOMMENDED);
     });
   });
+
+  describe("update", () => {
+    it("--from-file posts YAML content to the API and renders the updated report", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const updatedReport = {
+        ...report,
+        name: "Updated Metrics",
+        view_access_type: "specific_users",
+        edit_access_type: "owner_only",
+      };
+      const fetchMock = vi.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, report: updatedReport }), {
+          status: 200,
+        }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { run } = await import("../../cli.js");
+      stubReadFileSyncForFixturePath(
+        "my-report.yaml",
+        [
+          "name: Updated Metrics",
+          "description: Updated report description",
+          "view_access_type: specific_users",
+          "edit_access_type: owner_only",
+          "viewer_emails:",
+          "  - viewer@example.com",
+          "tiles:",
+          "  - title: New bar chart",
+          "    sql: SELECT 1 AS value, CURRENT_DATE AS week_start",
+          "    chart_type: stacked_bar",
+          "    chart_config:",
+          "      xAxis: week_start",
+          "      yAxes:",
+          "        - value",
+          "      groupingMode: clustered",
+          "",
+        ].join("\n"),
+      );
+
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "update",
+        "rpt_new",
+        "--from-file",
+        "./my-report.yaml",
+      ]);
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://api.example.com/studio.reports.update",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining('"name":"Updated Metrics"'),
+        }),
+      );
+      const body = JSON.parse(
+        (fetchMock.mock.calls[0][1] as { body: string }).body,
+      );
+      expect(body).toEqual({
+        id: "rpt_new",
+        name: "Updated Metrics",
+        description: "Updated report description",
+        view_access_type: "specific_users",
+        edit_access_type: "owner_only",
+        viewer_emails: ["viewer@example.com"],
+        tiles: [
+          {
+            title: "New bar chart",
+            sql: "SELECT 1 AS value, CURRENT_DATE AS week_start",
+            chart_type: "stacked_bar",
+            chart_config: {
+              xAxis: "week_start",
+              yAxes: ["value"],
+              groupingMode: "clustered",
+            },
+          },
+        ],
+      });
+
+      const output = stdoutWrites.join("");
+      expect(output).toContain("Studio report updated");
+      expect(output).toContain("Updated Metrics");
+      expect(output).toContain("Visible to specific users");
+      expect(output).toContain("Editable by owner only");
+    });
+
+    it("--from-file always sends the id from the CLI argument", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const fetchMock = vi.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, report }), {
+          status: 200,
+        }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { run } = await import("../../cli.js");
+      stubReadFileSyncForFixturePath(
+        "my-report.yaml",
+        "id: rpt_from_file\nname: Updated Metrics\n",
+      );
+
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "update",
+        "rpt_from_cli",
+        "--from-file",
+        "./my-report.yaml",
+      ]);
+
+      const body = JSON.parse(
+        (fetchMock.mock.calls[0][1] as { body: string }).body,
+      );
+      expect(body.id).toBe("rpt_from_cli");
+      expect(body.name).toBe("Updated Metrics");
+    });
+
+    it("--from-file returns JSON with --json flag", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const updatedReport = { ...report, name: "JSON Updated Report" };
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValueOnce(
+          new Response(JSON.stringify({ ok: true, report: updatedReport }), {
+            status: 200,
+          }),
+        ),
+      );
+
+      const { run } = await import("../../cli.js");
+      stubReadFileSyncForFixturePath(
+        "my-report.yaml",
+        "name: JSON Updated Report\n",
+      );
+
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "studio",
+        "reports",
+        "update",
+        "rpt_new",
+        "--from-file",
+        "./my-report.yaml",
+      ]);
+
+      expect(JSON.parse(stdoutWrites.join(""))).toEqual({
+        ok: true,
+        report: updatedReport,
+      });
+    });
+
+    it("--from-file surfaces an API error", async () => {
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ ok: false, error: "invalid_payload" }),
+            {
+              status: 422,
+            },
+          ),
+        ),
+      );
+
+      const { run } = await import("../../cli.js");
+      stubReadFileSyncForFixturePath("my-report.yaml", "name: Bad Report\n");
+
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "update",
+        "rpt_new",
+        "--from-file",
+        "./my-report.yaml",
+      ]);
+
+      expect(exitSpy).toHaveBeenCalled();
+      expect(stderrWrites.join("")).toContain("422");
+    });
+
+    it("--from-stdin posts YAML from stdin to the API", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const updatedReport = { ...report, name: "Stdin Updated Report" };
+      const fetchMock = vi.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, report: updatedReport }), {
+          status: 200,
+        }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const mockStdin = new EventEmitter();
+      vi.spyOn(process, "stdin", "get").mockReturnValue(
+        mockStdin as unknown as typeof process.stdin,
+      );
+      setImmediate(() => {
+        mockStdin.emit("data", Buffer.from("name: Stdin Updated Report\n"));
+        mockStdin.emit("end");
+      });
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "update",
+        "rpt_new",
+        "--from-stdin",
+      ]);
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://api.example.com/studio.reports.update",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining('"name":"Stdin Updated Report"'),
+        }),
+      );
+      expect(stdoutWrites.join("")).toContain("Studio report updated");
+    });
+
+    it("requires at least one of --from-file or --from-stdin", async () => {
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      const { run } = await import("../../cli.js");
+      await run(["node", "dx", "studio", "reports", "update", "rpt_new"]);
+
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+      expect(stderrWrites.join("")).toContain("--from-file");
+    });
+
+    it("rejects when multiple mode flags are provided", async () => {
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "update",
+        "rpt_new",
+        "--from-stdin",
+        "--from-file",
+        "./my-report.yaml",
+      ]);
+
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+      expect(stderrWrites.join("")).toContain("mutually exclusive");
+    });
+
+    it("rejects non-object YAML from --from-file", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      const { run } = await import("../../cli.js");
+      stubReadFileSyncForFixturePath("my-report.yaml", "- item1\n- item2\n");
+
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "update",
+        "rpt_new",
+        "--from-file",
+        "./my-report.yaml",
+      ]);
+
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+      expect(stderrWrites.join("")).toContain("YAML content must be an object");
+    });
+  });
 });
