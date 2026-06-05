@@ -6,6 +6,9 @@ import path from "node:path";
 // Import cli.js before any mocks that could interfere with module loading
 await import("../src/cli.js");
 
+// Pin the "current" CLI version so these tests don't break when package.json bumps.
+vi.mock("../package.json", () => ({ default: { version: "0.3.7" } }));
+
 const mockBuildRuntimeSafe = vi.fn();
 vi.mock("./runtime.js", () => ({
   buildRuntimeSafe: (...args: unknown[]) => mockBuildRuntimeSafe(...args),
