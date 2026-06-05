@@ -61,6 +61,7 @@ If this returns an error or shows that you are not logged in, stop and ask the u
 ## Reference Docs
 
 - [Catalog management](./references/catalog-management.md) — Entities and entity types: listing, inspecting, creating, updating, and deleting.
+- [Report creation](./references/report-creation.md) — Studio reports: initializing YAML, creating reports, and updating existing reports.
 - [Scorecards management](./references/scorecards-management.md) — Scorecards and checks: listing, inspecting, creating, updating, and deleting via YAML.
 - [Failing checks](./references/failing-checks.md) — Review and resolve an entity's failing scorecard checks: triage, diagnosis, fixes, and re-evaluation.
 - [Snapshot analysis](./references/snapshot-analysis.md) — Analyze snapshot scores, driver comments, and CSAT comments.
