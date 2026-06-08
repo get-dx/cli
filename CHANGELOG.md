@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.5.0 - 2026-06-08
+
 ### Added
 
 - Add support for checking the current CLI version and (in interactive sessions) prompting the user to upgrade. Current version responses are cached for 24 hours and saved into the CLI's config file, along with upgrade prompt selections (e.g. "skip version x.y.z" or "snooze until timestamp"). Set `DX_DISABLE_VERSION_CHECK="true"` to disable automatic version checking.
