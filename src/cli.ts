@@ -13,6 +13,12 @@ import { handleError } from "./commandHelpers.js";
 
 import cliPackage from "../package.json" with { type: "json" };
 import { handleTemporaryBaseUrlMigration } from "./config.js";
+import {
+  checkForNewVersion,
+  performUpdate,
+  promptVersionUpdate,
+  type VersionCheckResult,
+} from "./versionCheck.js";
 
 export async function run(argv = process.argv): Promise<void> {
   try {
@@ -24,7 +30,23 @@ export async function run(argv = process.argv): Promise<void> {
       return;
     }
 
+    let versionCheckResult: VersionCheckResult = { shouldUpdate: false };
+    try {
+      const versionStatus = await checkForNewVersion(argv);
+      if (versionStatus.status === "available") {
+        versionCheckResult = await promptVersionUpdate(
+          versionStatus.latestVersion,
+        );
+      }
+    } catch {
+      // Never let a failure with version check or upgrade prompt block a command
+    }
+
     await program.parseAsync(argv);
+
+    if (versionCheckResult.shouldUpdate && versionCheckResult.latestVersion) {
+      await performUpdate(versionCheckResult.latestVersion);
+    }
   } catch (error) {
     handleError(error, undefined, argv);
   }

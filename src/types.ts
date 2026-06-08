@@ -21,7 +21,18 @@ export interface RequestOptions {
   body?: unknown;
 }
 
+export interface CurrentVersionCache {
+  updatedAt: string;
+  contents: { cli: string };
+}
+
+export type VersionPromptSelection =
+  | { type: "SKIP"; skipVersion: string }
+  | { type: "SNOOZE"; snoozeUntil: string };
+
 export interface StoredConfig {
   apiBaseUrl?: string;
   webBaseUrl?: string;
+  currentVersionCache?: CurrentVersionCache;
+  versionPromptSelection?: VersionPromptSelection;
 }

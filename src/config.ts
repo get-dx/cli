@@ -3,7 +3,11 @@ import os from "node:os";
 import path from "node:path";
 
 import { CliError, EXIT_CODES } from "./errors.js";
-import type { StoredConfig } from "./types.js";
+import type {
+  CurrentVersionCache,
+  StoredConfig,
+  VersionPromptSelection,
+} from "./types.js";
 
 const DEFAULT_API_BASE_URL = "https://api.getdx.com";
 const DEFAULT_WEB_BASE_URL = "https://app.getdx.com";
@@ -21,18 +25,42 @@ export function readConfig(): StoredConfig {
   }
 
   const content = fs.readFileSync(configPath, "utf8");
-  const raw = JSON.parse(content) as Record<string, string | undefined>;
-  const api = raw.apiBaseUrl;
-  const web = raw.webBaseUrl;
+  const raw = JSON.parse(content) as Record<string, unknown>;
 
   const stored: StoredConfig = {};
-  if (web) {
-    stored.webBaseUrl = web;
+  if (typeof raw.webBaseUrl === "string") {
+    stored.webBaseUrl = raw.webBaseUrl;
   }
-  if (api) {
-    stored.apiBaseUrl = api;
+  if (typeof raw.apiBaseUrl === "string") {
+    stored.apiBaseUrl = raw.apiBaseUrl;
+  }
+  if (raw.currentVersionCache && typeof raw.currentVersionCache === "object") {
+    stored.currentVersionCache = raw.currentVersionCache as CurrentVersionCache;
+  }
+  if (
+    raw.versionPromptSelection &&
+    typeof raw.versionPromptSelection === "object"
+  ) {
+    stored.versionPromptSelection =
+      raw.versionPromptSelection as VersionPromptSelection;
   }
   return stored;
+}
+
+export function persistCurrentVersionCache(cache: CurrentVersionCache): void {
+  writeConfig({ ...readConfig(), currentVersionCache: cache });
+}
+
+export function persistVersionPromptSelection(
+  prompt: VersionPromptSelection | undefined,
+): void {
+  const config = readConfig();
+  if (prompt === undefined) {
+    delete config.versionPromptSelection;
+  } else {
+    config.versionPromptSelection = prompt;
+  }
+  writeConfig(config);
 }
 
 /**

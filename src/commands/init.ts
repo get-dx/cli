@@ -1,6 +1,3 @@
-import { access } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { password, confirm, select } from "@inquirer/prompts";
 import { Command } from "commander";
 import { execa } from "execa";
@@ -19,6 +16,7 @@ import * as ui from "../ui.js";
 import { CliError } from "../errors.js";
 import { CliContext, Runtime } from "../types.js";
 import { deriveBaseUrlsFromEnv, persistBaseUrls } from "../config.js";
+import { isSkillInstalled } from "../skill.js";
 import { setToken } from "../secrets.js";
 import { renderWelcomeAnimation } from "../welcomeAnimation.js";
 
@@ -162,10 +160,7 @@ async function optionallySetupSkill(runtime: Runtime) {
     ui.blankLine(),
   ]);
 
-  const skillPath = join(homedir(), ".agents", "skills", "dx-cli");
-  const skillInstalled = await access(skillPath)
-    .then(() => true)
-    .catch(() => false);
+  const skillInstalled = await isSkillInstalled();
   if (skillInstalled) {
     renderRichText([ui.p(`The DX skill is already installed.`)]);
 
