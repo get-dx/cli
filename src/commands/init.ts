@@ -123,13 +123,15 @@ async function attemptLogin(
     token = await loginViaBrowser(webBaseUrl);
   } else {
     token = await password({
-      message: "Paste your account web API token here:",
+      message: "Paste your personal access token or organization token here:",
       mask: true,
     });
   }
 
   if (!token) {
-    throw new CliError("Account web API token is required");
+    throw new CliError(
+      "Personal access token or organization token is required",
+    );
   }
 
   const runtime = await buildRuntime(context, {

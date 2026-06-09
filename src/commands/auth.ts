@@ -80,14 +80,15 @@ export function authCommand(): Command {
             token = await loginViaBrowser(webBaseUrl);
           } else {
             token = await password({
-              message: "Paste your account web API token here:",
+              message:
+                "Paste your personal access token or organization token here:",
               mask: true,
             });
           }
 
           if (!token) {
             throw new CliError(
-              "Account web API token or personal access token is required",
+              "Personal access token or organization token is required",
             );
           }
         }
