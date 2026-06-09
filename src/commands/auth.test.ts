@@ -924,7 +924,7 @@ describe("auth commands", () => {
       expect(output).toContain("Auth");
       expect(output).toContain("Example Corp");
       expect(output).toContain("Organization token");
-      expect(output).toContain("User");
+      expect(output).toContain("Current user");
       expect(output).toContain("Team");
       expect(output).toContain("Not applicable for organization tokens");
     });
@@ -1018,7 +1018,7 @@ describe("auth commands", () => {
       const output = writes.join("");
       expect(output).toContain("Auth");
       expect(output).toContain("Personal access token");
-      expect(output).toContain("User");
+      expect(output).toContain("Current user");
       expect(output).toContain("John Doe");
       expect(output).toContain("john@example.com");
       expect(output).toContain("Team");

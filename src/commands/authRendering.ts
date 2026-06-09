@@ -79,7 +79,7 @@ export function renderAuthWhoami(response: AuthWhoamiResponse) {
   );
 
   // User section
-  blocks.push(ui.h3("User"));
+  blocks.push(ui.h3("Current user"));
   if (response.user) {
     blocks.push(
       ui.dl(
@@ -122,7 +122,7 @@ export function renderAuthWhoami(response: AuthWhoamiResponse) {
 }
 
 function formatUser(user: WhoamiUser): string {
-  return `${user.name} ${ui.dim(`<${user.email}>`)}`;
+  return `${user.name} ${ui.dim(`(${user.id}, ${user.email})`)}`;
 }
 
 function tokenTypeName(tokenType: TokenType): string {
