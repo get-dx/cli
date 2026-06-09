@@ -1,4 +1,9 @@
-import type { AuthInfoResponse, TokenType } from "./auth.js";
+import type {
+  AuthInfoResponse,
+  AuthWhoamiResponse,
+  TokenType,
+  WhoamiUser,
+} from "./auth.js";
 import { renderRichText } from "../renderers.js";
 import * as ui from "../ui.js";
 
@@ -58,10 +63,72 @@ function scopesContent(scopes: string[]): ui.Block[] {
   }
 }
 
+export function renderAuthWhoami(response: AuthWhoamiResponse) {
+  const blocks: ui.Block[] = [];
+
+  // Auth section
+  blocks.push(ui.h3("Auth"));
+  blocks.push(
+    ui.dl(
+      [
+        ui.dli("Account", response.account.name),
+        ui.dli("Token type", tokenTypeName(response.auth_token_type)),
+      ],
+      { termWidth: 12 },
+    ),
+  );
+
+  // User section
+  blocks.push(ui.h3("User"));
+  if (response.user) {
+    blocks.push(
+      ui.dl(
+        [
+          ui.dli("ID", ui.code(response.user.id)),
+          ui.dli("Name", response.user.name),
+          ui.dli("Email", response.user.email),
+        ],
+        { termWidth: 7 },
+      ),
+    );
+  } else {
+    blocks.push(ui.p(ui.dim("Not applicable for organization tokens"), false));
+  }
+
+  // Team section
+  blocks.push(ui.h3("Team"));
+  if (response.team) {
+    blocks.push(
+      ui.dl(
+        [
+          ui.dli("ID", ui.code(response.team.id)),
+          ui.dli("Name", response.team.name),
+          ui.dli("Lead", formatUser(response.team.lead)),
+        ],
+        { termWidth: 6 },
+      ),
+    );
+    if (response.team.contributors.length > 0) {
+      blocks.push(ui.p(ui.bold("Contributors:"), false));
+      blocks.push(
+        ui.ul(response.team.contributors.map((c) => ui.li(formatUser(c)))),
+      );
+    }
+  } else {
+    blocks.push(ui.p(ui.dim("Not applicable for organization tokens"), false));
+  }
+
+  renderRichText(blocks);
+}
+
+function formatUser(user: WhoamiUser): string {
+  return `${user.name} ${ui.dim(`<${user.email}>`)}`;
+}
+
 function tokenTypeName(tokenType: TokenType): string {
   switch (tokenType) {
     case "account_web_api_token":
-      return "Account-level web API token";
+      return "Organization token";
     case "personal_access_token":
       return "Personal access token";
     default:
