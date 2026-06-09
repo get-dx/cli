@@ -926,7 +926,7 @@ describe("auth commands", () => {
       expect(output).toContain("Organization token");
       expect(output).toContain("Current user");
       expect(output).toContain("Team");
-      expect(output).toContain("Not applicable for organization tokens");
+      expect(output).toContain("Not available for organization tokens");
     });
 
     it("renders user and team details for a PAT with --json", async () => {
@@ -953,7 +953,11 @@ describe("auth commands", () => {
               team: {
                 id: "NTk3",
                 name: "Cool Team",
-                lead: { id: "MTJ2", name: "Jane Smith", email: "jane@example.com" },
+                lead: {
+                  id: "MTJ2",
+                  name: "Jane Smith",
+                  email: "jane@example.com",
+                },
                 contributors: [
                   { id: "MTJ2", name: "John Doe", email: "john@example.com" },
                   { id: "ABC1", name: "Alice", email: "alice@example.com" },
@@ -1000,7 +1004,11 @@ describe("auth commands", () => {
               team: {
                 id: "NTk3",
                 name: "Cool Team",
-                lead: { id: "ABC1", name: "Jane Smith", email: "jane@example.com" },
+                lead: {
+                  id: "ABC1",
+                  name: "Jane Smith",
+                  email: "jane@example.com",
+                },
                 contributors: [
                   { id: "MTJ2", name: "John Doe", email: "john@example.com" },
                   { id: "XYZ9", name: "Alice", email: "alice@example.com" },

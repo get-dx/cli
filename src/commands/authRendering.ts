@@ -92,7 +92,7 @@ export function renderAuthWhoami(response: AuthWhoamiResponse) {
       ),
     );
   } else {
-    blocks.push(ui.p(ui.dim("Not applicable for organization tokens"), false));
+    blocks.push(ui.p(ui.dim("Not available for organization tokens")));
   }
 
   // Team section
@@ -115,7 +115,7 @@ export function renderAuthWhoami(response: AuthWhoamiResponse) {
       );
     }
   } else {
-    blocks.push(ui.p(ui.dim("Not applicable for organization tokens"), false));
+    blocks.push(ui.p(ui.dim("Not available for organization tokens")));
   }
 
   renderRichText(blocks);
