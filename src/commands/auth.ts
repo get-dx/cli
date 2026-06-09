@@ -3,7 +3,11 @@ import { Command } from "commander";
 
 import { deleteToken, setToken } from "../secrets.js";
 import { renderJson } from "../renderers.js";
-import { renderAuthInfo, renderAuthWhoami, renderLoggedOut } from "./authRendering.js";
+import {
+  renderAuthInfo,
+  renderAuthWhoami,
+  renderLoggedOut,
+} from "./authRendering.js";
 import {
   createExampleText,
   getContext,
@@ -174,16 +178,16 @@ export function authCommand(): Command {
 
   auth
     .command("whoami")
-    .description("Show identity and team details for the authenticated token")
+    .description("Show user and team details for the authenticated token")
     .addHelpText(
       "afterAll",
       createExampleText([
         {
-          label: "Show identity for the authenticated token",
+          label: "Fetch user and team details",
           command: "dx auth whoami",
         },
         {
-          label: "Return identity as JSON",
+          label: "Fetch user and team details as JSON",
           command: "dx auth whoami --json",
         },
       ]),
