@@ -3,7 +3,11 @@ import { Command } from "commander";
 
 import { deleteToken, setToken } from "../secrets.js";
 import { renderJson } from "../renderers.js";
-import { renderAuthInfo, renderLoggedOut } from "./authRendering.js";
+import {
+  renderAuthInfo,
+  renderAuthWhoami,
+  renderLoggedOut,
+} from "./authRendering.js";
 import {
   createExampleText,
   getContext,
@@ -76,14 +80,15 @@ export function authCommand(): Command {
             token = await loginViaBrowser(webBaseUrl);
           } else {
             token = await password({
-              message: "Paste your account web API token here:",
+              message:
+                "Paste your personal access token or organization token here:",
               mask: true,
             });
           }
 
           if (!token) {
             throw new CliError(
-              "Account web API token or personal access token is required",
+              "Personal access token or organization token is required",
             );
           }
         }
@@ -172,6 +177,35 @@ export function authCommand(): Command {
       }),
     );
 
+  auth
+    .command("whoami")
+    .description("Show user and team details for the authenticated token")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Fetch user and team details",
+          command: "dx auth whoami",
+        },
+        {
+          label: "Fetch user and team details as JSON",
+          command: "dx auth whoami --json",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (_options, command) => {
+        const runtime = await buildRuntime(getContext(command));
+        const response = await getAuthWhoami(runtime);
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderAuthWhoami(response);
+        }
+      }),
+    );
+
   return auth;
 }
 
@@ -192,6 +226,37 @@ export type AuthInfoResponse = {
 // TODO: should we move this somewhere more central, since `init` needs it?
 export async function getAuthInfo(runtime: Runtime): Promise<AuthInfoResponse> {
   const response = await request<AuthInfoResponse>(runtime, "/auth.info", {
+    method: "GET",
+  });
+
+  return response.body;
+}
+
+export type WhoamiUser = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+export type WhoamiTeam = {
+  id: string;
+  name: string;
+  lead: WhoamiUser;
+  contributors: WhoamiUser[];
+};
+
+export type AuthWhoamiResponse = {
+  ok: true;
+  auth_token_type: TokenType;
+  account: { name: string };
+  user: WhoamiUser | null;
+  team: WhoamiTeam | null;
+};
+
+export async function getAuthWhoami(
+  runtime: Runtime,
+): Promise<AuthWhoamiResponse> {
+  const response = await request<AuthWhoamiResponse>(runtime, "/auth.whoami", {
     method: "GET",
   });
 

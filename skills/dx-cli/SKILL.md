@@ -36,6 +36,14 @@ dx auth status
 
 If this returns an error or shows that you are not logged in, stop and ask the user to login interactively with `dx init`, or non-interactively with `dx auth login`.
 
+If you need information about the currently authenticated user and their team to include in a query, run:
+
+```
+dx auth whoami
+```
+
+This calls the `/auth.whoami` endpoint and displays the account name, token type, and (for personal access tokens) the user's name, email, and team with its lead and contributors. Organization tokens return `null` for `user` and `team`.
+
 ## Glossary
 
 ### Software Catalog terms

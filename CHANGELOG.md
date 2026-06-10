@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- New `dx auth whoami` command. Command is mentioned in the skill file as well.
+
 ## 0.5.0 - 2026-06-08
 
 ### Added

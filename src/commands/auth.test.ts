@@ -533,7 +533,7 @@ describe("auth commands", () => {
         "✓ Logged in to https://api.example.com account DX",
       );
       expect(output).toContain("Token:            toke**1234");
-      expect(output).toContain("Token type:       Account-level web API token");
+      expect(output).toContain("Token type:       Organization token");
       expect(output).toContain("Token name:       cli");
       expect(output).toContain("- entities:read");
       expect(output).toContain("- auth:read");
@@ -837,6 +837,204 @@ describe("auth commands", () => {
       await run(["node", "dx", "auth", "status"]);
 
       expect(stderrWrites).toEqual([]);
+    });
+  });
+
+  describe("whoami", () => {
+    beforeEach(() => {
+      process.env.XDG_CONFIG_HOME = "/tmp/dx-cli-test-auth-whoami";
+      writeConfig({});
+    });
+
+    it("returns JSON for an org token with --json", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-1234");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              auth_token_type: "account_web_api_token",
+              account: { name: "Example Corp" },
+              user: null,
+              team: null,
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "--json", "auth", "whoami"]);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/auth.whoami",
+        expect.objectContaining({ method: "GET" }),
+      );
+      const output = JSON.parse(writes.join(""));
+      expect(output.ok).toBe(true);
+      expect(output.auth_token_type).toBe("account_web_api_token");
+      expect(output.account.name).toBe("Example Corp");
+      expect(output.user).toBeNull();
+      expect(output.team).toBeNull();
+    });
+
+    it("renders human-readable output for an org token", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-1234");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              auth_token_type: "account_web_api_token",
+              account: { name: "Example Corp" },
+              user: null,
+              team: null,
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "auth", "whoami"]);
+
+      const output = writes.join("");
+      expect(output).toContain("Auth");
+      expect(output).toContain("Example Corp");
+      expect(output).toContain("Organization token");
+      expect(output).toContain("Current user");
+      expect(output).toContain("Team");
+      expect(output).toContain("Not available for organization tokens");
+    });
+
+    it("renders user and team details for a PAT with --json", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-1234");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              auth_token_type: "personal_access_token",
+              account: { name: "Example Corp" },
+              user: { id: "MTJ2", name: "John Doe", email: "john@example.com" },
+              team: {
+                id: "NTk3",
+                name: "Cool Team",
+                lead: {
+                  id: "MTJ2",
+                  name: "Jane Smith",
+                  email: "jane@example.com",
+                },
+                contributors: [
+                  { id: "MTJ2", name: "John Doe", email: "john@example.com" },
+                  { id: "ABC1", name: "Alice", email: "alice@example.com" },
+                ],
+              },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "--json", "auth", "whoami"]);
+
+      const output = JSON.parse(writes.join(""));
+      expect(output.auth_token_type).toBe("personal_access_token");
+      expect(output.user.name).toBe("John Doe");
+      expect(output.team.name).toBe("Cool Team");
+      expect(output.team.lead.name).toBe("Jane Smith");
+      expect(output.team.contributors).toHaveLength(2);
+    });
+
+    it("renders human-readable output for a PAT with user and team", async () => {
+      const writes: string[] = [];
+      vi.spyOn(process.stdout, "write").mockImplementation(((
+        chunk: string | Uint8Array,
+      ) => {
+        writes.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write);
+
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-1234");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              auth_token_type: "personal_access_token",
+              account: { name: "Example Corp" },
+              user: { id: "MTJ2", name: "John Doe", email: "john@example.com" },
+              team: {
+                id: "NTk3",
+                name: "Cool Team",
+                lead: {
+                  id: "ABC1",
+                  name: "Jane Smith",
+                  email: "jane@example.com",
+                },
+                contributors: [
+                  { id: "MTJ2", name: "John Doe", email: "john@example.com" },
+                  { id: "XYZ9", name: "Alice", email: "alice@example.com" },
+                ],
+              },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "auth", "whoami"]);
+
+      const output = writes.join("");
+      expect(output).toContain("Auth");
+      expect(output).toContain("Personal access token");
+      expect(output).toContain("Current user");
+      expect(output).toContain("John Doe");
+      expect(output).toContain("john@example.com");
+      expect(output).toContain("Team");
+      expect(output).toContain("Jane Smith");
+      expect(output).toContain("jane@example.com");
+      expect(output).toContain("Contributors:");
+      expect(output).toContain("Alice");
+      expect(output).toContain("alice@example.com");
     });
   });
 
