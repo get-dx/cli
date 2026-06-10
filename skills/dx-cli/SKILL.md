@@ -36,7 +36,7 @@ dx auth status
 
 If this returns an error or shows that you are not logged in, stop and ask the user to login interactively with `dx init`, or non-interactively with `dx auth login`.
 
-To identify who is currently authenticated — including the associated user and team membership for personal access tokens — run:
+If you need information about the currently authenticated user and their team to include in a query, run:
 
 ```
 dx auth whoami
