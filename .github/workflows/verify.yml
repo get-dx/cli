@@ -33,3 +33,12 @@ jobs:
         run: make
       - name: Run verify
         run: make verify
+      - name: Check changelog updated
+        run: |
+          git fetch origin main --depth=1
+          src_changed=$(git diff --name-only FETCH_HEAD HEAD -- src/)
+          changelog_changed=$(git diff --name-only FETCH_HEAD HEAD -- CHANGELOG.md)
+          if [ -n "$src_changed" ] && [ -z "$changelog_changed" ]; then
+            echo "Error: src/ has changed but CHANGELOG.md has not been updated."
+            exit 1
+          fi
