@@ -12,7 +12,7 @@ The most important commands for development are:
 
 - `make`: runs the local reinstall flow: `pnpm install`, `pnpm build`, and `pnpm link --global`.
 - `make build`: runs the shared `bin/build` script to clean `dist`, compile TypeScript, and copy the YAML template assets used at runtime.
-- `make dev`: watches the `src/` directory and calls `make` to reinstall whenever changes are detected. Requires [`watchexec`](https://github.com/watchexec/watchexec).
+- `make dev`: watches the `src/` directory and calls `make build` to recompile whenever source code changes are detected. Requires [`watchexec`](https://github.com/watchexec/watchexec).
 - `make verify`: runs all of the CI checks: format check, typecheck, lint, and unit tests.
 
 ## Agent skills
