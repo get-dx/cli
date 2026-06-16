@@ -15,7 +15,7 @@ build:
 	./bin/build
 
 link:
-	pnpm link --global
+	pnpm link --global .
 
 uninstall:
 	pnpm uninstall --global @get-dx/cli
