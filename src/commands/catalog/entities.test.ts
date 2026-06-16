@@ -545,6 +545,110 @@ describe("catalog entities commands", () => {
       );
     });
 
+    it("sends long-form alias with type and identifier in the request body", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(mockEntityType([], { github_repo: [] })),
+              { status: 200 },
+            ),
+          )
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+              status: 200,
+            }),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "create",
+        "--identifier",
+        "my-service",
+        "--type",
+        "service",
+        "--alias",
+        "type=github_repo,identifier=12345",
+      ]);
+
+      expect(fetch).toHaveBeenNthCalledWith(
+        2,
+        "https://api.example.com/catalog.entities.create",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            identifier: "my-service",
+            type: "service",
+            aliases: { github_repo: [{ lookup: "12345" }] },
+          }),
+        }),
+      );
+    });
+
+    it("sends long-form alias with instance_identifier in the request body", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(mockEntityType([], { github_repo: [] })),
+              { status: 200 },
+            ),
+          )
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+              status: 200,
+            }),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "create",
+        "--identifier",
+        "my-service",
+        "--type",
+        "service",
+        "--alias",
+        "type=github_repo,identifier=12345,instance_identifier=789",
+      ]);
+
+      expect(fetch).toHaveBeenNthCalledWith(
+        2,
+        "https://api.example.com/catalog.entities.create",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            identifier: "my-service",
+            type: "service",
+            aliases: {
+              github_repo: [{ lookup: "12345", instance_identifier: "789" }],
+            },
+          }),
+        }),
+      );
+    });
+
     it("parses json property values with JSON.parse", async () => {
       process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
@@ -2054,6 +2158,112 @@ describe("catalog entities commands", () => {
       );
     });
 
+    it("sends long-form alias with type and identifier when updating", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+              status: 200,
+            }),
+          )
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(mockEntityType([], { github_repo: [] })),
+              { status: 200 },
+            ),
+          )
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+              status: 200,
+            }),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "update",
+        "my-service",
+        "--alias",
+        "type=github_repo,identifier=12345",
+      ]);
+
+      expect(fetch).toHaveBeenNthCalledWith(
+        3,
+        "https://api.example.com/catalog.entities.update",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            identifier: "my-service",
+            aliases: { github_repo: [{ lookup: "12345" }] },
+          }),
+        }),
+      );
+    });
+
+    it("sends long-form alias with instance_identifier when updating", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+              status: 200,
+            }),
+          )
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(mockEntityType([], { github_repo: [] })),
+              { status: 200 },
+            ),
+          )
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ ok: true, entity: mockEntity }), {
+              status: 200,
+            }),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "update",
+        "my-service",
+        "--alias",
+        "type=github_repo,identifier=12345,instance_identifier=789",
+      ]);
+
+      expect(fetch).toHaveBeenNthCalledWith(
+        3,
+        "https://api.example.com/catalog.entities.update",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            identifier: "my-service",
+            aliases: {
+              github_repo: [{ lookup: "12345", instance_identifier: "789" }],
+            },
+          }),
+        }),
+      );
+    });
+
     it("exits with code 2 when the identifier argument is missing", async () => {
       const stderrWrites: string[] = [];
       vi.spyOn(process.stderr, "write").mockImplementation(((
@@ -2170,7 +2380,7 @@ describe("catalog entities commands", () => {
       ]);
 
       expect(stderrWrites.join("")).toContain(
-        'Invalid --alias "github_repo12345": expected format key=value',
+        'Invalid --alias "github_repo12345": expected format key=value or type=<type>,identifier=<id>',
       );
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
@@ -2456,6 +2666,120 @@ describe("catalog entities commands", () => {
             identifier: "my-service",
             type: "service",
             aliases: { github_repo: [{ lookup: "12345" }] },
+          }),
+        }),
+      );
+    });
+
+    it("sends long-form alias with type and identifier when upserting", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(mockEntityType([], { github_repo: [] })),
+              { status: 200 },
+            ),
+          )
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify({
+                ok: true,
+                result: "created_new_entity",
+                entity: mockEntity,
+              }),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "upsert",
+        "--type",
+        "service",
+        "--identifier",
+        "my-service",
+        "--alias",
+        "type=github_repo,identifier=12345",
+      ]);
+
+      expect(fetch).toHaveBeenNthCalledWith(
+        2,
+        "https://api.example.com/catalog.entities.upsert",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            identifier: "my-service",
+            type: "service",
+            aliases: { github_repo: [{ lookup: "12345" }] },
+          }),
+        }),
+      );
+    });
+
+    it("sends long-form alias with instance_identifier when upserting", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify(mockEntityType([], { github_repo: [] })),
+              { status: 200 },
+            ),
+          )
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify({
+                ok: true,
+                result: "updated_existing_entity",
+                entity: mockEntity,
+              }),
+              { status: 200 },
+            ),
+          ),
+      );
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "entities",
+        "upsert",
+        "--type",
+        "service",
+        "--identifier",
+        "my-service",
+        "--alias",
+        "type=github_repo,identifier=12345,instance_identifier=789",
+      ]);
+
+      expect(fetch).toHaveBeenNthCalledWith(
+        2,
+        "https://api.example.com/catalog.entities.upsert",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            identifier: "my-service",
+            type: "service",
+            aliases: {
+              github_repo: [{ lookup: "12345", instance_identifier: "789" }],
+            },
           }),
         }),
       );

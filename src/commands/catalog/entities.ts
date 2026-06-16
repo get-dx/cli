@@ -53,7 +53,7 @@ export function entitiesCommand() {
     )
     .option(
       "--alias <kv>",
-      "Set an alias value as key=value. Repeat for multiple aliases.",
+      "Set an alias as <type>=<identifier> (short form) or type=<type>,identifier=<id>[,instance_identifier=<instance_id>] (long form). Repeat for multiple aliases.",
       (val: string, prev: string[]) => [...prev, val],
       [] as string[],
     )
@@ -81,9 +81,14 @@ export function entitiesCommand() {
             'dx catalog entities create --type service --identifier my-service --property tier=Tier-1 --property "languages=Ruby,TypeScript"',
         },
         {
-          label: "Create with aliases",
+          label: "Create with alias (short form)",
           command:
             "dx catalog entities create --type service --identifier my-service --alias github_repo=12345",
+        },
+        {
+          label: "Create with alias (long form, includes instance identifier)",
+          command:
+            'dx catalog entities create --type service --identifier my-service --alias "type=github_repo,identifier=12345,instance_identifier=789"',
         },
       ]),
     )
@@ -178,7 +183,7 @@ export function entitiesCommand() {
     )
     .option(
       "--alias <kv>",
-      "Set an alias value as key=value. Repeat for multiple aliases. Use value null to remove an alias.",
+      "Set an alias as <type>=<identifier> (short form) or type=<type>,identifier=<id>[,instance_identifier=<instance_id>] (long form). Repeat for multiple aliases. Use value null to remove an alias.",
       (val: string, prev: string[]) => [...prev, val],
       [] as string[],
     )
@@ -200,9 +205,14 @@ export function entitiesCommand() {
             'dx catalog entities update my-service --property tier=Tier-1 --property "languages=Ruby,TypeScript"',
         },
         {
-          label: "Update aliases",
+          label: "Update alias (short form)",
           command:
             "dx catalog entities update my-service --alias github_repo=12345",
+        },
+        {
+          label: "Update alias (long form, includes instance identifier)",
+          command:
+            'dx catalog entities update my-service --alias "type=github_repo,identifier=12345,instance_identifier=789"',
         },
       ]),
     )
@@ -257,7 +267,7 @@ export function entitiesCommand() {
     )
     .option(
       "--alias <kv>",
-      "Set an alias value as key=value. Repeat for multiple aliases. Use value null to remove an alias.",
+      "Set an alias as <type>=<identifier> (short form) or type=<type>,identifier=<id>[,instance_identifier=<instance_id>] (long form). Repeat for multiple aliases. Use value null to remove an alias.",
       (val: string, prev: string[]) => [...prev, val],
       [] as string[],
     )
@@ -280,9 +290,14 @@ export function entitiesCommand() {
             'dx catalog entities upsert --type service --identifier my-service --property tier=Tier-1 --property "languages=Ruby,TypeScript"',
         },
         {
-          label: "Set aliases while preserving omitted fields",
+          label: "Set alias (short form) while preserving omitted fields",
           command:
             "dx catalog entities upsert --type service --identifier my-service --alias github_repo=12345",
+        },
+        {
+          label: "Set alias (long form, includes instance identifier)",
+          command:
+            'dx catalog entities upsert --type service --identifier my-service --alias "type=github_repo,identifier=12345,instance_identifier=789"',
         },
       ]),
     )
@@ -646,7 +661,7 @@ type EntityMutationOptionValues = {
   aliases?: EntityMutationAliases;
 };
 
-type EntityMutationAlias = { lookup: string };
+type EntityMutationAlias = { lookup: string; instance_identifier?: string };
 type EntityMutationAliases = Record<string, EntityMutationAlias[]>;
 
 async function createEntity(
@@ -974,6 +989,44 @@ export function parsePropertyValue(prop: Property, rawValue: string): unknown {
   }
 }
 
+function parseAliasInput(kv: string): {
+  key: string;
+  lookup: string;
+  instance_identifier?: string;
+} | null {
+  // Long form: type=<alias_type>,identifier=<lookup>[,instance_identifier=<instance_id>]
+  if (kv.includes(",")) {
+    const pairs: Record<string, string> = {};
+    let validPairs = true;
+    for (const pair of kv.split(",")) {
+      const eqIdx = pair.indexOf("=");
+      if (eqIdx === -1) {
+        validPairs = false;
+        break;
+      }
+      pairs[pair.slice(0, eqIdx)] = pair.slice(eqIdx + 1);
+    }
+    if (
+      validPairs &&
+      pairs.type !== undefined &&
+      pairs.identifier !== undefined
+    ) {
+      return {
+        key: pairs.type,
+        lookup: pairs.identifier,
+        ...(pairs.instance_identifier !== undefined
+          ? { instance_identifier: pairs.instance_identifier }
+          : {}),
+      };
+    }
+  }
+
+  // Short form: <alias_type>=<lookup>
+  const eqIndex = kv.indexOf("=");
+  if (eqIndex === -1) return null;
+  return { key: kv.slice(0, eqIndex), lookup: kv.slice(eqIndex + 1) };
+}
+
 function parseEntityAliases(
   entityTypeIdentifier: string,
   rawAliases: string[],
@@ -984,15 +1037,16 @@ function parseEntityAliases(
   const result: EntityMutationAliases = {};
 
   for (const kv of rawAliases) {
-    const eqIndex = kv.indexOf("=");
-    if (eqIndex === -1) {
+    const parsed = parseAliasInput(kv);
+
+    if (!parsed) {
       throw new CliError(
-        `Invalid --alias "${kv}": expected format key=value`,
+        `Invalid --alias "${kv}": expected format key=value or type=<type>,identifier=<id>[,instance_identifier=<instance_id>]`,
         EXIT_CODES.ARGUMENT_ERROR,
       );
     }
-    const key = kv.slice(0, eqIndex);
-    const rawValue = kv.slice(eqIndex + 1);
+
+    const { key, lookup, instance_identifier } = parsed;
 
     if (!aliasSet.has(key)) {
       const availableAliases = aliasKeys
@@ -1007,12 +1061,16 @@ function parseEntityAliases(
       );
     }
 
-    if (rawValue === "null") {
+    if (lookup === "null") {
       result[key] = [];
       continue;
     }
 
-    result[key] = [...(result[key] ?? []), { lookup: rawValue }];
+    const aliasEntry: EntityMutationAlias = { lookup };
+    if (instance_identifier !== undefined) {
+      aliasEntry.instance_identifier = instance_identifier;
+    }
+    result[key] = [...(result[key] ?? []), aliasEntry];
   }
 
   return result;
