@@ -36,9 +36,15 @@ dx catalog entities create --type service --identifier my-service --name "My Ser
 dx catalog entities create --type service --identifier my-service --owner-team-ids MzI1NTA,MzI1NTk
 dx catalog entities create --type service --identifier my-service --property tier=Tier-1 --property "languages=Ruby,TypeScript"
 dx catalog entities create --type service --identifier my-service --alias github_repo=12345
+dx catalog entities create --type service --identifier my-service --alias "type=github_repo,identifier=12345,instance_identifier=789"
 ```
 
 `--type` and `--identifier` are required. Properties and aliases are passed as `key=value` pairs; repeat `--property` or `--alias` for multiple. For `multi_select` and `list` property types, separate values with commas. Alias values must be the external/source identifier, not the human-readable name.
+
+`--alias` supports two forms:
+
+- **Short form**: `key=value` — e.g. `--alias github_repo=12345`. Use this when the alias type has only one instance (most cases).
+- **Long form**: `type=<alias_type>,identifier=<id>[,instance_identifier=<instance_id>]` — e.g. `--alias "type=jira_issue,identifier=PROJ-123,instance_identifier=abc789"`. Use this when the alias type can exist across multiple system instances. `instance_identifier` identifies the specific deployment of the system in which the alias lives — for example, a self-hosted Jira server or a specific GitHub Enterprise instance. Omit it when there is only one global instance of that system.
 
 ### Update an entity
 
@@ -48,10 +54,11 @@ dx catalog entities update my-service --owner-team-ids MzI1NTA,MzI1NTk --json
 dx catalog entities update my-service --property tier=Tier-1 --property "languages=Ruby,TypeScript"
 dx catalog entities update my-service --property tier=null   # removes the property value
 dx catalog entities update my-service --alias github_repo=12345
+dx catalog entities update my-service --alias "type=github_repo,identifier=12345,instance_identifier=789"
 dx catalog entities update my-service --alias github_repo=null   # removes the alias
 ```
 
-Only the fields you pass are changed; omitted fields are left untouched.
+Only the fields you pass are changed; omitted fields are left untouched. Both short and long form aliases are supported (see the create section above).
 
 ### Upsert an entity (create or update)
 
@@ -59,9 +66,10 @@ Only the fields you pass are changed; omitted fields are left untouched.
 dx catalog entities upsert --type service --identifier my-service --name "My Service"
 dx catalog entities upsert --type service --identifier my-service --owner-team-ids MzI1NTA,MzI1NTk --json
 dx catalog entities upsert --type service --identifier my-service --alias github_repo=12345
+dx catalog entities upsert --type service --identifier my-service --alias "type=github_repo,identifier=12345,instance_identifier=789"
 ```
 
-Creates the entity if it does not exist, or updates it if it does. `--type` and `--identifier` are required. JSON output includes a `result` field: `"created_new_entity"` or `"updated_existing_entity"`. Omitted fields, properties, and aliases are left untouched when updating an existing entity.
+Creates the entity if it does not exist, or updates it if it does. `--type` and `--identifier` are required. JSON output includes a `result` field: `"created_new_entity"` or `"updated_existing_entity"`. Omitted fields, properties, and aliases are left untouched when updating an existing entity. Both short and long form aliases are supported (see the create section above).
 
 ### Delete an entity
 
