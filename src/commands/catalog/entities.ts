@@ -572,7 +572,14 @@ export type Entity = {
   owner_teams: { id: string; name: string }[];
   owner_users: { id: string; email: string }[];
   properties: Record<string, unknown>;
-  aliases: Record<string, unknown[]>;
+  aliases: Record<string, EntityAliasEntry[]>;
+};
+
+type EntityAliasEntry = {
+  identifier: string;
+  name: string;
+  url: string | null;
+  instance_identifier: string | null;
 };
 
 type GetEntityResponse = {
