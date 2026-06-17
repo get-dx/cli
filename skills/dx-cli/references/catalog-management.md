@@ -44,7 +44,7 @@ dx catalog entities create --type service --identifier my-service --alias "type=
 `--alias` supports two forms:
 
 - **Short form**: `key=value` — e.g. `--alias github_repo=12345`. Use this when the alias type has only one instance (most cases).
-- **Long form**: `type=<alias_type>,identifier=<id>[,instance_identifier=<instance_id>]` — e.g. `--alias "type=jira_issue,identifier=PROJ-123,instance_identifier=abc789"`. Use this when the alias type can exist across multiple system instances. `instance_identifier` identifies the specific deployment of the system in which the alias lives — for example, a self-hosted Jira server or a specific GitHub Enterprise instance. Omit it when there is only one global instance of that system.
+- **Long form**: `type=<alias_type>,identifier=<id>[,instance_identifier=<instance_id>]` — e.g. `--alias "type=github_repo,identifier=11223344,instance_identifier=789"`. Use this when the alias type can exist across multiple system instances. `instance_identifier` identifies the specific deployment of the system in which the alias lives — for example, a self-hosted Jira server or a specific GitHub Enterprise instance. Omit it when there is only one global instance of that system.
 
 ### Update an entity
 
