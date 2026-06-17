@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `catalog entities create/update/upsert`: The `--alias` flag now supports a long form — `type=<alias_type>,identifier=<id>[,instance_identifier=<instance_id>]` — for setting aliases that include an instance identifier (e.g. a specific GitHub Enterprise Server deployment). The existing short form `key=value` continues to work unchanged.
+
 ## 0.5.1 - 2026-06-10
 
 ### Added
