@@ -107,6 +107,7 @@ New Skill! A new snapshot-analysis skill is available.
 
 - Now persisting and loading configuration for two base URLs instead of one: `DX_API_BASE_URL` and `DX_WEB_BASE_URL`. This enables support for web links and fixes edge cases around logging in to managed deployments. Users of previous versions will need to log out and reauthenticate in order to update their configuration files. See the readme for more details.
   - BREAKING for users of managed DX deployments on custom domains: these users will need to logout and log back in so the web base URL can be saved. Users that log into DX through `app.getdx.com` or `customer-name.getdx.io` are not affected.
+  - BREAKING: dropped the ambiguous `--host` flag for the `init` command, since _two_ hosts are now required. Use the env vars above for dedicated and managed deployments.
 
 ### Added
 
