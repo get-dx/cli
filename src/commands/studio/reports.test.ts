@@ -74,6 +74,11 @@ describe("studio reports command", () => {
     markdown_notes: null,
     view_access_type: "everyone",
     edit_access_type: "specific_users",
+    owner: {
+      id: "usr_abc",
+      name: "Alice Example",
+      email: "alice@example.com",
+    },
     url: "https://app.example.com/datacloud/studio/reports/abc123",
     tiles: [
       {
@@ -395,6 +400,7 @@ describe("studio reports command", () => {
       expect(output).toContain(
         "https://app.example.com/datacloud/studio/reports/abc123",
       );
+      expect(output).toContain("Alice Example (alice@example.com)");
       expect(output).toContain("### Tiles");
       expect(output).toContain("Weekly deploys (line)");
       expect(output).not.toContain("Weekly deploys (line, tile_line)");
