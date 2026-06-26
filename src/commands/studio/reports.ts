@@ -315,6 +315,12 @@ type StudioReportTile = {
   chart_config: Record<string, unknown>;
 };
 
+type StudioReportOwner = {
+  id: string;
+  name: string;
+  email: string;
+};
+
 type StudioReport = {
   id: string;
   name: string | null;
@@ -322,6 +328,7 @@ type StudioReport = {
   markdown_notes: string | null;
   view_access_type: string;
   edit_access_type: string;
+  owner: StudioReportOwner | null;
   url: string;
   tiles: StudioReportTile[];
   created_at: string;
@@ -498,6 +505,7 @@ function renderStudioReport(report: StudioReport): ui.Block[] {
       [
         ui.dli("URL", ui.link(report.url)),
         ui.dli("Description", formatOptionalText(report.description)),
+        ui.dli("Owner", formatOwner(report.owner)),
         ui.dli("View access", formatViewAccessType(report.view_access_type)),
         ui.dli("Edit access", formatEditAccessType(report.edit_access_type)),
         ui.dli("Tiles", report.tiles.length.toString()),
@@ -640,6 +648,11 @@ function formatTileTitle(tile: StudioReportTile): string {
 
 function formatOptionalText(value: string | null): string {
   return value && value.trim().length > 0 ? value : ui.dim("(None)");
+}
+
+function formatOwner(owner: StudioReportOwner | null): string {
+  if (!owner) return ui.dim("(None)");
+  return `${owner.name} (${owner.email})`;
 }
 
 function formatViewAccessType(value: string): string {

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Updated
+
+Augment `dx studio reports` commands to return owner field where relevant.
+
 ## 0.5.2 - 2026-06-17
 
 ### Added
