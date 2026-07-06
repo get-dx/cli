@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Updated
+
+Document newly required `key` value for `tiles` when creating and updating reports via `dx studio reports`.
+
 ## 0.5.3 - 2026-06-26
 
 ### Updated
