@@ -87,7 +87,8 @@ viewer_emails: []
 edit_access_type: read_only
 editor_emails: []
 tiles:
-  - title: "Table"
+  - key: "tile1"
+    title: "Table"
     sql: |-
       SELECT 1 AS value
     chart_type: table
@@ -114,6 +115,8 @@ Supported `edit_access_type` values:
 Provide `editor_emails` only when `edit_access_type` is `specific_users`.
 
 ### Tiles
+
+Each tile `key` must be unique for the report.
 
 Supported tile `chart_type` values are `line`, `pie`, `stacked_bar`, `scatter`, and `table`.
 

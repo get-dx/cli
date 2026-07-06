@@ -83,6 +83,7 @@ describe("studio reports command", () => {
     tiles: [
       {
         id: "tile_line",
+        key: "tile1",
         title: "Weekly deploys",
         sql: "SELECT week_start, deploys FROM deployments",
         chart_type: "line",
@@ -93,6 +94,7 @@ describe("studio reports command", () => {
       },
       {
         id: "tile_table",
+        key: "tile2",
         title: "Recent deploys",
         sql: "SELECT * FROM deployments LIMIT 10",
         chart_type: "table",

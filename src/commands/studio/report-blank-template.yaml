@@ -23,7 +23,8 @@ editor_emails: []
 
 # Supported chart_type values: line, pie, stacked_bar, scatter, table
 tiles:
-  - title: ""
+  - key: "tile1"
+    title: ""
     sql: |-
       SELECT 1 AS value
     chart_type: table

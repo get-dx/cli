@@ -309,6 +309,7 @@ export function reportsCommand() {
 
 type StudioReportTile = {
   id: string;
+  key: string;
   title: string | null;
   sql: string | null;
   chart_type: string;
@@ -336,6 +337,7 @@ type StudioReport = {
 };
 
 type StudioReportTilePayload = {
+  key: string;
   title: string | null;
   sql: string | null;
   chart_type: string;
@@ -624,6 +626,7 @@ function studioReportToYaml(report: StudioReport): string {
     edit_access_type: report.edit_access_type,
     editor_emails: [],
     tiles: report.tiles.map((tile) => ({
+      key: tile.key,
       title: tile.title,
       sql: tile.sql,
       chart_type: tile.chart_type,
