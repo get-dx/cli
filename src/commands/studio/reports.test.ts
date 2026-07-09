@@ -2,6 +2,7 @@ import { EventEmitter } from "events";
 import fs from "fs";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { parse as parseYaml } from "yaml";
 
 import { EXIT_CODES } from "../../errors.js";
 
@@ -238,6 +239,56 @@ describe("studio reports command", () => {
       );
       expect(body).not.toHaveProperty("id");
       expect(body.name).toBe("Web Metrics");
+    });
+
+    it("--from-file strips tile ids before posting", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const fetchMock = vi.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, report }), {
+          status: 200,
+        }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { run } = await import("../../cli.js");
+      stubReadFileSyncForFixturePath(
+        "my-report.yaml",
+        [
+          "name: Web Metrics",
+          "owner_email: owner@example.com",
+          "tiles:",
+          "  - id: tile_from_source",
+          "    title: Median visit duration",
+          "    sql: SELECT 1",
+          "    chart_type: table",
+          "    chart_config: {}",
+          "",
+        ].join("\n"),
+      );
+
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "create",
+        "--from-file",
+        "./my-report.yaml",
+      ]);
+
+      const body = JSON.parse(
+        (fetchMock.mock.calls[0][1] as { body: string }).body,
+      );
+      expect(body.tiles).toEqual([
+        {
+          title: "Median visit duration",
+          sql: "SELECT 1",
+          chart_type: "table",
+          chart_config: {},
+        },
+      ]);
     });
 
     it("--from-file returns JSON with --json flag", async () => {
@@ -535,12 +586,53 @@ describe("studio reports command", () => {
       ]);
 
       const yaml = writeFileSyncSpy.mock.calls[0]?.[1] as string;
-      expect(yaml).not.toContain("id:");
+      // The report-level id is read-only and must not be written.
+      expect(yaml).not.toContain("id: rpt_new");
       expect(yaml).not.toContain("url:");
       expect(yaml).not.toContain("created_at:");
       expect(yaml).not.toContain("updated_at:");
-      expect(yaml).not.toContain("tile_line");
-      expect(yaml).not.toContain("tile_table");
+    });
+
+    it("--id scaffolds each tile with its id so updates preserve tiles", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValueOnce(
+          new Response(JSON.stringify(infoResponse), {
+            status: 200,
+          }),
+        ),
+      );
+      const writeFileSyncSpy = vi
+        .spyOn(fs, "writeFileSync")
+        .mockImplementation(() => undefined);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "init",
+        "./my-report.yaml",
+        "--id",
+        "rpt_new",
+      ]);
+
+      const yaml = writeFileSyncSpy.mock.calls[0]?.[1] as string;
+      expect(yaml).toContain("id: tile_line");
+      expect(yaml).toContain("id: tile_table");
+
+      // The scaffolded YAML round-trips into an update payload that keeps IDs.
+      const parsed = parseYaml(yaml) as {
+        tiles: { id: string }[];
+      };
+      expect(parsed.tiles.map((tile) => tile.id)).toEqual([
+        "tile_line",
+        "tile_table",
+      ]);
     });
 
     it("--id returns JSON with --json flag", async () => {

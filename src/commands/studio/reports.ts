@@ -336,6 +336,7 @@ type StudioReport = {
 };
 
 type StudioReportTilePayload = {
+  id?: string;
   title: string | null;
   sql: string | null;
   chart_type: string;
@@ -586,8 +587,20 @@ async function readYamlStdin(): Promise<unknown> {
 }
 
 function buildCreateReportPayload(raw: unknown): CreateStudioReportPayload {
-  const { id: _id, ...rest } = parseYamlObject(raw);
-  return rest as CreateStudioReportPayload;
+  const { id: _id, tiles, ...rest } = parseYamlObject(raw);
+  const payload = rest as CreateStudioReportPayload;
+  if (Array.isArray(tiles)) {
+    // A new report always gets fresh tiles, so drop any tile IDs carried over
+    // from an `init --id` scaffold (those IDs belong to the source report).
+    payload.tiles = tiles.map((tile) => {
+      if (!tile || typeof tile !== "object") {
+        return tile as StudioReportTilePayload;
+      }
+      const { id: _tileId, ...tileRest } = tile as StudioReportTilePayload;
+      return tileRest as StudioReportTilePayload;
+    });
+  }
+  return payload;
 }
 
 function buildUpdateReportPayload(
@@ -624,6 +637,7 @@ function studioReportToYaml(report: StudioReport): string {
     edit_access_type: report.edit_access_type,
     editor_emails: [],
     tiles: report.tiles.map((tile) => ({
+      id: tile.id,
       title: tile.title,
       sql: tile.sql,
       chart_type: tile.chart_type,

@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Updated
+### Fixed
 
-Document newly required `key` value for `tiles` when creating and updating reports via `dx studio reports`.
+- `dx studio reports init --id`: The scaffolded YAML now includes each tile's `id`, so `dx studio reports update` preserves existing tiles (including their sizing) instead of re-creating them. `dx studio reports create` continues to strip tile IDs, since a new report always gets fresh tiles.
 
 ## 0.5.3 - 2026-06-26
 
