@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.5.4 - 2026-07-09
+
 ### Fixed
 
 - `dx studio reports init --id`: The scaffolded YAML now includes each tile's `id`, so `dx studio reports update` preserves existing tiles (including their sizing) instead of re-creating them. `dx studio reports create` continues to strip tile IDs, since a new report always gets fresh tiles.
