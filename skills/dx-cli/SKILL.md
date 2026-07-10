@@ -1,6 +1,6 @@
 ---
 name: dx-cli
-description: Interact with the DX (getdx.com) APIs to get and manage information about the Software Catalog, manage Scorecards to track system health, analyze Snapshot survey results, and perform data analysis on Engineering productivity.
+description: Interact with the DX (getdx.com) APIs to get and manage information about the Software Catalog, manage Scorecards to track system health, analyze Snapshot survey results, and perform data analysis on Engineering productivity. Also answers questions about DX itself — product concepts, setup/admin procedures (SSO, connectors, backfills), and troubleshooting — by fetching DX's own documentation.
 user-invocable: false
 compatibility: Requires access to the internet
 allowed-tools: Bash(dx:*)
@@ -43,6 +43,14 @@ dx auth whoami
 ```
 
 This calls the `/auth.whoami` endpoint and displays the account name, token type, and (for personal access tokens) the user's name, email, and team with its lead and contributors. Organization tokens return `null` for `user` and `team`.
+
+## Answering DX Product Questions
+
+Use this for any question about DX itself rather than the user's own data: product concepts ("what's the difference between a Scorecard and an Initiative?"), setup/admin procedures ("how do I set up Okta SSO?", "how do I backfill GitHub history?"), connector configuration ("how do I connect GitHub?"), or troubleshooting/FAQ ("why doesn't DX support X?"). Do not use it for questions about the user's own data (their entities, checks, scores, tasks) — use the `dx` CLI commands in this skill for those instead.
+
+1. Fetch `https://docs.getdx.com/llms.txt` for the index of documentation pages and their Markdown URLs.
+2. Fetch the relevant page's `.md` URL directly, not the HTML page, e.g. `https://docs.getdx.com/onboarding/github-backfill.md`.
+3. Answer from the fetched Markdown, not from memory. If the page contains a numbered or sequential procedure, follow those steps in the given order — don't skip ahead, reorder, or paraphrase a step away, whether you're relaying them to the user or executing them yourself.
 
 ## Glossary
 
