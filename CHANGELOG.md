@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Updated
+
+- The `dx-cli` skill now knows to answer general DX product questions — concepts, setup/admin procedures, connector configuration, and troubleshooting — by fetching DX's own documentation (`docs.getdx.com/llms.txt` for the page index, then each page's `.md` URL). Questions about the user's own data still go through the `dx` CLI commands.
+
+### Removed
+
+- Removed the temporary `baseUrl` → `apiBaseUrl`/`webBaseUrl` config migration. Users of managed DX deployments still on a pre-0.3.0 config should refer to the breaking changes in version `0.3.0` for re-authentication instructions.
+
 ## 0.5.4 - 2026-07-09
 
 ### Fixed
