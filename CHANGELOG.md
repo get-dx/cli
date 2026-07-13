@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Removed
+
+- Removed the temporary `baseUrl` → `apiBaseUrl`/`webBaseUrl` config migration (added in 0.3.0, scheduled for removal after 2026-07-01). Anyone still on a pre-0.3.0 config with only `baseUrl` set should run `dx auth logout`, then log in again via `dx init` or `dx auth login`.
+
 ## 0.5.4 - 2026-07-09
 
 ### Fixed
