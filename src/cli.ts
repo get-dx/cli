@@ -12,7 +12,6 @@ import { workflowsCommand } from "./commands/workflows.js";
 import { handleError } from "./commandHelpers.js";
 
 import cliPackage from "../package.json" with { type: "json" };
-import { handleTemporaryBaseUrlMigration } from "./config.js";
 import {
   checkForNewVersion,
   performUpdate,
@@ -22,8 +21,6 @@ import {
 
 export async function run(argv = process.argv): Promise<void> {
   try {
-    handleTemporaryBaseUrlMigration(argv);
-
     const program = createProgram();
     if (argv.length <= 2) {
       program.outputHelp();

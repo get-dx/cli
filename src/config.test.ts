@@ -63,12 +63,3 @@ describe("readConfig", () => {
     expect(stored.webBaseUrl).toBe("https://app.example.com");
   });
 });
-
-it("TIME BOMB TEST: remove the handleTemporaryBaseUrlMigration function after 2026-07-01", () => {
-  const now = new Date();
-  if (now.getTime() > new Date("2026-07-01").getTime()) {
-    throw new Error(
-      "TIME BOMB TEST: handleTemporaryBaseUrlMigration function should be removed from the codebase after 2026-07-01",
-    );
-  }
-});
