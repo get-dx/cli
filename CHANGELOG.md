@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.5.5 - 2026-07-13
+
 ### Updated
 
 - The `dx-cli` skill now knows to answer general DX product questions — concepts, setup/admin procedures, connector configuration, and troubleshooting — by fetching DX's own documentation (`docs.getdx.com/llms.txt` for the page index, then each page's `.md` URL). Questions about the user's own data still go through the `dx` CLI commands.
