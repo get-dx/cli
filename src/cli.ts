@@ -55,7 +55,7 @@ function createProgram(): Command {
   program
     .name("dx")
     .description("DX CLI")
-    .version(cliPackage.version)
+    .version(cliPackage.version, "-v, --version")
     .addOption(new Option("--json", "Print machine-readable JSON"))
     .addOption(
       new Option("--agent <name>", "Agent name to send as an HTTP header"),

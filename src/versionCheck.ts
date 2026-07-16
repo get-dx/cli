@@ -20,6 +20,7 @@ const VERSION_CHECK_INTERVAL_HOURS = 24;
 const SNOOZE_DAYS = 7;
 
 const SKIP_COMMANDS = new Set(["auth", "init"]);
+const SKIP_OPTIONS = new Set(["-h", "--help", "-v", "--version"]);
 
 export interface VersionCheckResult {
   shouldUpdate: boolean;
@@ -111,7 +112,16 @@ export async function checkForNewVersion(
     return { status: "disabled" };
   }
 
-  const topLevelCommand = argv.slice(2).find((arg) => !arg.startsWith("-"));
+  const args = argv.slice(2);
+  if (args.some((arg) => SKIP_OPTIONS.has(arg))) {
+    return { status: "disabled" };
+  }
+
+  const topLevelCommand = args.find((arg) => !arg.startsWith("-"));
+  if (!topLevelCommand) {
+    return { status: "disabled" };
+  }
+
   if (topLevelCommand && SKIP_COMMANDS.has(topLevelCommand)) {
     return { status: "disabled" };
   }
@@ -198,14 +208,19 @@ export async function promptVersionUpdate(
     ],
     { useStderr: true },
   );
-  const choice = await select({
-    message: "What would you like to do?",
-    choices: [
-      { name: "Update now", value: "update" },
-      { name: `Remind me later (in ${SNOOZE_DAYS} days)`, value: "snooze" },
-      { name: "Skip this version", value: "skip" },
-    ],
-  });
+  const choice = await select(
+    {
+      message: "What would you like to do?",
+      choices: [
+        { name: "Update now", value: "update" },
+        { name: `Remind me later (in ${SNOOZE_DAYS} days)`, value: "snooze" },
+        { name: "Skip this version", value: "skip" },
+      ],
+    },
+    {
+      output: process.stderr,
+    },
+  );
 
   if (choice === "update") {
     persistVersionPromptSelection(undefined);

@@ -192,6 +192,18 @@ describe("checkForNewVersion", () => {
     expect(mockBuildRuntimeSafe).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["short version flag", ["node", "dx", "-v"]],
+    ["long version flag", ["node", "dx", "--version"]],
+    ["top-level help flag", ["node", "dx", "--help"]],
+    ["subcommand help flag", ["node", "dx", "scorecards", "--help"]],
+    ["global option without a command", ["node", "dx", "--json"]],
+  ])("returns 'disabled' for %s", async (_label, argv) => {
+    const result = await checkForNewVersion(argv);
+    expect(result).toEqual({ status: "disabled" });
+    expect(mockBuildRuntimeSafe).not.toHaveBeenCalled();
+  });
+
   it("returns 'disabled' when user is not logged in", async () => {
     mockBuildRuntimeSafe.mockResolvedValue(null);
     const result = await checkForNewVersion(scorecardsList);
@@ -279,6 +291,9 @@ describe("promptVersionUpdate", () => {
 
     const result = await promptVersionUpdate("0.4.0");
     expect(result).toEqual({ shouldUpdate: true, latestVersion: "0.4.0" });
+    expect(mockSelect).toHaveBeenCalledWith(expect.any(Object), {
+      output: process.stderr,
+    });
 
     Object.defineProperty(process.stdin, "isTTY", {
       value: undefined,
