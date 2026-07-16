@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `dx -v` now prints the CLI version, matching the documented lowercase version flag. Version checks are also skipped for help/version output and global-option-only invocations, preventing update prompts from interfering with those commands.
+
 ## 0.5.5 - 2026-07-13
 
 ### Updated
