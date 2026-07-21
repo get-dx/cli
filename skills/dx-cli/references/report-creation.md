@@ -118,3 +118,31 @@ Provide `editor_emails` only when `edit_access_type` is `specific_users`.
 Supported tile `chart_type` values are `line`, `pie`, `stacked_bar`, `scatter`, and `table`.
 
 `line`, `stacked_bar`, and `scatter` chart configs require `xAxis` and `yAxes`; `pie` chart configs require `labelColumn` and `valueColumn`; `table` chart configs can be `{}`.
+
+---
+
+## Variables
+
+Tile `sql` can reference report variables to make a report interactive: place `$variable_name` anywhere in the query, and the selected value(s) are substituted in when the report runs.
+
+### Built-in variables
+
+- `$service_ids` — filter by specific services
+- `$team_ids` — filter by team assignments
+- `$tag_ids` — filter by attributes
+- `$user_ids` — filter by individual users
+- `$repo_ids` — filter by specific repositories
+- `$start_date` and `$end_date` — filter by date range
+
+### Custom variables
+
+Custom variables are account-defined dropdown filters backed by a SQL query. Each has a title, a variable name (used as `$variable_name` in tile SQL), a description, and a SQL statement that must return exactly two columns: `value` (used in the substitution) and `label` (shown to users in the dropdown).
+
+### Limitation: no CLI/API management
+
+Variables cannot be created, updated, enabled, or disabled through this CLI or the API. There is no field for them in the report YAML.
+
+- Built-in variables are toggled on/off per report in the Data Studio UI.
+- Custom variables are added, edited, and deleted per account in the Data Studio UI.
+
+Once a variable is enabled on a report (via the UI), any tile's `sql` — including tiles created or updated via `dx studio reports create`/`update` — can reference it as `$variable_name`.

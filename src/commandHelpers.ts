@@ -130,6 +130,52 @@ export function createExampleText(examples: Example[]): string {
   return lines.join("\n");
 }
 
+export function createNoteText(paragraphs: string[]): string {
+  const width = getHelpWidth();
+  const indent = "  ";
+  const output = [];
+
+  output.push(""); // separate from the rest of the help text
+  output.push("Notes:");
+
+  paragraphs.forEach((paragraph, index) => {
+    if (index > 0) {
+      output.push(""); // blank line between paragraphs
+    }
+    output.push(...wrapParagraph(paragraph, width, indent));
+  });
+
+  return output.join("\n");
+}
+
+function getHelpWidth(): number {
+  return process.stdout.isTTY && process.stdout.columns
+    ? process.stdout.columns
+    : 80;
+}
+
+function wrapParagraph(text: string, width: number, indent: string): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (current && indent.length + candidate.length > width) {
+      lines.push(`${indent}${current}`);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  }
+
+  if (current) {
+    lines.push(`${indent}${current}`);
+  }
+
+  return lines;
+}
+
 function inferContext(command?: Command, argv?: string[]): CliContext {
   if (command) {
     return getContext(command);

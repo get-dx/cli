@@ -22,6 +22,11 @@ edit_access_type: read_only
 editor_emails: []
 
 # Supported chart_type values: line, pie, stacked_bar, scatter, table
+#
+# Tile sql can reference report variables (e.g. $team_ids, $start_date, or a
+# custom variable) as $variable_name. Variables themselves can't be managed
+# from the CLI/API — enable built-in variables or add/edit custom ones for
+# this report in the Data Studio UI, then reference them here.
 tiles:
   - title: ""
     sql: |-

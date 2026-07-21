@@ -5,6 +5,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 import {
   createExampleText,
+  createNoteText,
   getContext,
   parsePositiveIntOption,
   wrapAction,
@@ -15,6 +16,11 @@ import { renderJson, renderRichText } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
+
+const VARIABLES_NOTE_TEXT = [
+  "Tile SQL can reference report variables using `$variable_name` syntax. Built-in variables — $service_ids, $team_ids, $tag_ids, $user_ids, $repo_ids, $start_date, $end_date — filter by service, team, attribute, user, repo, and date range, respectively. Custom variables are account-defined dropdown filters backed by a SQL query.",
+  "Variables cannot be created, updated, enabled, or disabled via this CLI or the API. Built-in variables must be toggled, and custom variables must be added, edited, or removed, from the report's settings in the Data Studio UI. Once a variable is enabled on a report, its `$variable_name` can be used in any tile's SQL via --from-file/--from-stdin.",
+];
 
 export function reportsCommand() {
   const reports = new Command()
@@ -32,6 +38,7 @@ export function reportsCommand() {
       "--from-stdin",
       "Read YAML from stdin and create a report from its contents",
     )
+    .addHelpText("afterAll", createNoteText(VARIABLES_NOTE_TEXT))
     .addHelpText(
       "afterAll",
       createExampleText([
@@ -252,6 +259,7 @@ export function reportsCommand() {
       "--from-stdin",
       "Read YAML from stdin and update the report with its contents",
     )
+    .addHelpText("afterAll", createNoteText(VARIABLES_NOTE_TEXT))
     .addHelpText(
       "afterAll",
       createExampleText([
