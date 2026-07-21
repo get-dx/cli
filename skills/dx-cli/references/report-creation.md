@@ -132,7 +132,7 @@ Tile `sql` can reference report variables to make a report interactive: place `$
 - `$tag_ids` — filter by attributes
 - `$user_ids` — filter by individual users
 - `$repo_ids` — filter by specific repositories
-- `$start_date` and `$end_date` — date range filtering
+- `$start_date` and `$end_date` — filter by date range
 
 ### Custom variables
 
