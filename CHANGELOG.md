@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.6.0 - 2026-07-21
+
 ### Added
 
 - Add `--agent-model` and `DX_AGENT_MODEL` support. When set, the CLI sends the model name as the `X-DX-Agent-Model` header alongside existing agent provenance headers.
