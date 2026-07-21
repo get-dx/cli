@@ -9,6 +9,7 @@ export function getContext(command: Command): CliContext {
   return {
     json: Boolean(root.json),
     agent: root.agent || process.env.DX_AGENT_NAME,
+    agentModel: root.agentModel || process.env.DX_AGENT_MODEL,
     agentSessionId: root.agentSessionId || process.env.DX_AGENT_SESSION_ID,
   };
 }

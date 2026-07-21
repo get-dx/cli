@@ -129,6 +129,7 @@ export async function checkForNewVersion(
   const context = {
     json: argv.includes("--json"),
     agent: undefined,
+    agentModel: undefined,
     agentSessionId: undefined,
   };
   const runtime = await buildRuntimeSafe(context);

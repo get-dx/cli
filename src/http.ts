@@ -29,6 +29,10 @@ export async function request<T extends Record<string, unknown>>(
     headers.set("X-DX-Agent-Name", runtime.context.agent);
   }
 
+  if (runtime.context.agentModel) {
+    headers.set("X-DX-Agent-Model", runtime.context.agentModel);
+  }
+
   if (runtime.context.agentSessionId) {
     headers.set("X-DX-Agent-Session-Id", runtime.context.agentSessionId);
   }
