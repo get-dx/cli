@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `dx -v` now prints the CLI version, matching the documented lowercase version flag. Version checks are also skipped for help/version output and global-option-only invocations, preventing update prompts from interfering with those commands.
 
+### Updated
+- Updated the skill, the `dx reports create/update` help text, and the blank report template created on `dx reports init`, to include the relevant context about variable usage.
+
 ## 0.5.5 - 2026-07-13
 
 ### Updated
