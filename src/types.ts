@@ -12,6 +12,7 @@ export interface Runtime {
 export interface CliContext {
   json: boolean;
   agent?: string;
+  agentModel?: string;
   agentSessionId?: string;
 }
 

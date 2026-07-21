@@ -62,6 +62,12 @@ function createProgram(): Command {
     )
     .addOption(
       new Option(
+        "--agent-model <model>",
+        "Agent model name to send as an HTTP header",
+      ),
+    )
+    .addOption(
+      new Option(
         "--agent-session-id <id>",
         "Agent session ID to send as an HTTP header",
       ),

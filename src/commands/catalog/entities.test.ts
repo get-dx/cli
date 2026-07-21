@@ -1059,6 +1059,7 @@ describe("catalog entities commands", () => {
     it("sends agent provenance from environment variables", async () => {
       process.env.DX_API_BASE_URL = "https://api.example.com";
       process.env.DX_AGENT_NAME = "codex";
+      process.env.DX_AGENT_MODEL = "gpt-5";
       process.env.DX_AGENT_SESSION_ID = "session-123";
       getToken.mockReturnValue("token-123");
 
@@ -1099,6 +1100,7 @@ describe("catalog entities commands", () => {
       const headers = (vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit)
         .headers as Headers;
       expect(headers.get("X-DX-Agent-Name")).toBe("codex");
+      expect(headers.get("X-DX-Agent-Model")).toBe("gpt-5");
       expect(headers.get("X-DX-Agent-Session-Id")).toBe("session-123");
     });
 
