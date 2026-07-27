@@ -74,7 +74,9 @@ describe("studio reports command", () => {
     description: "Deployment trends by week",
     markdown_notes: null,
     view_access_type: "everyone",
+    viewer_emails: [],
     edit_access_type: "specific_users",
+    editor_emails: ["editor@example.com"],
     owner: {
       id: "usr_abc",
       name: "Alice Example",
@@ -546,6 +548,7 @@ describe("studio reports command", () => {
       expect(yaml).toContain('owner_email: ""');
       expect(yaml).toContain("view_access_type: everyone");
       expect(yaml).toContain("edit_access_type: specific_users");
+      expect(yaml).toContain("editor_emails:\n  - editor@example.com");
       expect(yaml).toContain("title: Weekly deploys");
       expect(yaml).toContain("chart_type: line");
 
@@ -555,6 +558,47 @@ describe("studio reports command", () => {
       expect(output).toContain(
         "dx studio reports create --from-file ./my-report.yaml",
       );
+    });
+
+    it("--id carries over the report's specific-people viewer list", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              report: {
+                ...report,
+                view_access_type: "specific_users",
+                viewer_emails: ["viewer@example.com"],
+              },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+      const writeFileSyncSpy = vi
+        .spyOn(fs, "writeFileSync")
+        .mockImplementation(() => undefined);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "init",
+        "./my-report.yaml",
+        "--id",
+        "rpt_new",
+      ]);
+
+      const yaml = writeFileSyncSpy.mock.calls[0]?.[1] as string;
+      expect(yaml).toContain("view_access_type: specific_users");
+      expect(yaml).toContain("viewer_emails:\n  - viewer@example.com");
     });
 
     it("--id omits read-only fields from the written YAML", async () => {

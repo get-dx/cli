@@ -335,7 +335,9 @@ type StudioReport = {
   description: string | null;
   markdown_notes: string | null;
   view_access_type: string;
+  viewer_emails: string[];
   edit_access_type: string;
+  editor_emails: string[];
   owner: StudioReportOwner | null;
   url: string;
   tiles: StudioReportTile[];
@@ -641,9 +643,9 @@ function studioReportToYaml(report: StudioReport): string {
     description: report.description ?? "",
     markdown_notes: report.markdown_notes ?? "",
     view_access_type: report.view_access_type,
-    viewer_emails: [],
+    viewer_emails: report.viewer_emails ?? [],
     edit_access_type: report.edit_access_type,
-    editor_emails: [],
+    editor_emails: report.editor_emails ?? [],
     tiles: report.tiles.map((tile) => ({
       id: tile.id,
       title: tile.title,
