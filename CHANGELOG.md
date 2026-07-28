@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Updated
+- Made improvements to prevent creation of corrupted config files and gracefully handle the re-creation of corrupted config files.
+
 ### Fixed
 
 - Write the viewer_emails/editor_emails values when initializing studio reports so the values can be carried over/edited from current state on updates.
