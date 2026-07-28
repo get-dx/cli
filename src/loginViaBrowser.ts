@@ -74,10 +74,20 @@ export async function loginViaBrowser(webBaseUrl: string): Promise<string> {
       };
     }
 
-    const body = (await tokenExchangeResponse.json()) as {
-      access_token: string;
-      redirect_uri: string;
-    };
+    let body: { access_token: string; redirect_uri: string };
+    try {
+      body = (await tokenExchangeResponse.json()) as {
+        access_token: string;
+        redirect_uri: string;
+      };
+    } catch {
+      return {
+        type: "ERROR" as const,
+        error: new CliError(
+          "Authentication failed: token exchange returned an invalid response",
+        ),
+      };
+    }
 
     return {
       type: "SUCCESS" as const,
