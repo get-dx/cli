@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Write the viewer_emails/editor_emails values when initializing studio reports so the values can be carried over/edited from current state on updates.
+
 ## 0.6.0 - 2026-07-21
 
 ### Added
