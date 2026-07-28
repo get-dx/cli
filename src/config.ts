@@ -9,7 +9,7 @@ import type {
   VersionPromptSelection,
 } from "./types.js";
 
-const DEFAULT_API_BASE_URL = "https://api.getdx.com";
+export const DEFAULT_API_BASE_URL = "https://api.getdx.com";
 const DEFAULT_WEB_BASE_URL = "https://app.getdx.com";
 
 // --- Config file I/O ---------------------------------------------------------
@@ -25,7 +25,16 @@ export function readConfig(): StoredConfig {
   }
 
   const content = fs.readFileSync(configPath, "utf8");
-  const raw = JSON.parse(content) as Record<string, unknown>;
+
+  let raw: Record<string, unknown>;
+  try {
+    raw = JSON.parse(content) as Record<string, unknown>;
+  } catch {
+    // The config file can be left empty or truncated if a previous `dx`
+    // process was killed mid-write, or two processes wrote concurrently.
+    // Treat it like a missing config rather than crashing every command.
+    return {};
+  }
 
   const stored: StoredConfig = {};
   if (typeof raw.webBaseUrl === "string") {
@@ -64,12 +73,19 @@ export function persistVersionPromptSelection(
 }
 
 export function writeConfig(config: StoredConfig): void {
-  fs.mkdirSync(getConfigDir(), { recursive: true });
-  fs.writeFileSync(
-    getConfigPath(),
-    JSON.stringify(config, null, 2) + "\n",
-    "utf8",
+  const configDir = getConfigDir();
+  fs.mkdirSync(configDir, { recursive: true });
+
+  const configPath = getConfigPath();
+  // Write to a temp file and rename into place so a crash or a race between
+  // concurrent `dx` processes can't leave config.json empty or truncated —
+  // renames are atomic, so readers always see either the old or new content.
+  const tempPath = path.join(
+    configDir,
+    `.config.json.${process.pid}.${Date.now()}.tmp`,
   );
+  fs.writeFileSync(tempPath, JSON.stringify(config, null, 2) + "\n", "utf8");
+  fs.renameSync(tempPath, configPath);
 }
 
 export function persistBaseUrls(apiBaseUrl: string, webBaseUrl: string): void {

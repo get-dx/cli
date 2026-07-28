@@ -37,11 +37,39 @@ describe("resolveWebBaseUrl", () => {
   });
 });
 
+describe("writeConfig", () => {
+  it("writes valid JSON and leaves no temp files behind", () => {
+    writeConfig({ apiBaseUrl: "https://example.com" });
+
+    const configDir = path.dirname(getConfigPath());
+    const entries = fs.readdirSync(configDir);
+
+    expect(entries).toEqual(["config.json"]);
+    expect(readConfig().apiBaseUrl).toBe("https://example.com");
+  });
+});
+
 describe("readConfig", () => {
   it("returns {} for an empty config object on disk", () => {
     const configPath = getConfigPath();
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify({}));
+
+    expect(readConfig()).toEqual({});
+  });
+
+  it("returns {} instead of throwing when the config file is empty or truncated", () => {
+    const configPath = getConfigPath();
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, "");
+
+    expect(readConfig()).toEqual({});
+  });
+
+  it("returns {} instead of throwing when the config file contains invalid JSON", () => {
+    const configPath = getConfigPath();
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, '{"apiBaseUrl": "https://exampl');
 
     expect(readConfig()).toEqual({});
   });
