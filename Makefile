@@ -15,7 +15,7 @@ build:
 	./bin/build
 
 link:
-	pnpm link --global
+	pnpm link --global .
 
 uninstall:
 	pnpm uninstall --global @get-dx/cli
@@ -36,4 +36,6 @@ format-check:
 	pnpm format:check
 
 dev:
-	watchexec --clear=reset --watch src/ make
+	@echo "Tip: run 'make' first to install deps and link the binary globally."
+	@sleep 2
+	watchexec --clear=reset --watch src/ make build

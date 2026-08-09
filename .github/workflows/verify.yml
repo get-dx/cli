@@ -19,25 +19,27 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     name: verify (Node ${{ matrix.node-version }})
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
         name: Install pnpm
         with:
-          version: 10
+          version: 11.7.0
           run_install: false
-      - uses: useblacksmith/setup-node@v5
+      - uses: useblacksmith/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: "pnpm"
-      - name: Run make
-        run: make
+      - name: Install deps
+        run: make deps
+      - name: Build
+        run: make build
       - name: Run verify
         run: make verify
   changelog:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     name: Changelog updated
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Check changelog updated
