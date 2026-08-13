@@ -65,11 +65,7 @@ export function handleError(
     }
   } else {
     if (error instanceof HttpError) {
-      process.stderr.write(
-        pc.red(
-          `The API returned an error with status code ${error.status}:\n\n${JSON.stringify(error.body, null, 2)}\n`,
-        ),
-      );
+      process.stderr.write(pc.red(formatHttpError(error)));
     } else if (
       error instanceof CommanderError &&
       (error.code === "commander.help" || error.message === "(outputHelp)")
@@ -94,6 +90,46 @@ export function handleError(
   })();
 
   process.exit(exitCode);
+}
+
+/**
+ * `status` and `body` are only populated when the API actually answered.
+ * Network, TLS, and non-JSON failures carry their detail in `message` alone, so
+ * these helpers coalesce so we display full details.
+ */
+function formatHttpError(error: HttpError): string {
+  const heading = formatHttpErrorHeading(error);
+  const body = formatHttpErrorBody(error.body);
+  return body === null ? `${heading}\n` : `${heading}\n\n${body}\n`;
+}
+
+function formatHttpErrorHeading(error: HttpError): string {
+  if (error.status === undefined) {
+    return error.message;
+  }
+
+  // A successful or redirect status that still failed the request — an
+  // unparseable body, or a redirect missing its Location — isn't an error the
+  // API reported, so don't describe it as one.
+  if (error.status < 400) {
+    return `${error.message} (HTTP ${error.status})`;
+  }
+
+  return `The API returned an error with status code ${error.status}: ${error.message}`;
+}
+
+function formatHttpErrorBody(body: unknown): string | null {
+  if (body === undefined || body === "") {
+    return null;
+  }
+
+  // Non-JSON bodies (proxy block pages, HTML error pages) are far more legible
+  // raw than as a JSON string literal full of escaped newlines.
+  if (typeof body === "string") {
+    return body;
+  }
+
+  return JSON.stringify(body, null, 2) ?? String(body);
 }
 
 function printJson(value: Record<string, unknown>): void {

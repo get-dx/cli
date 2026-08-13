@@ -63,7 +63,9 @@ export async function request<T extends Record<string, unknown>>(
       body: requestBody,
     });
   } catch (error) {
-    throw new HttpError(`Request failed: ${(error as Error).message}`);
+    throw new HttpError(
+      `Could not reach ${url}: ${describeFetchFailure(error)}`,
+    );
   }
 
   const responseBodyText = await response.text();
@@ -88,12 +90,52 @@ export async function request<T extends Record<string, unknown>>(
     typeof parsedResponseBody === "string" &&
     parsedResponseBody === responseBodyText
   ) {
-    throw new HttpError("Invalid JSON response: Unexpected token");
+    // A 2xx that isn't JSON usually means something other than the API answered
+    // e.g. a proxy block page, a captive portal, etc. Pass the status
+    // and the raw text along so the user can see what actually came back.
+    throw new HttpError(
+      responseBodyText
+        ? `Invalid JSON response from ${url}`
+        : `Empty response body from ${url}`,
+      response.status,
+      responseBodyText,
+    );
   }
 
   const retryAfterMs = parseRetryAfterMs(response.headers);
   const body = parsedResponseBody as T;
   return retryAfterMs === undefined ? { body } : { body, retryAfterMs };
+}
+
+/**
+ * Flatten an error thrown by `fetch` into a single readable message.
+ *
+ * Node reports every DNS, proxy, and TLS failure as `TypeError: fetch failed`
+ * and hangs the real reason off `cause`, so the top-level message alone can't
+ * distinguish an untrusted corporate root certificate from an unreachable host.
+ */
+export function describeFetchFailure(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return String(error);
+  }
+
+  const parts: string[] = [];
+  let current: unknown = error;
+  while (current instanceof Error) {
+    const { code } = current as NodeJS.ErrnoException;
+    const part = code ? `${current.message} (${code})` : current.message;
+    if (!parts.includes(part)) {
+      parts.push(part);
+    }
+    current = current.cause;
+  }
+
+  // "fetch failed" carries no information once a cause is available.
+  const informative = parts.filter(
+    (part) => parts.length === 1 || part !== "fetch failed",
+  );
+
+  return informative.join(": ");
 }
 
 export function parseRetryAfterMs(headers: Headers): number | undefined {
