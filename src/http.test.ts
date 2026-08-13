@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { parseRetryAfterMs, request } from "./http.js";
+import { describeFetchFailure, parseRetryAfterMs, request } from "./http.js";
+import { HttpError } from "./errors.js";
 import { createLogger } from "./logger.js";
 import type { Runtime } from "./types.js";
 
@@ -85,6 +86,82 @@ describe("request", () => {
     ).resolves.toEqual({
       body: { ok: true, value: 1 },
     });
+  });
+});
+
+describe("describeFetchFailure", () => {
+  it("surfaces the cause behind Node's generic 'fetch failed'", () => {
+    const cause = Object.assign(
+      new Error("unable to verify the first certificate"),
+      { code: "UNABLE_TO_VERIFY_LEAF_SIGNATURE" },
+    );
+
+    expect(describeFetchFailure(new TypeError("fetch failed", { cause }))).toBe(
+      "unable to verify the first certificate (UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+    );
+  });
+
+  it("keeps the top-level message when there is no cause", () => {
+    expect(
+      describeFetchFailure(
+        new TypeError("Failed to parse URL from api.example.com/auth.info"),
+      ),
+    ).toBe("Failed to parse URL from api.example.com/auth.info");
+    expect(describeFetchFailure(new TypeError("fetch failed"))).toBe(
+      "fetch failed",
+    );
+  });
+
+  it("handles non-Error rejections", () => {
+    expect(describeFetchFailure("boom")).toBe("boom");
+  });
+});
+
+describe("request error details", () => {
+  it("includes the fetch cause in the thrown message", async () => {
+    const cause = Object.assign(new Error("getaddrinfo ENOTFOUND"), {
+      code: "ENOTFOUND",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new TypeError("fetch failed", { cause })),
+    );
+
+    await expect(request(runtime, "/auth.info")).rejects.toThrow(
+      "Could not reach https://api.example.com/auth.info: getaddrinfo ENOTFOUND (ENOTFOUND)",
+    );
+  });
+
+  it("attaches the status and raw body when a 2xx response is not JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response("<html>Blocked by proxy</html>", { status: 200 }),
+        ),
+    );
+
+    const error = await request(runtime, "/auth.info").catch((e) => e);
+
+    expect(error).toBeInstanceOf(HttpError);
+    expect((error as HttpError).status).toBe(200);
+    expect((error as HttpError).body).toBe("<html>Blocked by proxy</html>");
+    expect((error as HttpError).message).toContain(
+      "Invalid JSON response from https://api.example.com/auth.info",
+    );
+  });
+
+  it("reports an empty 2xx body distinctly", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("", { status: 200 })),
+    );
+
+    const error = await request(runtime, "/auth.info").catch((e) => e);
+
+    expect((error as HttpError).status).toBe(200);
+    expect((error as HttpError).message).toContain("Empty response body");
   });
 });
 

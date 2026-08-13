@@ -10,7 +10,7 @@ import {
   wrapAction,
 } from "../../commandHelpers.js";
 import { CliError, EXIT_CODES, HttpError } from "../../errors.js";
-import { request } from "../../http.js";
+import { describeFetchFailure, request } from "../../http.js";
 import {
   AsyncProgressReporter,
   renderJson,
@@ -351,7 +351,9 @@ async function fetchResponse(
   try {
     response = await fetch(url, init);
   } catch (error) {
-    throw new HttpError(`Request failed: ${(error as Error).message}`);
+    throw new HttpError(
+      `Could not reach ${url}: ${describeFetchFailure(error)}`,
+    );
   }
 
   return response;
