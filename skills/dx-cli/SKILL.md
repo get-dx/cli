@@ -82,6 +82,17 @@ Use this for any question about DX itself rather than the user's own data: produ
 
 **Variable** — A named, `$`-prefixed placeholder (e.g. `$team_ids`) that a report's tile SQL can reference for interactive filtering. **Built-in variables** (`$service_ids`, `$team_ids`, `$tag_ids`, `$user_ids`, `$repo_ids`, `$start_date`, `$end_date`) are provided out of the box and just need to be toggled on. **Custom variables** are account-defined dropdown filters backed by a SQL query that returns `value` and `label` columns. Variables cannot be managed through the CLI/API — enabling/disabling built-ins and adding/updating/deleting custom variables must be done in the Data Studio UI — but once enabled on a report, any tile's SQL (including tiles set via `dx studio reports create`/`update`) can reference them.
 
+## Bulk Catalog Entity Writes
+
+For `catalog.entities.*` write operations, avoid one-command-at-a-time loops in chat when the user requests changes across multiple entities.
+
+- Scope: `dx catalog entities create`, `update`, `upsert`, and `delete`.
+- For small requests (for example, one or two entities), direct CLI calls are fine.
+- For larger requests (typically 5+ entities), create and run a script (bash, Python, or Node) that reads structured input and performs the loop outside the chat context.
+- Prefer `dx catalog entities upsert` for idempotent bulk syncs when appropriate.
+- For bulk deletes, confirm intent before execution.
+- Always return a concise execution summary: total requested, succeeded, failed, and failed identifiers with error messages.
+
 ## Reference Docs
 
 - [Catalog management](./references/catalog-management.md) — Entities and entity types: listing, inspecting, creating, updating, and deleting.
