@@ -84,11 +84,10 @@ Use this for any question about DX itself rather than the user's own data: produ
 
 ## Bulk Catalog Entity Writes
 
-For `catalog.entities.*` write operations, avoid one-command-at-a-time loops in chat when the user requests changes across multiple entities.
+Avoid one-command-at-a-time loops in chat for `dx catalog entities create`, `update`, `upsert`, and `delete` when the user requests changes across multiple entities.
 
-- Scope: `dx catalog entities create`, `update`, `upsert`, and `delete`.
 - For small requests (for example, one or two entities), direct CLI calls are fine.
-- For larger requests (typically 5+ entities), create and run a script (bash, Python, or Node) that reads structured input and performs the loop outside the chat context.
+- For larger requests (typically 5+ entities), create and run a script that reads structured input and performs the loop outside the chat context.
 - Prefer `dx catalog entities upsert` for idempotent bulk syncs when appropriate.
 - For bulk deletes, confirm intent before execution.
 - Always return a concise execution summary: total requested, succeeded, failed, and failed identifiers with error messages.
