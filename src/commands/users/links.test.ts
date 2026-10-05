@@ -196,8 +196,28 @@ describe("users links", () => {
     const listResponse = {
       ok: true as const,
       links: [
-        { user_id: "NTEyMDUw", source: "github", account_id: "4812" },
-        { user_id: "NTEyMDUw", source: "github", account_id: "4813" },
+        {
+          user_id: "NTEyMDUw",
+          source: "github",
+          account_id: "4812",
+          account: {
+            id: "4812",
+            source: "github",
+            external_id: "58291034",
+            instance_id: "3",
+            name: null,
+            email: null,
+            username: "jane-smith",
+            linked_user_id: "NTEyMDUw",
+            label: "jane-smith",
+          },
+        },
+        {
+          user_id: "NTEyMDUw",
+          source: "github",
+          account_id: "4813",
+          account: null,
+        },
       ],
       next_page: 2,
       total: 3,
@@ -225,8 +245,12 @@ describe("users links", () => {
       );
       const out = stdoutWrites.join("");
       expect(out).toContain("Linked Accounts");
+      expect(out).toContain("jane-smith");
+      expect(out).toContain("External ID: ");
+      expect(out).toContain("58291034");
       expect(out).toContain("4812");
-      expect(out).toContain("4813");
+      expect(out).toContain("github account (4813)");
+      expect(out).not.toContain("Linked user");
       expect(out).toContain("Next page");
     });
 

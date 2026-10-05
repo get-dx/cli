@@ -11,6 +11,8 @@ import { renderJson, renderRichText } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
+import { accountDetailItems } from "./linkableAccounts.js";
+import type { LinkableAccount } from "./linkableAccounts.js";
 import { SOURCES } from "./sources.js";
 
 export function linksCommand(): Command {
@@ -234,6 +236,7 @@ export type UserLink = {
   user_id: string;
   source: string;
   account_id: string;
+  account: LinkableAccount | null;
 };
 
 type ListLinksParams = {
@@ -344,12 +347,20 @@ function renderLinks(userId: string, response: ListLinksResponse): void {
     blocks.push(ui.p(`Next page: ${ui.code(response.next_page.toString())}`));
   }
 
-  if (response.links.length > 0) {
+  for (const link of response.links) {
     blocks.push(
-      ui.ul(
-        response.links.map((link) =>
-          ui.li(`${link.source}: ${ui.code(link.account_id)}`),
-        ),
+      ui.h2(
+        link.account
+          ? `${link.account.label} (${ui.code(link.account_id)})`
+          : `${link.source} account (${ui.code(link.account_id)})`,
+      ),
+    );
+    blocks.push(
+      ui.dl(
+        link.account
+          ? accountDetailItems(link.account)
+          : [ui.dli("Source", link.source)],
+        { termWidth: 13 },
       ),
     );
   }
