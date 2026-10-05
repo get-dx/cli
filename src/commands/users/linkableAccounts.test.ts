@@ -64,16 +64,23 @@ describe("users linkableAccounts list", () => {
     total_pages: 1,
   };
 
-  function stubFetch() {
+  function stubFetch(
+    body: Record<string, unknown> = listResponse,
+    status = 200,
+  ) {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify(listResponse), { status: 200 }),
-        ),
+      vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status })),
     );
   }
+
+  const listGithub = [
+    "users",
+    "linkableAccounts",
+    "list",
+    "--source",
+    "github",
+  ];
 
   it("searches accounts in human-readable output", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
@@ -157,6 +164,58 @@ describe("users linkableAccounts list", () => {
       "https://api.example.com/users.linkableAccounts.list?source=github&linked=true",
       expect.objectContaining({ method: "GET" }),
     );
+  });
+
+  it("explains a query timeout and recommends a retry", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+    stubFetch({ ok: false, error: "query_timeout" }, 503);
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+
+    const { run } = await import("../../cli.js");
+    await run(["node", "dx", ...listGithub]);
+
+    const stderr = stderrWrites.join("");
+    expect(stderr).toContain("The search timed out");
+    expect(stderr).not.toContain('"error": "query_timeout"');
+    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.RETRY_RECOMMENDED);
+  });
+
+  it("keeps the API error in --json output for a query timeout", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+    stubFetch({ ok: false, error: "query_timeout" }, 503);
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+
+    const { run } = await import("../../cli.js");
+    await run(["node", "dx", "--json", ...listGithub]);
+
+    expect(JSON.parse(stdoutWrites.join(""))).toEqual({
+      ok: false,
+      error: "query_timeout",
+      http_status: 503,
+      body: { ok: false, error: "query_timeout" },
+    });
+    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.RETRY_RECOMMENDED);
+  });
+
+  it("passes through API errors without a hint", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+    stubFetch({ ok: false, error: "Invalid parameter: page_size" }, 400);
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+
+    const { run } = await import("../../cli.js");
+    await run(["node", "dx", ...listGithub]);
+
+    expect(stderrWrites.join("")).toContain("Invalid parameter: page_size");
+    expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
   it("errors when both --linked and --unlinked are passed", async () => {

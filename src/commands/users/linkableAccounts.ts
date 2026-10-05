@@ -7,11 +7,12 @@ import {
   wrapAction,
 } from "../../commandHelpers.js";
 import { CliError, EXIT_CODES } from "../../errors.js";
-import { request } from "../../http.js";
 import { renderJson, renderRichText } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
+import { requestWithHints } from "./errorHints.js";
+import type { ErrorHints } from "./errorHints.js";
 import { SOURCES } from "./sources.js";
 
 export function linkableAccountsCommand(): Command {
@@ -127,20 +128,27 @@ type ListLinkableAccountsResponse = {
   total_pages: number;
 };
 
+const ERROR_HINTS: ErrorHints = {
+  query_timeout: {
+    message:
+      "The search timed out. Narrow it with --instance-id, --external-id, or a longer --query, then try again.",
+    exitCode: EXIT_CODES.RETRY_RECOMMENDED,
+  },
+};
+
 async function listLinkableAccounts(
   runtime: Runtime,
   params: ListLinkableAccountsParams,
 ): Promise<ListLinkableAccountsResponse> {
-  const response = await request<ListLinkableAccountsResponse>(
+  return requestWithHints<ListLinkableAccountsResponse>(
     runtime,
     "/users.linkableAccounts.list",
     {
       method: "GET",
       query: params,
     },
+    ERROR_HINTS,
   );
-
-  return response.body;
 }
 
 function renderLinkableAccounts(response: ListLinkableAccountsResponse): void {
