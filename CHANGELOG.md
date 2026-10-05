@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `dx users linkableAccounts list`: Add support for searching the accounts DX has imported from a source.
+- `dx users links list`, `dx users links create`, `dx users links delete`, `dx users links set`: Add support for listing and managing the accounts linked to a DX user.
 
 ## 0.6.2 - 2026-08-13
 
