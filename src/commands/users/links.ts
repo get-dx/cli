@@ -6,13 +6,13 @@ import {
   parsePositiveIntOption,
   wrapAction,
 } from "../../commandHelpers.js";
-import { request } from "../../http.js";
 import { renderJson, renderRichText } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
 import { accountDetailItems } from "./linkableAccounts.js";
 import type { LinkableAccount } from "./linkableAccounts.js";
+import { requestWithMessages } from "./request.js";
 import { SOURCES } from "./sources.js";
 
 export function linksCommand(): Command {
@@ -270,68 +270,79 @@ type LinkMutationResponse = {
   ok: true;
 };
 
+const NOT_SYNCED =
+  "This user hasn't synced to Data Cloud yet. Try again once their next sync finishes.";
+
+const ERROR_MESSAGES = {
+  link_update_in_progress:
+    "Another link update for this user and source is still running. Try again in a few seconds.",
+  manual_link_conflict:
+    "An account is manually linked to another user. Remove that link before linking it to this user.",
+  not_found:
+    "The user or account wasn't found. Check the user ID, and look up account IDs with `dx users linkableAccounts list`.",
+  user_not_in_datacloud: NOT_SYNCED,
+  // users.links.set passes Data Cloud's own error string through instead of a code.
+  "User not found in datacloud": NOT_SYNCED,
+};
+
 async function createLink(
   runtime: Runtime,
   params: LinkParams,
 ): Promise<LinkMutationResponse> {
-  const response = await request<LinkMutationResponse>(
+  return requestWithMessages<LinkMutationResponse>(
     runtime,
     "/users.links.create",
     {
       method: "POST",
       body: params,
     },
+    ERROR_MESSAGES,
   );
-
-  return response.body;
 }
 
 async function deleteLink(
   runtime: Runtime,
   params: LinkParams,
 ): Promise<LinkMutationResponse> {
-  const response = await request<LinkMutationResponse>(
+  return requestWithMessages<LinkMutationResponse>(
     runtime,
     "/users.links.delete",
     {
       method: "POST",
       body: params,
     },
+    ERROR_MESSAGES,
   );
-
-  return response.body;
 }
 
 async function listLinks(
   runtime: Runtime,
   params: ListLinksParams,
 ): Promise<ListLinksResponse> {
-  const response = await request<ListLinksResponse>(
+  return requestWithMessages<ListLinksResponse>(
     runtime,
     "/users.links.list",
     {
       method: "GET",
       query: params,
     },
+    ERROR_MESSAGES,
   );
-
-  return response.body;
 }
 
 async function setLinks(
   runtime: Runtime,
   params: SetLinksParams,
 ): Promise<LinkMutationResponse> {
-  const response = await request<LinkMutationResponse>(
+  return requestWithMessages<LinkMutationResponse>(
     runtime,
     "/users.links.set",
     {
       method: "POST",
       body: params,
     },
+    ERROR_MESSAGES,
   );
-
-  return response.body;
 }
 
 function renderLinks(userId: string, response: ListLinksResponse): void {
