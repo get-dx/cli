@@ -6,11 +6,13 @@ import {
   parsePositiveIntOption,
   wrapAction,
 } from "../../commandHelpers.js";
-import { request } from "../../http.js";
+import { EXIT_CODES } from "../../errors.js";
 import { renderJson, renderRichText } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
+import { requestWithHints } from "./errorHints.js";
+import type { ErrorHints } from "./errorHints.js";
 import { accountDetailItems } from "./linkableAccounts.js";
 import type { LinkableAccount } from "./linkableAccounts.js";
 import { SOURCES } from "./sources.js";
@@ -270,68 +272,99 @@ type LinkMutationResponse = {
   ok: true;
 };
 
+const USER_NOT_SYNCED_HINT = {
+  message:
+    "This user hasn't synced to Data Cloud yet. Try again once their next sync finishes.",
+  exitCode: EXIT_CODES.RETRY_RECOMMENDED,
+};
+
+const ERROR_HINTS: ErrorHints = {
+  datacloud_unavailable: {
+    message: "Data Cloud didn't accept the change. Try again.",
+    exitCode: EXIT_CODES.RETRY_RECOMMENDED,
+  },
+  link_update_in_progress: {
+    message:
+      "Another link update for this user and source is still running. Try again in a few seconds.",
+    exitCode: EXIT_CODES.RETRY_RECOMMENDED,
+  },
+  manual_link_conflict: {
+    message:
+      "An account is manually linked to another user. Remove that link before linking it to this user.",
+    exitCode: EXIT_CODES.ARGUMENT_ERROR,
+  },
+  not_found: {
+    message:
+      "The user or account wasn't found. Check the user ID, and look up account IDs with `dx users linkableAccounts list`.",
+    exitCode: EXIT_CODES.ARGUMENT_ERROR,
+  },
+  query_timeout: {
+    message: "Data Cloud didn't respond in time. Try again.",
+    exitCode: EXIT_CODES.RETRY_RECOMMENDED,
+  },
+  user_not_in_datacloud: USER_NOT_SYNCED_HINT,
+  // users.links.set passes Data Cloud's own error string through instead of a code.
+  "User not found in datacloud": USER_NOT_SYNCED_HINT,
+};
+
 async function createLink(
   runtime: Runtime,
   params: LinkParams,
 ): Promise<LinkMutationResponse> {
-  const response = await request<LinkMutationResponse>(
+  return requestWithHints<LinkMutationResponse>(
     runtime,
     "/users.links.create",
     {
       method: "POST",
       body: params,
     },
+    ERROR_HINTS,
   );
-
-  return response.body;
 }
 
 async function deleteLink(
   runtime: Runtime,
   params: LinkParams,
 ): Promise<LinkMutationResponse> {
-  const response = await request<LinkMutationResponse>(
+  return requestWithHints<LinkMutationResponse>(
     runtime,
     "/users.links.delete",
     {
       method: "POST",
       body: params,
     },
+    ERROR_HINTS,
   );
-
-  return response.body;
 }
 
 async function listLinks(
   runtime: Runtime,
   params: ListLinksParams,
 ): Promise<ListLinksResponse> {
-  const response = await request<ListLinksResponse>(
+  return requestWithHints<ListLinksResponse>(
     runtime,
     "/users.links.list",
     {
       method: "GET",
       query: params,
     },
+    ERROR_HINTS,
   );
-
-  return response.body;
 }
 
 async function setLinks(
   runtime: Runtime,
   params: SetLinksParams,
 ): Promise<LinkMutationResponse> {
-  const response = await request<LinkMutationResponse>(
+  return requestWithHints<LinkMutationResponse>(
     runtime,
     "/users.links.set",
     {
       method: "POST",
       body: params,
     },
+    ERROR_HINTS,
   );
-
-  return response.body;
 }
 
 function renderLinks(userId: string, response: ListLinksResponse): void {
