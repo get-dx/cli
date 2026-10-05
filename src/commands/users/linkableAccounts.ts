@@ -166,7 +166,7 @@ function renderLinkableAccounts(response: ListLinkableAccountsResponse): void {
               : ui.dim("(Not linked)"),
           ),
         ],
-        { termWidth: 12 },
+        { termWidth: 13 },
       ),
     );
   }

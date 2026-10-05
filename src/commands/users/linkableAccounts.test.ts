@@ -104,6 +104,7 @@ describe("users linkableAccounts list", () => {
     expect(out).toContain("4812");
     expect(out).toContain("58291034");
     expect(out).toContain("(Not linked)");
+    expect(out).toContain("Linked user: ");
   });
 
   it("prints the API response with --json and omits unset filters", async () => {
