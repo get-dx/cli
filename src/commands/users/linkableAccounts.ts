@@ -6,6 +6,7 @@ import {
   parsePositiveIntOption,
   wrapAction,
 } from "../../commandHelpers.js";
+import { CliError, EXIT_CODES } from "../../errors.js";
 import { request } from "../../http.js";
 import { renderJson, renderRichText } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
@@ -37,7 +38,7 @@ export function linkableAccountsCommand(): Command {
       "Only return accounts from this instance, organization, workspace, or connection",
     )
     .option("--linked", "Only return accounts linked to a DX user")
-    .option("--no-linked", "Only return accounts not linked to a DX user")
+    .option("--unlinked", "Only return accounts not linked to a DX user")
     .option("--page <n>", "Page number to return (default is 1)", (value) =>
       parsePositiveIntOption(value, "--page"),
     )
@@ -52,7 +53,7 @@ export function linkableAccountsCommand(): Command {
         {
           label: "Search unlinked GitHub accounts matching a name",
           command:
-            "dx users linkableAccounts list --source github --query jane --no-linked",
+            "dx users linkableAccounts list --source github --query jane --unlinked",
         },
         {
           label: "Find a Jira account by its Jira ID and return JSON",
@@ -67,13 +68,20 @@ export function linkableAccountsCommand(): Command {
     )
     .action(
       wrapAction(async (options, command) => {
+        if (options.linked && options.unlinked) {
+          throw new CliError(
+            "--linked and --unlinked are mutually exclusive",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+
         const runtime = await buildRuntime(getContext(command));
         const response = await listLinkableAccounts(runtime, {
           source: options.source,
           query: options.query,
           external_id: options.externalId,
           instance_id: options.instanceId,
-          linked: options.linked,
+          linked: options.unlinked ? false : options.linked,
           page: options.page,
           page_size: options.pageSize,
         });

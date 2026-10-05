@@ -91,7 +91,7 @@ describe("users linkableAccounts list", () => {
       "github",
       "--query",
       "jane",
-      "--no-linked",
+      "--unlinked",
     ]);
 
     expect(fetch).toHaveBeenCalledWith(
@@ -133,6 +133,54 @@ describe("users linkableAccounts list", () => {
       expect.objectContaining({ method: "GET" }),
     );
     expect(JSON.parse(stdoutWrites.join(""))).toEqual(listResponse);
+  });
+
+  it("sends linked=true with --linked", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+    stubFetch();
+
+    const { run } = await import("../../cli.js");
+    await run([
+      "node",
+      "dx",
+      "--json",
+      "users",
+      "linkableAccounts",
+      "list",
+      "--source",
+      "github",
+      "--linked",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/users.linkableAccounts.list?source=github&linked=true",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("errors when both --linked and --unlinked are passed", async () => {
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+
+    const { run } = await import("../../cli.js");
+    await run([
+      "node",
+      "dx",
+      "users",
+      "linkableAccounts",
+      "list",
+      "--source",
+      "github",
+      "--linked",
+      "--unlinked",
+    ]);
+
+    expect(stderrWrites.join("")).toContain(
+      "--linked and --unlinked are mutually exclusive",
+    );
+    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
   });
 
   it("errors when --source is missing", async () => {
