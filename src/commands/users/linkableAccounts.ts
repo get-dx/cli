@@ -161,12 +161,7 @@ function renderLinkableAccounts(response: ListLinkableAccountsResponse): void {
     blocks.push(
       ui.dl(
         [
-          ui.dli("Source", account.source),
-          ui.dli("External ID", formatCode(account.external_id)),
-          ui.dli("Instance ID", formatCode(account.instance_id)),
-          ui.dli("Name", account.name ?? ui.dim("(None)")),
-          ui.dli("Email", account.email ?? ui.dim("(None)")),
-          ui.dli("Username", account.username ?? ui.dim("(None)")),
+          ...accountDetailItems(account),
           ui.dli(
             "Linked user",
             account.linked_user_id
@@ -180,6 +175,17 @@ function renderLinkableAccounts(response: ListLinkableAccountsResponse): void {
   }
 
   renderRichText(blocks);
+}
+
+export function accountDetailItems(account: LinkableAccount) {
+  return [
+    ui.dli("Source", account.source),
+    ui.dli("External ID", formatCode(account.external_id)),
+    ui.dli("Instance ID", formatCode(account.instance_id)),
+    ui.dli("Name", account.name ?? ui.dim("(None)")),
+    ui.dli("Email", account.email ?? ui.dim("(None)")),
+    ui.dli("Username", account.username ?? ui.dim("(None)")),
+  ];
 }
 
 function formatCode(value: string | null): string {
