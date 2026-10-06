@@ -132,6 +132,52 @@ export function snapshotsCommand(): Command {
 
   snapshots.addCommand(driverComments);
 
+  const teams = new Command()
+    .name("teams")
+    .description("Work with snapshot teams");
+
+  teams
+    .command("list")
+    .description("List teams for a snapshot")
+    .option("--id <id>", "The unique ID of the snapshot")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "List teams for a snapshot",
+          command: "dx snapshots teams list --id MjUyNbaY",
+        },
+        {
+          label: "List snapshot teams as JSON",
+          command: "dx --json snapshots teams list --id MjUyNbaY",
+        },
+        {
+          label: "Use the snapshot team ID with score filters",
+          command:
+            "dx snapshots teams list --id MjUyNbaY  # use the Snapshot Team ID as snapshot_team_ids",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (options, command) => {
+        const snapshotId = parseRequiredTextOption(options.id, "--id");
+        const runtime = await buildRuntime(getContext(command));
+        const response = await listSnapshotTeams(runtime, snapshotId);
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderSnapshotTeams(
+            extractSnapshotTeams(response),
+            snapshotId,
+            runtime,
+          );
+        }
+      }),
+    );
+
+  snapshots.addCommand(teams);
+
   snapshots
     .command("info")
     .description("Retrieve results for a single snapshot")
@@ -259,10 +305,19 @@ type ListSnapshotsResponse = {
 type SnapshotTeam = {
   ancestors?: string[];
   id?: string;
+  manager?: string | null;
   name?: string;
   parent?: boolean;
   parent_id?: string | null;
   team_id?: string;
+};
+
+type ListSnapshotTeamsResponse = {
+  ok: true;
+  snapshot_teams?: SnapshotTeam[];
+  snapshotTeams?: SnapshotTeam[];
+  snapshotteams?: SnapshotTeam[];
+  teams?: SnapshotTeam[];
 };
 
 type SnapshotTeamScore = {
@@ -323,6 +378,22 @@ async function listSnapshotCsatComments(
         cursor: options.cursor,
         limit: options.limit,
       },
+    },
+  );
+
+  return response.body;
+}
+
+async function listSnapshotTeams(
+  runtime: Runtime,
+  snapshotId: string,
+): Promise<ListSnapshotTeamsResponse> {
+  const response = await request<ListSnapshotTeamsResponse>(
+    runtime,
+    "/snapshots.teams.list",
+    {
+      method: "GET",
+      query: { id: snapshotId },
     },
   );
 
@@ -480,6 +551,39 @@ function renderSnapshotCsatComments(
   renderRichText(blocks);
 }
 
+function renderSnapshotTeams(
+  teams: SnapshotTeam[],
+  snapshotId: string,
+  runtime: Runtime,
+): void {
+  const blocks: ui.Block[] = [ui.h1("Snapshot Teams")];
+  blocks.push(ui.p(`Displaying ${ui.bold(teams.length.toString())} teams.`));
+  blocks.push(
+    ui.p(
+      "Snapshot Team IDs are only valid within this snapshot and feed ",
+      ui.code("snapshot_team_ids"),
+      " score filters. Use ",
+      ui.code("team_id"),
+      " with ",
+      ui.code("dx teams info --team-id"),
+      ".",
+    ),
+  );
+  blocks.push(ui.p(ui.link(snapshotWebLink(snapshotId, "drivers", runtime))));
+
+  if (teams.length === 0) {
+    blocks.push(ui.p(ui.dim("(None)")));
+    renderRichText(blocks);
+    return;
+  }
+
+  for (const team of buildSnapshotTeamTree(teams)) {
+    appendSnapshotTeamBlock(blocks, team, 0);
+  }
+
+  renderRichText(blocks);
+}
+
 function renderSnapshotInfo(
   snapshot: SnapshotInfo,
   snapshotId: string,
@@ -626,6 +730,116 @@ function extractCsatComments(
     response.comments ??
     []
   );
+}
+
+function extractSnapshotTeams(
+  response: ListSnapshotTeamsResponse,
+): SnapshotTeam[] {
+  return (
+    response.snapshot_teams ??
+    response.snapshotTeams ??
+    response.snapshotteams ??
+    response.teams ??
+    []
+  );
+}
+
+type SnapshotTeamNode = {
+  children: SnapshotTeamNode[];
+  team: SnapshotTeam;
+};
+
+function buildSnapshotTeamTree(teams: SnapshotTeam[]): SnapshotTeamNode[] {
+  const nodes = teams.map((team) => ({ children: [], team }));
+  const nodesById = new Map<string, SnapshotTeamNode>();
+
+  for (const node of nodes) {
+    if (typeof node.team.id === "string" && node.team.id.trim().length > 0) {
+      nodesById.set(node.team.id, node);
+    }
+  }
+
+  const roots: SnapshotTeamNode[] = [];
+
+  for (const node of nodes) {
+    const parentId =
+      typeof node.team.parent_id === "string" ? node.team.parent_id : null;
+    const parent = parentId ? nodesById.get(parentId) : undefined;
+
+    if (parent) {
+      parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  const sortNodes = (items: SnapshotTeamNode[]): void => {
+    items.sort((left, right) =>
+      compareSnapshotTeams(left.team, right.team),
+    );
+    for (const item of items) {
+      sortNodes(item.children);
+    }
+  };
+
+  sortNodes(roots);
+  return roots;
+}
+
+function compareSnapshotTeams(left: SnapshotTeam, right: SnapshotTeam): number {
+  const leftName = normalizeSortValue(left.name);
+  const rightName = normalizeSortValue(right.name);
+
+  if (leftName !== rightName) {
+    return leftName.localeCompare(rightName);
+  }
+
+  return normalizeSortValue(left.id).localeCompare(normalizeSortValue(right.id));
+}
+
+function normalizeSortValue(value: unknown): string {
+  return typeof value === "string" ? value.toLocaleLowerCase() : "";
+}
+
+function appendSnapshotTeamBlock(
+  blocks: ui.Block[],
+  node: SnapshotTeamNode,
+  depth: number,
+): void {
+  const heading = `${depth > 0 ? `${"  ".repeat(depth)}↳ ` : ""}${formatSnapshotTeamSummary(node.team)}`;
+  blocks.push(ui.h2(heading));
+
+  const details = [
+    optionalDetail(
+      "Snapshot Team ID",
+      formatText(node.team.id),
+      node.team.id,
+    ),
+    optionalDetail("Team ID", formatText(node.team.team_id), node.team.team_id),
+    optionalDetail("Manager", formatText(node.team.manager), node.team.manager),
+    optionalDetail(
+      "Parent ID",
+      formatText(node.team.parent_id),
+      node.team.parent_id,
+    ),
+  ].filter((detail) => detail !== null);
+
+  if (details.length > 0) {
+    blocks.push(ui.dl(details, { termWidth: 18 }));
+  }
+
+  for (const child of node.children) {
+    appendSnapshotTeamBlock(blocks, child, depth + 1);
+  }
+}
+
+function formatSnapshotTeamSummary(team: SnapshotTeam): string {
+  const name =
+    typeof team.name === "string" && team.name.trim().length > 0
+      ? team.name.trim()
+      : "Unnamed team";
+
+  return name;
 }
 
 function formatCommentHeading(comment: SnapshotDriverComment): string {
