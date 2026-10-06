@@ -64,14 +64,13 @@ describe("users linkableAccounts list", () => {
     total_pages: 1,
   };
 
-  function stubFetch() {
+  function stubFetch(
+    body: Record<string, unknown> = listResponse,
+    status = 200,
+  ) {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify(listResponse), { status: 200 }),
-        ),
+      vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status })),
     );
   }
 
@@ -157,6 +156,46 @@ describe("users linkableAccounts list", () => {
       "https://api.example.com/users.linkableAccounts.list?source=github&linked=true",
       expect.objectContaining({ method: "GET" }),
     );
+  });
+
+  it("explains a query timeout", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+    stubFetch({ ok: false, error: "query_timeout" }, 503);
+    vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+
+    const { run } = await import("../../cli.js");
+    await run([
+      "node",
+      "dx",
+      "users",
+      "linkableAccounts",
+      "list",
+      "--source",
+      "github",
+    ]);
+
+    expect(stderrWrites.join("")).toContain("The search timed out");
+  });
+
+  it("passes through API errors without a message", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+    stubFetch({ ok: false, error: "Invalid parameter: page_size" }, 400);
+    vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+
+    const { run } = await import("../../cli.js");
+    await run([
+      "node",
+      "dx",
+      "users",
+      "linkableAccounts",
+      "list",
+      "--source",
+      "github",
+    ]);
+
+    expect(stderrWrites.join("")).toContain("Invalid parameter: page_size");
   });
 
   it("errors when both --linked and --unlinked are passed", async () => {

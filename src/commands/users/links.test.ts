@@ -43,14 +43,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function stubFetch(body: Record<string, unknown>) {
+function stubFetch(body: Record<string, unknown>, status = 200) {
   process.env.DX_API_BASE_URL = "https://api.example.com";
   getToken.mockReturnValue("token-123");
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue(new Response(JSON.stringify(body), { status: 200 })),
+    vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status })),
   );
 }
 
@@ -400,6 +398,68 @@ describe("users links", () => {
         "required option '--account-ids <ids>' not specified",
       );
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+    });
+  });
+
+  describe("error messages", () => {
+    const linkArgs = ["NTEyMDUw", "--source", "github", "--account-id", "4812"];
+
+    it("explains a manual link conflict", async () => {
+      stubFetch({ ok: false, error: "manual_link_conflict" }, 409);
+      vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+
+      const { run } = await import("../../cli.js");
+      await run(["node", "dx", "users", "links", "create", ...linkArgs]);
+
+      const stderr = stderrWrites.join("");
+      expect(stderr).toContain("manually linked to another user");
+      expect(stderr).not.toContain('"error": "manual_link_conflict"');
+    });
+
+    it("explains Data Cloud's user not found error from set", async () => {
+      stubFetch({ ok: false, error: "User not found in datacloud" }, 404);
+      vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "users",
+        "links",
+        "set",
+        "NTEyMDUw",
+        "--source",
+        "github",
+        "--account-ids",
+        "4812",
+      ]);
+
+      expect(stderrWrites.join("")).toContain(
+        "hasn't synced to Data Cloud yet",
+      );
+    });
+
+    it("keeps the API error unchanged with --json", async () => {
+      stubFetch({ ok: false, error: "manual_link_conflict" }, 409);
+      vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "users",
+        "links",
+        "create",
+        ...linkArgs,
+      ]);
+
+      expect(JSON.parse(stdoutWrites.join(""))).toEqual({
+        ok: false,
+        error: "manual_link_conflict",
+        http_status: 409,
+        body: { ok: false, error: "manual_link_conflict" },
+      });
     });
   });
 });
