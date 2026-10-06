@@ -88,4 +88,12 @@ Use this for any question about DX itself rather than the user's own data: produ
 - [Report creation](./references/report-creation.md) — Studio reports: initializing YAML, creating reports, and updating existing reports.
 - [Scorecards management](./references/scorecards-management.md) — Scorecards and checks: listing, inspecting, creating, updating, and deleting via YAML.
 - [Failing checks](./references/failing-checks.md) — Review and resolve an entity's failing scorecard checks: triage, diagnosis, fixes, and re-evaluation.
-- [Snapshot analysis](./references/snapshot-analysis.md) — Analyze snapshot scores, driver comments, and CSAT comments.
+- [Snapshot analysis](./references/snapshot-analysis.md) — Analyze snapshot scores, teams, driver comments, and CSAT comments.
+
+## Snapshot teams
+
+Use `dx snapshots teams list --id <snapshot_id>` to list the teams captured in a snapshot.
+
+- `id` is the Snapshot Team ID. It is only valid within that snapshot and is what DX score endpoints expect in the `snapshot_team_ids` filter.
+- `team_id` is the stable DX team ID. It can be used with `dx teams info --team-id <team_id>` to inspect the current DX team record.
+- Use `--json` to return the raw API response unchanged.

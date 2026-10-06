@@ -5,7 +5,7 @@ Use the `dx` CLI snapshot endpoints to turn one snapshot into a concise insight 
 ## Terms
 
 - **Snapshot**: A completed DX Snapshot survey/reporting cycle. Use `dx snapshots list --json` for IDs, timing, and completion counts before choosing one to analyze.
-- **Snapshot team**: A team record frozen at the time of the snapshot. `snapshot_team.parent` identifies parent-rollup rows; `snapshot_team.team_id` links back to the DX team.
+- **Snapshot team**: A team record frozen at the time of the snapshot. The Snapshot Team `id` is only valid within that snapshot and feeds score endpoint `snapshot_team_ids` filters. `snapshot_team.parent` identifies parent-rollup rows; `snapshot_team.team_id` links back to the stable DX team.
 - **Snapshot item**: A scored question or metric included in the snapshot. `snapshot.snapshot_items` groups item metadata into `factors`, `csat`, and `kpis`.
 - **Developer Experience Index (DXI)**: The overall developer-experience score, calculated from driver scores out of 100. Treat it as a baseline for quarterly progress and as an impact/ROI framing device.
 - **Driver / factor**: A developer-experience driver. Product-facing docs and reports call these drivers; the API uses `factor` as the `item_type` and stores metadata in `snapshot_items.factors`.
@@ -68,14 +68,23 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
    dx snapshots info --id <snapshot_id> --json
    ```
 
-4. Interpret the snapshot info response:
+4. Optionally list snapshot teams when you need team scoping or Snapshot Team IDs for score filters:
+
+   ```bash
+   dx snapshots teams list --id <snapshot_id>
+   dx snapshots teams list --id <snapshot_id> --json
+   ```
+
+   Use the Snapshot Team `id` values from this response for `snapshot_team_ids` filters on score endpoints. Use `team_id` when you need to inspect the stable DX team with `dx teams info`.
+
+5. Interpret the snapshot info response:
    - Read score rows from `snapshot.team_scores`.
    - Read item metadata from `snapshot.snapshot_items`, which contains `factors`, `csat`, and `kpis` arrays.
    - Build an item lookup keyed by item ID so each score row can be labeled from `team_scores[].item_id` and `team_scores[].item_type`.
    - Treat `factor` as the API name for a snapshot driver. In user-facing analysis, call these "drivers" unless you are naming the raw API value.
    - `team_scores[].item_type` is always one of `factor`, `csat`, or `kpi`. Do not invent other item types. Note that `snapshot_items` uses plural collection keys (`factors`, `kpis`) but `item_type` uses singular enum values (`factor`, `kpi`).
 
-5. Fetch all driver comments using pagination:
+6. Fetch all driver comments using pagination:
 
    ```bash
    dx snapshots driverComments list --id <snapshot_id> --limit 100 --json
@@ -84,7 +93,7 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
 
    Continue until `response_metadata.next_cursor` is absent or null.
 
-6. Fetch all CSAT comments using pagination:
+7. Fetch all CSAT comments using pagination:
 
    ```bash
    dx snapshots csatComments list --id <snapshot_id> --limit 100 --json
@@ -93,7 +102,7 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
 
    Continue until `response_metadata.next_cursor` is absent or null.
 
-7. Analyze the combined data. Prioritize:
+8. Analyze the combined data. Prioritize:
    - Lowest and highest team scores, especially with meaningful `response_count`.
    - Large benchmark gaps: `vs_org`, `vs_50th`, `vs_75th`, `vs_90th`.
    - Biggest changes from the prior snapshot using `vs_prev`.
