@@ -16,6 +16,7 @@ Run `dx --help` to see all top-level commands. Run `dx <subcommand> --help` to s
 
 ```
 dx --help
+dx attributeGroups --help
 dx auth --help
 dx catalog --help
 dx catalog entities --help
@@ -73,6 +74,12 @@ Use this for any question about DX itself rather than the user's own data: produ
 **Initiative** — A time-boxed project that groups failing scorecard checks into actionable tasks for teams. Tasks for a given entity can be fetched with `dx catalog entities tasks <identifier>`.
 
 **Exemption** — A time-bound approved pass on a failing check for a specific entity. A check result with a non-null `exemption_expires_at` is exempted: it may still be failing, but is not counted against the entity until the exemption expires.
+
+### Snapshot terms
+
+**Attribute group** — A grouping dimension used to segment snapshot reporting, such as region, role, or tenure. Use `dx attributeGroups list` to retrieve attribute group IDs and the attribute value IDs nested inside them.
+
+**Attribute value** — A selectable value within an attribute group. Attribute value IDs feed the `attribute_ids` filter when querying snapshot scores by attribute.
 
 ### Data Studio terms
 

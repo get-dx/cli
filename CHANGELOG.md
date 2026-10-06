@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1 - 2026-10-06
+
+- Added `dx attributeGroups list` to fetch snapshot attribute groups and attribute value IDs, with human-readable and `--json` output.
+- Updated the dx-cli skill snapshot guidance to explain using attribute value IDs with the `attribute_ids` snapshot filter.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
