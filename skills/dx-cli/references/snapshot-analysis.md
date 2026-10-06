@@ -62,20 +62,29 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
    - If the user already provided a snapshot ID or clearly identified a snapshot, continue with that ID after listing snapshots.
    - If no target snapshot was provided, show the available snapshots with enough context to choose, such as `id`, `scheduled_for`, `completed_at`, and counts. Then ask the user which snapshot ID to analyze. Do not continue until the user chooses one.
 
-3. Fetch snapshot scores:
+3. If the user needs to segment snapshot results by an attribute group first, fetch attribute groups and attribute value IDs:
+
+   ```bash
+   dx attributeGroups list
+   dx attributeGroups list --json
+   ```
+
+   Use the returned attribute value IDs as the `attribute_ids` filter in downstream snapshot score queries.
+
+4. Fetch snapshot scores:
 
    ```bash
    dx snapshots info --id <snapshot_id> --json
    ```
 
-4. Interpret the snapshot info response:
+5. Interpret the snapshot info response:
    - Read score rows from `snapshot.team_scores`.
    - Read item metadata from `snapshot.snapshot_items`, which contains `factors`, `csat`, and `kpis` arrays.
    - Build an item lookup keyed by item ID so each score row can be labeled from `team_scores[].item_id` and `team_scores[].item_type`.
    - Treat `factor` as the API name for a snapshot driver. In user-facing analysis, call these "drivers" unless you are naming the raw API value.
    - `team_scores[].item_type` is always one of `factor`, `csat`, or `kpi`. Do not invent other item types. Note that `snapshot_items` uses plural collection keys (`factors`, `kpis`) but `item_type` uses singular enum values (`factor`, `kpi`).
 
-5. Fetch all driver comments using pagination:
+6. Fetch all driver comments using pagination:
 
    ```bash
    dx snapshots driverComments list --id <snapshot_id> --limit 100 --json
@@ -84,7 +93,7 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
 
    Continue until `response_metadata.next_cursor` is absent or null.
 
-6. Fetch all CSAT comments using pagination:
+7. Fetch all CSAT comments using pagination:
 
    ```bash
    dx snapshots csatComments list --id <snapshot_id> --limit 100 --json
@@ -93,7 +102,7 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
 
    Continue until `response_metadata.next_cursor` is absent or null.
 
-7. Analyze the combined data. Prioritize:
+8. Analyze the combined data. Prioritize:
    - Lowest and highest team scores, especially with meaningful `response_count`.
    - Large benchmark gaps: `vs_org`, `vs_50th`, `vs_75th`, `vs_90th`.
    - Biggest changes from the prior snapshot using `vs_prev`.

@@ -1,5 +1,6 @@
 import { Command, Option } from "commander";
 
+import { attributeGroupsCommand } from "./commands/attributeGroups.js";
 import { authCommand } from "./commands/auth.js";
 import { catalogCommand } from "./commands/catalog.js";
 import { initCommand } from "./commands/init.js";
@@ -74,6 +75,7 @@ function createProgram(): Command {
       ),
     );
 
+  program.addCommand(attributeGroupsCommand());
   program.addCommand(authCommand());
   program.addCommand(catalogCommand());
   program.addCommand(initCommand());
