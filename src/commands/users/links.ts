@@ -6,13 +6,13 @@ import {
   parsePositiveIntOption,
   wrapAction,
 } from "../../commandHelpers.js";
+import { requestWithMessages } from "../../http.js";
 import { renderJson, renderRichText } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
 import { accountDetailItems } from "./linkableAccounts.js";
 import type { LinkableAccount } from "./linkableAccounts.js";
-import { requestWithMessages } from "./request.js";
 import { SOURCES } from "./sources.js";
 
 export function linksCommand(): Command {

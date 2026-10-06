@@ -7,11 +7,11 @@ import {
   wrapAction,
 } from "../../commandHelpers.js";
 import { CliError, EXIT_CODES } from "../../errors.js";
+import { requestWithMessages } from "../../http.js";
 import { renderJson, renderRichText } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
-import { requestWithMessages } from "./request.js";
 import { SOURCES } from "./sources.js";
 
 export function linkableAccountsCommand(): Command {
