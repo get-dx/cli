@@ -19,7 +19,7 @@ import * as ui from "../../ui.js";
 
 const VARIABLES_NOTE_TEXT = [
   "Tile SQL can reference report variables using `$variable_name` syntax. Built-in variables — $service_ids, $team_ids, $tag_ids, $user_ids, $repo_ids, $start_date, $end_date — filter by service, team, attribute, user, repo, and date range, respectively. Custom variables are account-defined dropdown filters backed by a SQL query.",
-  "Variables cannot be created, updated, enabled, or disabled via this CLI or the API. Built-in variables must be toggled, and custom variables must be added, edited, or removed, from the report's settings in the Data Studio UI. Once a variable is enabled on a report, its `$variable_name` can be used in any tile's SQL via --from-file/--from-stdin.",
+  "The report YAML's `variables` list controls which variables are enabled on the report and their default values. Built-in variables (except the date range, which is controlled by `date_range_variables_enabled` and `default_date_range_period`) can be enabled by name; custom variables must already exist in the account — they are created, edited, and deleted in the Data Studio UI.",
 ];
 
 export function reportsCommand() {
@@ -302,6 +302,7 @@ export function reportsCommand() {
           ? readYamlFile(options.fromFile as string)
           : await readYamlStdin();
         const payload = buildUpdateReportPayload(id, raw);
+        await warnOnTileReplacement(runtime, id, payload);
         const response = await updateStudioReport(runtime, payload);
 
         if (runtime.context.json) {
@@ -318,9 +319,29 @@ export function reportsCommand() {
 type StudioReportTile = {
   id: string;
   title: string | null;
+  description?: string | null;
   sql: string | null;
   chart_type: string;
   chart_config: Record<string, unknown>;
+  section_id?: string | null;
+  width_numerator?: number | null;
+  width_denominator?: number | null;
+  height_numerator?: number | null;
+  height_denominator?: number | null;
+  drilldown_sql?: string | null;
+};
+
+type StudioReportSection = {
+  id: string;
+  name: string;
+  description: string | null;
+};
+
+type StudioReportVariable = {
+  name: string;
+  label?: string;
+  type?: string;
+  default_values?: string[];
 };
 
 type StudioReportOwner = {
@@ -340,6 +361,10 @@ type StudioReport = {
   editor_emails: string[];
   owner: StudioReportOwner | null;
   url: string;
+  date_range_variables_enabled?: boolean;
+  default_date_range_period?: string | null;
+  sections?: StudioReportSection[];
+  variables?: StudioReportVariable[];
   tiles: StudioReportTile[];
   created_at: string;
   updated_at: string;
@@ -351,7 +376,7 @@ type StudioReportTilePayload = {
   sql: string | null;
   chart_type: string;
   chart_config: Record<string, unknown>;
-};
+} & Record<string, unknown>;
 
 type ResponseMetadata = {
   next_cursor?: string | null;
@@ -414,6 +439,63 @@ async function createStudioReport(
   );
 
   return response.body;
+}
+
+/**
+ * Updates match tiles by `id`: existing tiles not referenced by id are deleted, and
+ * id-less payload tiles are created new — losing any size, section, and drilldown the
+ * originals had. When that is about to happen, warn on stderr before sending the update.
+ */
+async function warnOnTileReplacement(
+  runtime: Runtime,
+  id: string,
+  payload: UpdateStudioReportPayload,
+): Promise<void> {
+  if (!Array.isArray(payload.tiles)) {
+    return;
+  }
+
+  const payloadTiles = payload.tiles.filter(
+    (tile): tile is StudioReportTilePayload =>
+      Boolean(tile) && typeof tile === "object",
+  );
+  const missingIdCount = payloadTiles.filter((tile) => !tile.id).length;
+  if (missingIdCount === 0) {
+    return;
+  }
+
+  let existingReport: StudioReport;
+  try {
+    existingReport = (await getStudioReportInfo(runtime, id)).report;
+  } catch {
+    return; // the update itself will surface any real error
+  }
+
+  const payloadTileIds = new Set(
+    payloadTiles.map((tile) => tile.id).filter(Boolean),
+  );
+  const deletedTiles = existingReport.tiles.filter(
+    (tile) => !payloadTileIds.has(tile.id),
+  );
+  if (deletedTiles.length === 0) {
+    return;
+  }
+
+  const deletedTitles = deletedTiles
+    .map((tile) => formatTileTitle(tile))
+    .join(", ");
+  renderRichText(
+    [
+      ui.p(
+        `${ui.warning(ui.GLYPHS.WARNING)} ${missingIdCount} payload tile(s) have no ${ui.code("id")}. Tiles are matched by id on update, so existing tiles not referenced by id are deleted, and id-less tiles are created new with default size, no section, and no drilldown.`,
+      ),
+      ui.p(
+        `Existing tiles being replaced or deleted: ${deletedTitles}. To update tiles in place, scaffold with ${ui.code(`dx studio reports init <path> --id ${id}`)} and keep each tile's ${ui.code("id")}.`,
+      ),
+      ui.blankLine(),
+    ],
+    { useStderr: true },
+  );
 }
 
 async function updateStudioReport(
@@ -519,6 +601,8 @@ function renderStudioReport(report: StudioReport): ui.Block[] {
         ui.dli("Owner", formatOwner(report.owner)),
         ui.dli("View access", formatViewAccessType(report.view_access_type)),
         ui.dli("Edit access", formatEditAccessType(report.edit_access_type)),
+        ui.dli("Sections", formatSections(report.sections)),
+        ui.dli("Variables", formatVariables(report.variables)),
         ui.dli("Tiles", report.tiles.length.toString()),
         ui.dli("Created", ui.timestampSummary(report.created_at)),
         ui.dli("Updated", ui.timestampSummary(report.updated_at)),
@@ -528,17 +612,63 @@ function renderStudioReport(report: StudioReport): ui.Block[] {
   ];
 
   if (report.tiles.length > 0) {
+    const sectionNamesById = new Map(
+      (report.sections ?? []).map((section) => [section.id, section.name]),
+    );
     blocks.push(
       ui.h3("Tiles"),
       ui.ul(
         report.tiles.map((tile) =>
-          ui.li(`${formatTileTitle(tile)} ${ui.dim(`(${tile.chart_type})`)}`),
+          ui.li(
+            `${formatTileTitle(tile)} ${ui.dim(`(${formatTileDetails(tile, sectionNamesById)})`)}`,
+          ),
         ),
       ),
     );
   }
 
   return blocks;
+}
+
+function formatSections(sections: StudioReportSection[] | undefined): string {
+  if (!sections || sections.length === 0) {
+    return ui.dim("(None)");
+  }
+
+  return sections.map((section) => section.name).join(", ");
+}
+
+function formatVariables(variables: StudioReportVariable[] | undefined): string {
+  if (!variables || variables.length === 0) {
+    return ui.dim("(None)");
+  }
+
+  return variables.map((variable) => `$${variable.name}`).join(", ");
+}
+
+function formatTileDetails(
+  tile: StudioReportTile,
+  sectionNamesById: Map<string, string>,
+): string {
+  const details = [tile.chart_type];
+
+  const width = formatTileSize(tile.width_numerator, tile.width_denominator);
+  const height = formatTileSize(tile.height_numerator, tile.height_denominator);
+  if (width || height) {
+    details.push(`${width ?? "auto"} × ${height ?? "auto"}`);
+  }
+
+  const sectionName = tile.section_id
+    ? sectionNamesById.get(tile.section_id)
+    : undefined;
+  if (sectionName) {
+    details.push(`section: ${sectionName}`);
+  }
+  if (tile.drilldown_sql) {
+    details.push("drilldown");
+  }
+
+  return details.join(", ");
 }
 
 function parseOptionalTextOption(value: unknown): string | undefined {
@@ -597,17 +727,31 @@ async function readYamlStdin(): Promise<unknown> {
 }
 
 function buildCreateReportPayload(raw: unknown): CreateStudioReportPayload {
-  const { id: _id, tiles, ...rest } = parseYamlObject(raw);
-  const payload = rest as CreateStudioReportPayload;
+  const { id: _id, tiles, sections, ...rest } = parseYamlObject(raw);
+  const payload = rest as CreateStudioReportPayload & Record<string, unknown>;
   if (Array.isArray(tiles)) {
     // A new report always gets fresh tiles, so drop any tile IDs carried over
     // from an `init --id` scaffold (those IDs belong to the source report).
     payload.tiles = tiles.map((tile) => {
-      if (!tile || typeof tile !== "object") {
-        return tile as StudioReportTilePayload;
+      const normalized = normalizeTilePayload(tile);
+      if (!normalized || typeof normalized !== "object") {
+        return normalized as StudioReportTilePayload;
       }
-      const { id: _tileId, ...tileRest } = tile as StudioReportTilePayload;
+      const { id: _tileId, ...tileRest } = normalized as StudioReportTilePayload;
       return tileRest as StudioReportTilePayload;
+    });
+  }
+  if (Array.isArray(sections)) {
+    // Section IDs from an `init --id` scaffold also belong to the source report.
+    payload.sections = sections.map((section) => {
+      if (!section || typeof section !== "object") {
+        return section;
+      }
+      const { id: _sectionId, ...sectionRest } = section as Record<
+        string,
+        unknown
+      >;
+      return sectionRest;
     });
   }
   return payload;
@@ -617,7 +761,75 @@ function buildUpdateReportPayload(
   id: string,
   raw: unknown,
 ): UpdateStudioReportPayload {
-  return { ...parseYamlObject(raw), id } as UpdateStudioReportPayload;
+  const payload = { ...parseYamlObject(raw), id } as UpdateStudioReportPayload &
+    Record<string, unknown>;
+  if (Array.isArray(payload.tiles)) {
+    payload.tiles = payload.tiles.map(
+      (tile) => normalizeTilePayload(tile) as StudioReportTilePayload,
+    );
+  }
+  return payload;
+}
+
+/**
+ * Translate the YAML-friendly tile fields into their API equivalents:
+ * `width`/`height` fraction strings (`1/2`, `full`) become numerator/denominator
+ * pairs, and `section` (a section name) becomes `section_name`.
+ */
+function normalizeTilePayload(tile: unknown): unknown {
+  if (!tile || typeof tile !== "object") {
+    return tile;
+  }
+
+  const { width, height, section, ...rest } = tile as Record<string, unknown>;
+  const result: Record<string, unknown> = { ...rest };
+
+  if (width !== undefined && width !== null && width !== "") {
+    const size = parseTileSize(width, "width");
+    result.width_numerator = size.numerator;
+    result.width_denominator = size.denominator;
+  }
+  if (height !== undefined && height !== null && height !== "") {
+    const size = parseTileSize(height, "height");
+    result.height_numerator = size.numerator;
+    result.height_denominator = size.denominator;
+  }
+  if (section !== undefined) {
+    result.section_name = section;
+  }
+
+  return result;
+}
+
+function parseTileSize(
+  value: unknown,
+  field: string,
+): { numerator: number; denominator: number } {
+  const text = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (text === "full") {
+    return { numerator: 1, denominator: 1 };
+  }
+
+  const match = /^([1-9]\d*)\s*\/\s*([1-9]\d*)$/.exec(text);
+  if (!match) {
+    throw new CliError(
+      `Tile ${field} must be "full" or a fraction like "1/2" (got ${JSON.stringify(value)})`,
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+
+  return { numerator: Number(match[1]), denominator: Number(match[2]) };
+}
+
+function formatTileSize(
+  numerator: number | null | undefined,
+  denominator: number | null | undefined,
+): string | undefined {
+  if (!numerator || !denominator) {
+    return undefined;
+  }
+
+  return numerator >= denominator ? "full" : `${numerator}/${denominator}`;
 }
 
 function parseYamlObject(raw: unknown): Record<string, unknown> {
@@ -637,7 +849,7 @@ const STUDIO_REPORT_BLANK_TEMPLATE_YAML = fs.readFileSync(
 );
 
 function studioReportToYaml(report: StudioReport): string {
-  const payload: CreateStudioReportPayload = {
+  const payload: Record<string, unknown> = {
     name: report.name ?? "",
     owner_email: "",
     description: report.description ?? "",
@@ -646,14 +858,66 @@ function studioReportToYaml(report: StudioReport): string {
     viewer_emails: report.viewer_emails ?? [],
     edit_access_type: report.edit_access_type,
     editor_emails: report.editor_emails ?? [],
-    tiles: report.tiles.map((tile) => ({
+  };
+
+  // Only emitted when the API returns them, so scaffolds from older servers
+  // don't send fields those servers would reject or misinterpret.
+  if (report.date_range_variables_enabled !== undefined) {
+    payload.date_range_variables_enabled = report.date_range_variables_enabled;
+    payload.default_date_range_period = report.default_date_range_period ?? "";
+  }
+  if (report.sections) {
+    payload.sections = report.sections.map((section) => ({
+      id: section.id,
+      name: section.name,
+      description: section.description ?? "",
+    }));
+  }
+  if (report.variables) {
+    payload.variables = report.variables.map((variable) => ({
+      name: variable.name,
+      default_values: variable.default_values ?? [],
+    }));
+  }
+
+  const sectionNamesById = new Map(
+    (report.sections ?? []).map((section) => [section.id, section.name]),
+  );
+  payload.tiles = report.tiles.map((tile) => {
+    const tileYaml: Record<string, unknown> = {
       id: tile.id,
       title: tile.title,
       sql: tile.sql,
       chart_type: tile.chart_type,
       chart_config: tile.chart_config,
-    })),
-  };
+    };
+
+    if (tile.description) {
+      tileYaml.description = tile.description;
+    }
+    const sectionName = tile.section_id
+      ? sectionNamesById.get(tile.section_id)
+      : undefined;
+    if (sectionName !== undefined) {
+      tileYaml.section = sectionName;
+    }
+    const width = formatTileSize(tile.width_numerator, tile.width_denominator);
+    if (width !== undefined) {
+      tileYaml.width = width;
+    }
+    const height = formatTileSize(
+      tile.height_numerator,
+      tile.height_denominator,
+    );
+    if (height !== undefined) {
+      tileYaml.height = height;
+    }
+    if (tile.drilldown_sql) {
+      tileYaml.drilldown_sql = tile.drilldown_sql;
+    }
+
+    return tileYaml;
+  });
 
   return stringifyYaml(payload, { blockQuote: "literal" });
 }
@@ -699,6 +963,7 @@ function formatEditAccessType(value: string): string {
     case "specific_users":
       return "Editable by specific users";
     case "owner_only":
+    case "read_only":
       return "Editable by owner only";
     default:
       return value;

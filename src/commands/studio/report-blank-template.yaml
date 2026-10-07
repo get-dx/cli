@@ -21,12 +21,51 @@ edit_access_type: read_only
 # Required only when edit_access_type is specific_users
 editor_emails: []
 
-# Supported chart_type values: line, pie, stacked_bar, scatter, table
+# Show the report-level date range picker ($start_date / $end_date in tile SQL).
+# Period options: l7d, l14d, l2w, l4w, l4w_complete, l3m, l6m, l12m, wtd, mtd,
+# qtd, ytd, last_week, last_month, last_quarter, last_year
+date_range_variables_enabled: false
+default_date_range_period: ""
+
+# Variables enabled on this report, in display order. This list is declarative:
+# variables omitted from it are disabled on update. Built-in variables
+# (user_ids, team_ids, tag_ids, repo_ids, repo_group_ids, service_ids) can be
+# enabled by name. Custom variables must already exist in the account — they
+# are created and edited in the Data Studio UI. Tile SQL references enabled
+# variables as $variable_name.
+variables: []
+# variables:
+#   - name: team_ids
+#     default_values: []
+
+# Sections group tiles on the dashboard. This list is declarative: on update,
+# sections are matched by id, new ones (no id) are created, and omitted ones
+# are deleted (their tiles move out of the section, they are not deleted).
+# Section order cannot be changed via the CLI. Tiles reference a section by
+# name via their `section` field.
+sections: []
+# sections:
+#   - name: "Delivery"
+#     description: ""
+
+# Supported chart_type values: line, pie, stacked_bar, stacked_area, scatter, table
 #
-# Tile sql can reference report variables (e.g. $team_ids, $start_date, or a
-# custom variable) as $variable_name. Variables themselves can't be managed
-# from the CLI/API — enable built-in variables or add/edit custom ones for
-# this report in the Data Studio UI, then reference them here.
+# For a single big-number KPI tile, use chart_type `table` with SQL returning
+# exactly one row and one column — it renders as a large single value.
+#
+# Optional tile fields:
+#   description: ""        # shown in the tile's info tooltip
+#   section: "Delivery"    # section name (must match an entry in `sections`)
+#   width: 1/3             # 1/4, 1/3, 1/2, 2/3, 3/4, or full
+#   height: 1/3            # 1/4, 1/3, 1/2, 2/3, 3/4, or full
+#   drilldown_sql: |-      # query run when a chart element is clicked
+#     SELECT 1
+#
+# IMPORTANT: when updating an existing report, keep each tile's `id` (as
+# scaffolded by `init --id`). Tiles are matched by id — an id-less tile is
+# created new and any existing tile not referenced by id is deleted, losing
+# its size, section, and drilldown. Omitted optional fields are preserved on
+# id-matched tiles; tile order in this file is the display order.
 tiles:
   - title: ""
     sql: |-
@@ -34,7 +73,9 @@ tiles:
     chart_type: table
     chart_config: {}
 
-  # Line, stacked_bar, and scatter tiles require xAxis and yAxes.
+  # Line, stacked_bar, stacked_area, and scatter tiles require xAxis and yAxes.
+  # line and stacked_area need a date-typed xAxis column; yAxes columns must be
+  # numeric. Multiple yAxes columns render as multiple series.
   # - title: ""
   #   sql: |-
   #     SELECT CURRENT_DATE AS week_start, 1 AS value
@@ -52,3 +93,22 @@ tiles:
   #   chart_config:
   #     labelColumn: label
   #     valueColumn: value
+
+  # Optional chart_config keys (line, stacked_bar, stacked_area, scatter unless noted):
+  #   groupByColumn: team      # split each series by a string column (not scatter)
+  #   groupingMode: clustered  # stacked_bar only: stacked (default) or clustered
+  #   orientation: horizontal  # stacked_bar only: vertical (default) or horizontal
+  #   showLegend: true
+  #   showDataLabels: true     # stacked_bar only: print the value at each bar end
+  #   showTrendLine: true      # linear-regression trend line (not scatter)
+  #   showLineOverlay: true    # stacked_bar only: per-category total line (vertical bars)
+  #   goalLines: [target]      # subset of yAxes rendered as dashed goal lines
+  #   xAxisLabel: ""           # axis titles
+  #   yAxisLabel: ""
+  #   xAxisFormat: "Jan 1"     # date format: Jan, Jan 2024, Jan 1, "Jan 1, 2024",
+  #                            # 01/01, 2024-01-01, or none
+  #   yAxisMinValue: 0         # clip the y axis
+  #   yAxisMaxValue: 100
+  #   hideXAxisTickMarks: true # stacked_bar only: hide category-axis value labels
+  #   overrideColors:          # per-series (or per-pie-slice) hex color overrides
+  #     value: "#60a5fa"

@@ -76,11 +76,13 @@ Use this for any question about DX itself rather than the user's own data: produ
 
 ### Data Studio terms
 
-**Report** — A saved collection of tiles (see `dx studio reports`), organized on a dedicated page for dashboards and sharing.
+**Report** — A saved collection of tiles (see `dx studio reports`), organized on a dedicated page for dashboards and sharing. Reports can also have sections (named groups of tiles), enabled variables, and a date range picker, all managed through the report YAML.
 
-**Tile** — A single saved query and chart configuration within a report. Each tile's SQL can reference report variables.
+**Tile** — A single saved query and chart configuration within a report. Each tile's SQL can reference report variables. Tiles also carry optional layout (`width`/`height` fractions, `section`), a `description`, and a `drilldown_sql` run when a chart element is clicked. On update, tiles are matched by `id` — keep the ids scaffolded by `init --id` or existing tiles are deleted and recreated with default layout.
 
-**Variable** — A named, `$`-prefixed placeholder (e.g. `$team_ids`) that a report's tile SQL can reference for interactive filtering. **Built-in variables** (`$service_ids`, `$team_ids`, `$tag_ids`, `$user_ids`, `$repo_ids`, `$start_date`, `$end_date`) are provided out of the box and just need to be toggled on. **Custom variables** are account-defined dropdown filters backed by a SQL query that returns `value` and `label` columns. Variables cannot be managed through the CLI/API — enabling/disabling built-ins and adding/updating/deleting custom variables must be done in the Data Studio UI — but once enabled on a report, any tile's SQL (including tiles set via `dx studio reports create`/`update`) can reference them.
+**Section** — A named group of tiles within a report, declared in the report YAML's `sections` list; tiles join one via their `section` field (the section name).
+
+**Variable** — A named, `$`-prefixed placeholder (e.g. `$team_ids`) that a report's tile SQL can reference for interactive filtering. **Built-in variables** (`$service_ids`, `$team_ids`, `$tag_ids`, `$user_ids`, `$repo_ids`, `$repo_group_ids`) are enabled per report via the YAML `variables` list, which also sets `default_values` and display order. The **date range picker** (`$start_date`/`$end_date`) is enabled via the report-level `date_range_variables_enabled` and `default_date_range_period` fields. **Custom variables** are account-defined dropdown filters backed by a SQL query that returns `value` and `label` columns; they can be enabled on a report via the YAML, but their definitions are created/edited/deleted in the Data Studio UI.
 
 ## Reference Docs
 

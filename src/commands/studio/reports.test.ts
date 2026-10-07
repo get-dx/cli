@@ -293,6 +293,68 @@ describe("studio reports command", () => {
       ]);
     });
 
+    it("--from-file strips section ids and translates tile layout fields", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const fetchMock = vi.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, report }), {
+          status: 200,
+        }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { run } = await import("../../cli.js");
+      stubReadFileSyncForFixturePath(
+        "my-report.yaml",
+        [
+          "name: Web Metrics",
+          "owner_email: owner@example.com",
+          "sections:",
+          "  - id: sec_from_source",
+          "    name: Delivery",
+          "variables:",
+          "  - name: team_ids",
+          "    default_values: []",
+          "tiles:",
+          "  - title: Median visit duration",
+          "    sql: SELECT 1",
+          "    chart_type: table",
+          "    chart_config: {}",
+          "    section: Delivery",
+          "    width: 1/2",
+          "",
+        ].join("\n"),
+      );
+
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "create",
+        "--from-file",
+        "./my-report.yaml",
+      ]);
+
+      const body = JSON.parse(
+        (fetchMock.mock.calls[0][1] as { body: string }).body,
+      );
+      expect(body.sections).toEqual([{ name: "Delivery" }]);
+      expect(body.variables).toEqual([{ name: "team_ids", default_values: [] }]);
+      expect(body.tiles).toEqual([
+        {
+          title: "Median visit duration",
+          sql: "SELECT 1",
+          chart_type: "table",
+          chart_config: {},
+          section_name: "Delivery",
+          width_numerator: 1,
+          width_denominator: 2,
+        },
+      ]);
+    });
+
     it("--from-file returns JSON with --json flag", async () => {
       process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
@@ -679,6 +741,126 @@ describe("studio reports command", () => {
       ]);
     });
 
+    it("--id scaffolds sections, variables, date range settings, and tile layout", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const richReport = {
+        ...report,
+        date_range_variables_enabled: true,
+        default_date_range_period: "qtd",
+        sections: [
+          { id: "sec_1", name: "Delivery", description: "Shipping speed" },
+        ],
+        variables: [
+          {
+            name: "team_ids",
+            label: "Teams",
+            type: "select",
+            default_values: ["42"],
+          },
+        ],
+        tiles: [
+          {
+            ...report.tiles[0],
+            description: "Deploy frequency over time",
+            section_id: "sec_1",
+            width_numerator: 2,
+            width_denominator: 3,
+            height_numerator: 1,
+            height_denominator: 1,
+            drilldown_sql: "SELECT * FROM deployments",
+          },
+          { ...report.tiles[1] },
+        ],
+      };
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValueOnce(
+          new Response(JSON.stringify({ ok: true, report: richReport }), {
+            status: 200,
+          }),
+        ),
+      );
+      const writeFileSyncSpy = vi
+        .spyOn(fs, "writeFileSync")
+        .mockImplementation(() => undefined);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "init",
+        "./my-report.yaml",
+        "--id",
+        "rpt_new",
+      ]);
+
+      const yaml = writeFileSyncSpy.mock.calls[0]?.[1] as string;
+      const parsed = parseYaml(yaml) as Record<string, unknown>;
+      expect(parsed.date_range_variables_enabled).toBe(true);
+      expect(parsed.default_date_range_period).toBe("qtd");
+      expect(parsed.sections).toEqual([
+        { id: "sec_1", name: "Delivery", description: "Shipping speed" },
+      ]);
+      expect(parsed.variables).toEqual([
+        { name: "team_ids", default_values: ["42"] },
+      ]);
+
+      const tiles = parsed.tiles as Record<string, unknown>[];
+      expect(tiles[0]).toMatchObject({
+        id: "tile_line",
+        description: "Deploy frequency over time",
+        section: "Delivery",
+        width: "2/3",
+        height: "full",
+        drilldown_sql: "SELECT * FROM deployments",
+      });
+      // Tiles without layout stay clean: no section/width/height/drilldown keys.
+      expect(tiles[1]).not.toHaveProperty("section");
+      expect(tiles[1]).not.toHaveProperty("width");
+      expect(tiles[1]).not.toHaveProperty("height");
+      expect(tiles[1]).not.toHaveProperty("drilldown_sql");
+    });
+
+    it("--id omits sections, variables, and date range fields when the API does not return them", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValueOnce(
+          new Response(JSON.stringify(infoResponse), {
+            status: 200,
+          }),
+        ),
+      );
+      const writeFileSyncSpy = vi
+        .spyOn(fs, "writeFileSync")
+        .mockImplementation(() => undefined);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "init",
+        "./my-report.yaml",
+        "--id",
+        "rpt_new",
+      ]);
+
+      const parsed = parseYaml(
+        writeFileSyncSpy.mock.calls[0]?.[1] as string,
+      ) as Record<string, unknown>;
+      expect(parsed).not.toHaveProperty("sections");
+      expect(parsed).not.toHaveProperty("variables");
+      expect(parsed).not.toHaveProperty("date_range_variables_enabled");
+    });
+
     it("--id returns JSON with --json flag", async () => {
       process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
@@ -1011,11 +1193,18 @@ describe("studio reports command", () => {
         view_access_type: "specific_users",
         edit_access_type: "owner_only",
       };
-      const fetchMock = vi.fn().mockResolvedValueOnce(
-        new Response(JSON.stringify({ ok: true, report: updatedReport }), {
-          status: 200,
-        }),
-      );
+      // The payload tile has no id, so the command first fetches the report to
+      // warn about tile replacement, then posts the update.
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ ok: true, report }), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ ok: true, report: updatedReport }), {
+            status: 200,
+          }),
+        );
       vi.stubGlobal("fetch", fetchMock);
 
       const { run } = await import("../../cli.js");
@@ -1060,7 +1249,7 @@ describe("studio reports command", () => {
         }),
       );
       const body = JSON.parse(
-        (fetchMock.mock.calls[0][1] as { body: string }).body,
+        (fetchMock.mock.calls[1][1] as { body: string }).body,
       );
       expect(body).toEqual({
         id: "rpt_new",
@@ -1082,6 +1271,10 @@ describe("studio reports command", () => {
           },
         ],
       });
+
+      const warning = stderrWrites.join("");
+      expect(warning).toContain("have no id");
+      expect(warning).toContain("Weekly deploys");
 
       const output = stdoutWrites.join("");
       expect(output).toContain("Studio report updated");
@@ -1241,6 +1434,169 @@ describe("studio reports command", () => {
         }),
       );
       expect(stdoutWrites.join("")).toContain("Studio report updated");
+    });
+
+    it("translates tile width, height, and section fields before posting", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const fetchMock = vi.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, report }), { status: 200 }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { run } = await import("../../cli.js");
+      stubReadFileSyncForFixturePath(
+        "my-report.yaml",
+        [
+          "name: Updated Metrics",
+          "sections:",
+          "  - id: sec_1",
+          "    name: Delivery",
+          "tiles:",
+          "  - id: tile_line",
+          "    title: Weekly deploys",
+          "    sql: SELECT week_start, deploys FROM deployments",
+          "    chart_type: line",
+          "    chart_config:",
+          "      xAxis: week_start",
+          "      yAxes:",
+          "        - deploys",
+          "    section: Delivery",
+          "    width: 2/3",
+          "    height: full",
+          "    drilldown_sql: SELECT 1",
+          "",
+        ].join("\n"),
+      );
+
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "update",
+        "rpt_new",
+        "--from-file",
+        "./my-report.yaml",
+      ]);
+
+      // All payload tiles have ids, so no pre-update info fetch happens.
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const body = JSON.parse(
+        (fetchMock.mock.calls[0][1] as { body: string }).body,
+      );
+      expect(body.sections).toEqual([{ id: "sec_1", name: "Delivery" }]);
+      expect(body.tiles).toEqual([
+        {
+          id: "tile_line",
+          title: "Weekly deploys",
+          sql: "SELECT week_start, deploys FROM deployments",
+          chart_type: "line",
+          chart_config: { xAxis: "week_start", yAxes: ["deploys"] },
+          section_name: "Delivery",
+          width_numerator: 2,
+          width_denominator: 3,
+          height_numerator: 1,
+          height_denominator: 1,
+          drilldown_sql: "SELECT 1",
+        },
+      ]);
+      expect(stderrWrites.join("")).not.toContain("have no id");
+    });
+
+    it("exits with code 2 for an invalid tile width", async () => {
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+      vi.stubGlobal("fetch", vi.fn());
+
+      const { run } = await import("../../cli.js");
+      stubReadFileSyncForFixturePath(
+        "my-report.yaml",
+        [
+          "name: Updated Metrics",
+          "tiles:",
+          "  - id: tile_line",
+          "    title: Weekly deploys",
+          "    sql: SELECT 1",
+          "    chart_type: table",
+          "    chart_config: {}",
+          "    width: huge",
+          "",
+        ].join("\n"),
+      );
+
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "update",
+        "rpt_new",
+        "--from-file",
+        "./my-report.yaml",
+      ]);
+
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+      expect(stderrWrites.join("")).toContain("width");
+    });
+
+    it("skips the replacement warning when no existing tiles would be deleted", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      // Payload keeps both existing tile ids and adds one id-less tile: the
+      // info fetch happens, but nothing would be deleted, so no warning.
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ ok: true, report }), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ ok: true, report }), { status: 200 }),
+        );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { run } = await import("../../cli.js");
+      stubReadFileSyncForFixturePath(
+        "my-report.yaml",
+        [
+          "tiles:",
+          "  - id: tile_line",
+          "    title: Weekly deploys",
+          "    sql: SELECT 1",
+          "    chart_type: table",
+          "    chart_config: {}",
+          "  - id: tile_table",
+          "    title: Recent deploys",
+          "    sql: SELECT 1",
+          "    chart_type: table",
+          "    chart_config: {}",
+          "  - title: Brand new tile",
+          "    sql: SELECT 1",
+          "    chart_type: table",
+          "    chart_config: {}",
+          "",
+        ].join("\n"),
+      );
+
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "update",
+        "rpt_new",
+        "--from-file",
+        "./my-report.yaml",
+      ]);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(stderrWrites.join("")).not.toContain("have no id");
     });
 
     it("requires at least one of --from-file or --from-stdin", async () => {
