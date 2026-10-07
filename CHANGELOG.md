@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `dx studio reports`: Report YAML now supports tile layout (`width`/`height` fractions like `1/2` or `full`), tile `description`, dashboard sections (a top-level `sections` list; tiles join one via `section: <name>`), drilldowns (`drilldown_sql`), enabled variables with defaults (a top-level `variables` list), and the report date range picker (`date_range_variables_enabled`, `default_date_range_period`). `init --id` scaffolds all of these from the existing report so updates round-trip losslessly. Requires a DX API with the expanded `studio.reports.*` fields; against older APIs the new fields are simply absent from scaffolds.
+- `dx studio reports update`: Warns on stderr before an update whose payload omits existing tile `id`s, since unreferenced tiles are deleted and id-less tiles are recreated with default size, no section, and no drilldown.
+- `dx studio reports info`: Shows report sections and variables, and each tile's size, section, and drilldown in the tile list.
+
+### Updated
+
+- Documented the full set of optional `chart_config` keys (data labels, legend, trend/goal lines, horizontal bars, clustered bars, axis labels/formats/bounds, color overrides), the `stacked_area` chart type, and the single-value KPI tile pattern in the blank template and skill reference.
+
 ## 0.7.0 - 2026-10-05
 
 ### Added
