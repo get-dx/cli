@@ -56,6 +56,66 @@ export function readConfig(): StoredConfig {
   return stored;
 }
 
+export type ConfigFileInspection =
+  | { status: "missing"; path: string }
+  | { status: "invalid"; path: string; error: string }
+  | {
+      status: "ok";
+      path: string;
+      config: StoredConfig;
+      sizeBytes: number;
+      modifiedAt: Date;
+    };
+
+/**
+ * Report on the state of the config file without hiding problems, unlike
+ * `readConfig`, which treats an unparseable file as empty.
+ */
+export function inspectConfigFile(): ConfigFileInspection {
+  const configPath = getConfigPath();
+
+  let stats: fs.Stats;
+  let content: string;
+  try {
+    stats = fs.statSync(configPath);
+    content = fs.readFileSync(configPath, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return { status: "missing", path: configPath };
+    }
+    return {
+      status: "invalid",
+      path: configPath,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(content);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {
+        status: "invalid",
+        path: configPath,
+        error: "expected a JSON object",
+      };
+    }
+  } catch (error) {
+    return {
+      status: "invalid",
+      path: configPath,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  return {
+    status: "ok",
+    path: configPath,
+    config: readConfig(),
+    sizeBytes: stats.size,
+    modifiedAt: stats.mtime,
+  };
+}
+
 export function persistCurrentVersionCache(cache: CurrentVersionCache): void {
   writeConfig({ ...readConfig(), currentVersionCache: cache });
 }
@@ -117,11 +177,16 @@ function getConfigDir(): string {
  * Precedence: `DX_API_BASE_URL`, then persisted `apiBaseUrl`, then DX Cloud default.
  */
 export function resolveApiBaseUrl(): string {
-  if (process.env.DX_API_BASE_URL) {
-    return normalizeUrl(process.env.DX_API_BASE_URL);
-  }
+  return resolveApiBaseUrlWithSource().url;
+}
 
-  return normalizeUrl(readConfig().apiBaseUrl || DEFAULT_API_BASE_URL);
+/** Like `resolveApiBaseUrl`, but also reports where the value came from. */
+export function resolveApiBaseUrlWithSource(): ResolvedBaseUrl {
+  return resolveBaseUrl(
+    process.env.DX_API_BASE_URL,
+    readConfig().apiBaseUrl,
+    DEFAULT_API_BASE_URL,
+  );
 }
 
 /**
@@ -129,11 +194,39 @@ export function resolveApiBaseUrl(): string {
  * Precedence: `DX_WEB_BASE_URL`, persisted `webBaseUrl`, then DX Cloud default.
  */
 export function resolveWebBaseUrl(): string {
-  if (process.env.DX_WEB_BASE_URL) {
-    return normalizeUrl(process.env.DX_WEB_BASE_URL);
+  return resolveWebBaseUrlWithSource().url;
+}
+
+/** Like `resolveWebBaseUrl`, but also reports where the value came from. */
+export function resolveWebBaseUrlWithSource(): ResolvedBaseUrl {
+  return resolveBaseUrl(
+    process.env.DX_WEB_BASE_URL,
+    readConfig().webBaseUrl,
+    DEFAULT_WEB_BASE_URL,
+  );
+}
+
+export type BaseUrlSource = "env" | "config" | "default";
+
+export type ResolvedBaseUrl = {
+  url: string;
+  source: BaseUrlSource;
+};
+
+function resolveBaseUrl(
+  fromEnv: string | undefined,
+  fromConfig: string | undefined,
+  fallback: string,
+): ResolvedBaseUrl {
+  if (fromEnv) {
+    return { url: normalizeUrl(fromEnv), source: "env" };
   }
 
-  return normalizeUrl(readConfig().webBaseUrl || DEFAULT_WEB_BASE_URL);
+  if (fromConfig) {
+    return { url: normalizeUrl(fromConfig), source: "config" };
+  }
+
+  return { url: normalizeUrl(fallback), source: "default" };
 }
 
 // --- Deriving base URLs at login time -------------------------------------
@@ -198,13 +291,13 @@ export function deriveBaseUrlsFromEnv(): {
   }
 }
 
-type ParsedWebBaseUrl =
+export type ParsedWebBaseUrl =
   | { type: "cloud" }
   | { type: "dedicated"; accountName: string }
   | { type: "managed"; webAppUrl: string }
   | { type: "invalid"; input: string };
 
-function parseWebBaseUrl(raw: string): ParsedWebBaseUrl {
+export function parseWebBaseUrl(raw: string): ParsedWebBaseUrl {
   const normalized = raw.trim().replace(/\/$/, "");
 
   if (!normalized) {
