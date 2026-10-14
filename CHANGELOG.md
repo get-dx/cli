@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `dx attributeGroups list` to fetch snapshot attribute groups and attribute IDs, with human-readable and `--json` output.
+- `dx doctor`: Diagnose installation, configuration, authentication, and network problems in one shareable report.
 
 ### Updated
 
