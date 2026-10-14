@@ -239,6 +239,29 @@ describe("workflows commands", () => {
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
     });
 
+    it("errors when not authenticated", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue(undefined);
+      vi.stubGlobal("fetch", vi.fn());
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "workflows",
+        "create",
+        "--from-file",
+        "workflow.yaml",
+      ]);
+
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.RETRY_RECOMMENDED);
+      expect(stderrWrites.join("")).toMatch(/not authenticated|token/i);
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
     it("surfaces API validation errors", async () => {
       process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");

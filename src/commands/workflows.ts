@@ -48,10 +48,6 @@ export function workflowsCommand(): Command {
       "afterAll",
       createExampleText([
         {
-          label: "Generate a blank template first",
-          command: "dx workflows init ./my-workflow.yaml",
-        },
-        {
           label: "Create a workflow from a file",
           command: "dx workflows create --from-file workflow.yaml",
         },
