@@ -29,14 +29,16 @@ export function reportsCommand() {
 
   reports
     .command("create")
-    .description("Create a Data Studio report from a YAML file or stdin")
+    .description(
+      "Create a Data Studio report from a YAML or JSON file or stdin",
+    )
     .option(
       "--from-file <path>",
-      "Read a YAML file and create a report from its contents",
+      "Read a YAML or JSON file and create a report from its contents",
     )
     .option(
       "--from-stdin",
-      "Read YAML from stdin and create a report from its contents",
+      "Read YAML or JSON from stdin and create a report from its contents",
     )
     .addHelpText("afterAll", createNoteText(VARIABLES_NOTE_TEXT))
     .addHelpText(
@@ -248,16 +250,16 @@ export function reportsCommand() {
   reports
     .command("update")
     .description(
-      "Update a Data Studio report from a YAML file or stdin. The `init` command can be used to initialize the report file.",
+      "Update a Data Studio report from a YAML or JSON file or stdin. The `init` command can be used to initialize the report file.",
     )
     .argument("<id>", "Studio report ID")
     .option(
       "--from-file <path>",
-      "Read a YAML file and update the report with its contents",
+      "Read a YAML or JSON file and update the report with its contents",
     )
     .option(
       "--from-stdin",
-      "Read YAML from stdin and update the report with its contents",
+      "Read YAML or JSON from stdin and update the report with its contents",
     )
     .addHelpText("afterAll", createNoteText(VARIABLES_NOTE_TEXT))
     .addHelpText(
