@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `dx auth login`: Recognize `DX_WEB_BASE_URL=https://app.getdx.com` (with a scheme or trailing slash) as the cloud deployment instead of requiring `DX_API_BASE_URL`.
+
 ## 0.7.0 - 2026-10-05
 
 ### Added
