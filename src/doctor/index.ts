@@ -1,5 +1,6 @@
 import { buildLogger } from "../runtime.js";
 import type { CliContext, Runtime } from "../types.js";
+import { checkAuth } from "./auth.js";
 import {
   checkCli,
   defaultLatestVersionLookup,
@@ -9,6 +10,8 @@ import {
 } from "./cli.js";
 import { checkConfig } from "./config.js";
 import { checkEnvironment } from "./environment.js";
+import { checkNetwork } from "./network.js";
+import { defaultProbes, type NetworkProbes } from "./probes.js";
 import { checkSkill } from "./skill.js";
 import type { CheckStatus, DoctorReport, Section } from "./types.js";
 
@@ -17,12 +20,14 @@ import cliPackage from "../../package.json" with { type: "json" };
 export type DoctorPhase = "config" | "network" | "auth" | "version";
 
 export type DoctorDependencies = {
+  probes: NetworkProbes;
   latestVersion: LatestVersionLookup;
   install: () => InstallInfo;
   now: () => Date;
 };
 
 const defaultDependencies: DoctorDependencies = {
+  probes: defaultProbes,
   latestVersion: defaultLatestVersionLookup,
   install: () => detectInstall(),
   now: () => new Date(),
@@ -30,6 +35,9 @@ const defaultDependencies: DoctorDependencies = {
 
 /**
  * Run every doctor check. Never throws: problems are reported as checks.
+ *
+ * Checks run in dependency order (config before network before auth), but the
+ * report lists sections in reading order.
  */
 export async function runDoctor(
   context: CliContext,
@@ -58,19 +66,36 @@ export async function runDoctor(
       }
     : null;
 
+  onPhase("network");
+  const network = await checkNetwork({
+    apiBaseUrl,
+    webBaseUrl,
+    version: cliPackage.version,
+    probes: deps.probes,
+  });
+  const { apiReachable } = network.facts;
+
+  onPhase("auth");
+  const auth = await checkAuth({ runtime, apiReachable, now });
+
   onPhase("version");
   const cli = await checkCli({
     runtime,
-    // Until network checks exist, always try the DX API when there's a token.
-    // A failed lookup falls back to the npm registry.
-    apiReachable: true,
+    apiReachable,
     install: deps.install(),
     latestVersion: deps.latestVersion,
     now,
   });
   const skill = await checkSkill();
 
-  return buildReport([cli, environment, config.section, skill]);
+  return buildReport([
+    cli,
+    environment,
+    config.section,
+    network.section,
+    auth,
+    skill,
+  ]);
 }
 
 function buildReport(sections: Section[]): DoctorReport {
