@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.8.0 - 2026-10-15
+
 ### Added
 
-- `dx snapshots teams list --id`: Add support for listing snapshot teams, including Snapshot Team IDs for `snapshot_team_ids` score filters.
+- `dx workflows create`: Add support for creating Self-service workflows from a YAML or JSON file or stdin.
+- `dx workflows init`: Add support for writing a blank workflow YAML template.
+
+### Updated
+
+- `dx scorecards create`, `dx scorecards update`, `dx studio reports create`, `dx studio reports update`, `dx catalog entityTypes create`, `dx catalog entityTypes update`: Clarify in the help text that `--from-file` and `--from-stdin` accept JSON as well as YAML.
 
 ## 0.7.0 - 2026-10-05
 

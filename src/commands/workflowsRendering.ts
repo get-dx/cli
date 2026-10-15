@@ -51,21 +51,37 @@ export function renderWorkflowList(workflows: WorkflowSummary[]): void {
   ];
 
   for (const workflow of workflows) {
-    blocks.push(ui.h2(`${workflow.name} (${ui.code(workflow.identifier)})`));
-
-    blocks.push(ui.h3("Core attributes"));
-    blocks.push(...coreContent(workflow));
-
-    if (workflow.scope === "ENTITY") {
-      blocks.push(ui.h3("Entity filter"));
-      blocks.push(...entityFilterContent(workflow));
-    }
-
-    blocks.push(ui.h3("Parameters"));
-    blocks.push(...parametersContent(workflow));
+    blocks.push(...workflowContent(workflow));
   }
 
   renderRichText(blocks);
+}
+
+export function renderWorkflowCreated(workflow: WorkflowSummary): void {
+  renderRichText([
+    ui.p(
+      `${ui.success(ui.GLYPHS.CHECK)} Workflow created: ${ui.code(workflow.identifier)}`,
+    ),
+    ...workflowContent(workflow),
+  ]);
+}
+
+function workflowContent(workflow: WorkflowSummary): ui.Block[] {
+  const blocks: ui.Block[] = [
+    ui.h2(`${workflow.name} (${ui.code(workflow.identifier)})`),
+    ui.h3("Core attributes"),
+    ...coreContent(workflow),
+  ];
+
+  if (workflow.scope === "ENTITY") {
+    blocks.push(ui.h3("Entity filter"));
+    blocks.push(...entityFilterContent(workflow));
+  }
+
+  blocks.push(ui.h3("Parameters"));
+  blocks.push(...parametersContent(workflow));
+
+  return blocks;
 }
 
 function coreContent(workflow: WorkflowSummary): ui.Block[] {

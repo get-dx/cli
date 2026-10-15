@@ -1,4 +1,7 @@
+import fs from "fs";
+
 import { Command } from "commander";
+import { parse as parseYaml } from "yaml";
 
 import {
   createExampleText,
@@ -7,10 +10,19 @@ import {
 } from "../commandHelpers.js";
 import { CliError, EXIT_CODES } from "../errors.js";
 import { request } from "../http.js";
-import { renderJson } from "../renderers.js";
+import { renderJson, renderRichText } from "../renderers.js";
 import { buildRuntime } from "../runtime.js";
 import type { Runtime } from "../types.js";
-import { renderWorkflowList } from "./workflowsRendering.js";
+import * as ui from "../ui.js";
+import {
+  renderWorkflowCreated,
+  renderWorkflowList,
+} from "./workflowsRendering.js";
+
+const WORKFLOW_BLANK_TEMPLATE_YAML = fs.readFileSync(
+  new URL("./workflow-blank-template.yaml", import.meta.url),
+  "utf8",
+);
 
 const WORKFLOW_SCOPES = ["GLOBAL", "ENTITY"] as const;
 
@@ -18,6 +30,105 @@ export function workflowsCommand(): Command {
   const workflows = new Command()
     .name("workflows")
     .description("Manage Self-service workflow definitions");
+
+  workflows
+    .command("create")
+    .description(
+      "Create a Self-service workflow from a YAML or JSON file or stdin. The `init` command can be used to generate a starting template.",
+    )
+    .option(
+      "--from-file <path>",
+      "Read a YAML or JSON file and create a workflow from its contents",
+    )
+    .option(
+      "--from-stdin",
+      "Read YAML or JSON from stdin and create a workflow from its contents",
+    )
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Create a workflow from a file",
+          command: "dx workflows create --from-file workflow.yaml",
+        },
+        {
+          label: "Create a workflow from stdin",
+          command: "cat workflow.json | dx workflows create --from-stdin",
+        },
+        {
+          label: "Same request with JSON output",
+          command: "dx --json workflows create --from-file workflow.yaml",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (options, command) => {
+        const modeCount = [options.fromFile, options.fromStdin].filter(
+          Boolean,
+        ).length;
+        if (modeCount === 0) {
+          throw new CliError(
+            "One of --from-file or --from-stdin is required",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+        if (modeCount > 1) {
+          throw new CliError(
+            "--from-file and --from-stdin are mutually exclusive",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+
+        const runtime = await buildRuntime(getContext(command));
+
+        const raw = options.fromFile
+          ? readYamlFile(options.fromFile as string)
+          : await readYamlStdin();
+        const payload = parsePayloadObject(raw);
+
+        const response = await createWorkflow(runtime, payload);
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderWorkflowCreated(response.workflow);
+        }
+      }),
+    );
+
+  workflows
+    .command("init")
+    .description("Write a blank Self-service workflow YAML template to a file")
+    .argument("<path>", "File path to write the YAML to")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Write a blank workflow template",
+          command: "dx workflows init ./my-workflow.yaml",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (path, _options, command) => {
+        const runtime = await buildRuntime(getContext(command));
+
+        fs.writeFileSync(path, WORKFLOW_BLANK_TEMPLATE_YAML, "utf8");
+
+        if (runtime.context.json) {
+          renderJson({ ok: true, path });
+        } else {
+          renderRichText([
+            ui.p(
+              `${ui.success(ui.GLYPHS.CHECK)} Blank template written to ${ui.code(path)}.`,
+            ),
+            ui.p(
+              `Edit the file, then run: ${ui.code(`dx workflows create --from-file ${path}`)}`,
+            ),
+          ]);
+        }
+      }),
+    );
 
   workflows
     .command("list")
@@ -78,6 +189,64 @@ export function workflowsCommand(): Command {
   return workflows;
 }
 
+function readYamlFile(filePath: string): unknown {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, "utf8");
+  } catch (err) {
+    throw new CliError(
+      `Could not read file "${filePath}": ${(err as Error).message}`,
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+  return parseYamlContent(content, `file "${filePath}"`);
+}
+
+async function readYamlStdin(): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk));
+    process.stdin.on("end", () => {
+      try {
+        resolve(
+          parseYamlContent(Buffer.concat(chunks).toString("utf8"), "stdin"),
+        );
+      } catch (err) {
+        reject(err);
+      }
+    });
+    process.stdin.on("error", (err) =>
+      reject(
+        new CliError(
+          `Failed to read from stdin: ${err.message}`,
+          EXIT_CODES.ARGUMENT_ERROR,
+        ),
+      ),
+    );
+  });
+}
+
+function parseYamlContent(content: string, source: string): unknown {
+  try {
+    return parseYaml(content);
+  } catch (err) {
+    throw new CliError(
+      `Failed to parse YAML or JSON from ${source}: ${(err as Error).message}`,
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+}
+
+function parsePayloadObject(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new CliError(
+      "Content must be a YAML or JSON object",
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+  return raw as Record<string, unknown>;
+}
+
 function parseOptionalTrimmed(value: unknown): string | undefined {
   if (typeof value !== "string") {
     return undefined;
@@ -110,7 +279,8 @@ type WorkflowParameterType =
   | "SELECT"
   | "USER"
   | "TEAM"
-  | "EMAIL";
+  | "EMAIL"
+  | "COMPUTED";
 
 export type WorkflowParameter = {
   identifier: string;
@@ -147,7 +317,25 @@ type ListWorkflowsResponse = {
   workflows: WorkflowSummary[];
 };
 
+type CreateWorkflowResponse = {
+  ok: true;
+  workflow: WorkflowSummary;
+};
+
 // --- API ---
+
+export async function createWorkflow(
+  runtime: Runtime,
+  payload: Record<string, unknown>,
+): Promise<CreateWorkflowResponse> {
+  const response = await request<CreateWorkflowResponse>(
+    runtime,
+    "/workflows.create",
+    { method: "POST", body: payload },
+  );
+
+  return response.body;
+}
 
 export async function listWorkflows(
   runtime: Runtime,

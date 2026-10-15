@@ -15,6 +15,24 @@ The most important commands for development are:
 - `make dev`: watches the `src/` directory and calls `make` to reinstall whenever changes are detected. Requires [`watchexec`](https://github.com/watchexec/watchexec).
 - `make verify`: runs all of the CI checks: format check, typecheck, lint, and unit tests.
 
+## Testing against a local server
+
+To try a command against a DX app running locally (for example at
+`http://localhost:3000`), point the CLI at it with `DX_API_BASE_URL`. This takes
+precedence over any saved configuration, so your normal login is unaffected.
+
+Run a single command with a local token, without logging in:
+
+```shell
+DX_API_BASE_URL="http://localhost:3000" DX_API_TOKEN="LOCAL_TOKEN_GOES_HERE" dx workflows list
+```
+
+Notes:
+
+- The account a request runs against is determined by the token. There is no
+  account flag or header, so use a token for the account you want to test with.
+- Do not commit tokens or paste them into issues or pull requests.
+
 ## Agent skills
 
 The CLI defines a `dx-cli` skill, intended for CLI users to install. It also has agent skills intended for use during development of the CLI itself. These are stored in the `.agents-internal-dev/skills/` directory rather than a canonical location like `.agents/skills/`, to avoid getting picked up by the [`skills`](https://www.npmjs.com/package/skills) binary and recommended to CLI users. To install these skills, run the following:
