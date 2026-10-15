@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `dx snapshots teams list`: Add support for listing the teams in a snapshot, including Snapshot Team IDs for `snapshot_team_ids` score filters.
+
 ## 0.8.0 - 2026-10-15
 
 ### Added
