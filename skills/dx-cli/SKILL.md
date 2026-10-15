@@ -77,7 +77,7 @@ Use this for any question about DX itself rather than the user's own data: produ
 
 ### Snapshot terms
 
-**Attribute group** — A user attribute used to segment snapshot reporting, such as team, location, tenure band, or coding activity level. Groups are either DX managed (maintained by DX, such as tenure band and coding activity level), admin managed (imported from the users CSV), or self-reported (custom questions answered during a snapshot). Use `dx attributeGroups list` to retrieve attribute group IDs and the attribute value IDs nested inside them. `position` is display order only, and most groups have none; groups and values without a position sort last. Hidden and privileged groups are flagged in the output.
+**Attribute group** — A user attribute used to segment snapshot reporting, such as location, tenure band, or coding activity level. Groups are either DX managed (maintained by DX, such as tenure band and coding activity level), admin managed (imported from the users CSV), or self-reported (custom questions answered during a snapshot). Use `dx attributeGroups list` to retrieve attribute group IDs and the attribute value IDs nested inside them. `position` is display order only, and most attribute groups have none; attribute groups and values without a position sort last. Hidden and privileged attribute groups are flagged in the output.
 
 **Attribute value** — A selectable value within an attribute group, such as "5+ years" within tenure band. Attribute value IDs feed the `attribute_ids` filter when querying snapshot scores by attribute.
 
