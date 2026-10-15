@@ -111,14 +111,14 @@ describe("runDoctor", () => {
     expect(new Headers(init?.headers).get("X-DX-Doctor")).toBe("1");
   });
 
-  it("sends the probe header on the unauthenticated request", async () => {
+  it("sends the doctor header on the unauthenticated request", async () => {
     const probes = healthyProbes();
 
     await doctor({ probes });
 
     const [url, init] = vi.mocked(probes.fetch).mock.calls[0];
     expect(url).toBe("https://api.getdx.com/auth.info");
-    expect(new Headers(init?.headers).get("X-DX-Doctor-Probe")).toBe("1");
+    expect(new Headers(init?.headers).get("X-DX-Doctor")).toBe("1");
     expect(new Headers(init?.headers).get("Authorization")).toBeNull();
   });
 
