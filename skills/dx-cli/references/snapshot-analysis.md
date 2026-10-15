@@ -80,8 +80,8 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
 5. Optionally list snapshot teams when you need team scoping or Snapshot Team IDs for score filters:
 
    ```bash
-   dx snapshots teams list --id <snapshot_id>
-   dx snapshots teams list --id <snapshot_id> --json
+   dx snapshots snapshotTeams list --id <snapshot_id>
+   dx snapshots snapshotTeams list --id <snapshot_id> --json
    ```
 
    Use the Snapshot Team `id` values from this response for `snapshot_team_ids` filters on score endpoints. Use `team_id` when you need to inspect the stable DX team with `dx teams info`.

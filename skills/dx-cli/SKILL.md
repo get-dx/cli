@@ -99,7 +99,7 @@ Use this for any question about DX itself rather than the user's own data: produ
 
 ## Snapshot teams
 
-Use `dx snapshots teams list --id <snapshot_id>` to list the teams captured in a snapshot.
+Use `dx snapshots snapshotTeams list --id <snapshot_id>` to list the teams captured in a snapshot.
 
 - `id` is the Snapshot Team ID. It is only valid within that snapshot and is what DX score endpoints expect in the `snapshot_team_ids` filter.
 - `team_id` is the stable DX team ID. It can be used with `dx teams info --team-id <team_id>` to inspect the current DX team record.

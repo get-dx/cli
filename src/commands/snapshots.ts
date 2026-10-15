@@ -193,11 +193,11 @@ export function snapshotsCommand(): Command {
       }),
     );
 
-  const teams = new Command()
-    .name("teams")
+  const snapshotTeams = new Command()
+    .name("snapshotTeams")
     .description("Work with snapshot teams");
 
-  teams
+  snapshotTeams
     .command("list")
     .description("List teams for a snapshot")
     .option("--id <id>", "The unique ID of the snapshot")
@@ -206,11 +206,11 @@ export function snapshotsCommand(): Command {
       createExampleText([
         {
           label: "List teams for a snapshot",
-          command: "dx snapshots teams list --id MjUyNbaY",
+          command: "dx snapshots snapshotTeams list --id MjUyNbaY",
         },
         {
           label: "List snapshot teams as JSON",
-          command: "dx --json snapshots teams list --id MjUyNbaY",
+          command: "dx --json snapshots snapshotTeams list --id MjUyNbaY",
         },
       ]),
     )
@@ -228,7 +228,7 @@ export function snapshotsCommand(): Command {
       }),
     );
 
-  snapshots.addCommand(teams);
+  snapshots.addCommand(snapshotTeams);
 
   return snapshots;
 }
@@ -378,7 +378,7 @@ async function listSnapshotTeams(
 ): Promise<ListSnapshotTeamsResponse> {
   const response = await request<ListSnapshotTeamsResponse>(
     runtime,
-    "/snapshots.teams.list",
+    "/snapshots.snapshotTeams.list",
     {
       method: "GET",
       query: { snapshot_id: snapshotId },

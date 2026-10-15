@@ -606,10 +606,18 @@ describe("snapshots command", () => {
     );
 
     const { run } = await import("../cli.js");
-    await run(["node", "dx", "snapshots", "teams", "list", "--id", "MjUyNbaY"]);
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "snapshotTeams",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://api.example.com/snapshots.teams.list?snapshot_id=MjUyNbaY",
+      "https://api.example.com/snapshots.snapshotTeams.list?snapshot_id=MjUyNbaY",
       expect.objectContaining({ method: "GET" }),
     );
     const output = stdoutWrites.join("");
@@ -651,7 +659,7 @@ describe("snapshots command", () => {
       "dx",
       "--json",
       "snapshots",
-      "teams",
+      "snapshotTeams",
       "list",
       "--id",
       "MjUyNbaY",
@@ -666,7 +674,7 @@ describe("snapshots command", () => {
       .mockImplementation(() => undefined as never);
 
     const { run } = await import("../cli.js");
-    await run(["node", "dx", "snapshots", "teams", "list"]);
+    await run(["node", "dx", "snapshots", "snapshotTeams", "list"]);
 
     expect(stderrWrites.join("")).toContain("--id is required");
     expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
