@@ -144,15 +144,19 @@ describe("snapshots command", () => {
         id: "root-team",
         name: "Platform",
         team_id: "team-root",
-        parent: true,
+        is_parent: true,
         parent_id: null,
-        manager: "Jane Manager",
+        manager: {
+          id: "user-1",
+          name: "Jane Manager",
+          email: "jane@example.com",
+        },
       },
       {
         id: "child-team",
         name: "Application Services",
         team_id: "team-child",
-        parent: false,
+        is_parent: false,
         parent_id: "root-team",
         manager: null,
       },
@@ -160,7 +164,7 @@ describe("snapshots command", () => {
         id: "sibling-team",
         name: "Data Platform",
         team_id: "team-sibling",
-        parent: false,
+        is_parent: false,
         parent_id: "root-team",
       },
     ],
@@ -602,18 +606,10 @@ describe("snapshots command", () => {
     );
 
     const { run } = await import("../cli.js");
-    await run([
-      "node",
-      "dx",
-      "snapshots",
-      "teams",
-      "list",
-      "--id",
-      "MjUyNbaY",
-    ]);
+    await run(["node", "dx", "snapshots", "teams", "list", "--id", "MjUyNbaY"]);
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://api.example.com/snapshots.teams.list?id=MjUyNbaY",
+      "https://api.example.com/snapshots.teams.list?snapshot_id=MjUyNbaY",
       expect.objectContaining({ method: "GET" }),
     );
     const output = stdoutWrites.join("");
@@ -626,7 +622,7 @@ describe("snapshots command", () => {
     expect(output).toContain("Snapshot Team ID");
     expect(output).toContain("child-team");
     expect(output).toContain("team-child");
-    expect(output).toContain("Jane Manager");
+    expect(output).toContain("Jane Manager <jane@example.com> (user-1)");
     expect(output).toContain("(None)");
     expect(output.indexOf("Platform")).toBeLessThan(
       output.indexOf("Application Services"),

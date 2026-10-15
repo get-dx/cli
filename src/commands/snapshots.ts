@@ -302,12 +302,18 @@ type ListSnapshotsResponse = {
   snapshots: Snapshot[];
 };
 
+type SnapshotTeamManager = {
+  id?: string;
+  name?: string;
+  email?: string;
+};
+
 type SnapshotTeam = {
   ancestors?: string[];
   id?: string;
-  manager?: string | null;
+  is_parent?: boolean;
+  manager?: SnapshotTeamManager | string | null;
   name?: string;
-  parent?: boolean;
   parent_id?: string | null;
   team_id?: string;
 };
@@ -393,7 +399,7 @@ async function listSnapshotTeams(
     "/snapshots.teams.list",
     {
       method: "GET",
-      query: { id: snapshotId },
+      query: { snapshot_id: snapshotId },
     },
   );
 
@@ -560,13 +566,7 @@ function renderSnapshotTeams(
   blocks.push(ui.p(`Displaying ${ui.bold(teams.length.toString())} teams.`));
   blocks.push(
     ui.p(
-      "Snapshot Team IDs are only valid within this snapshot and feed ",
-      ui.code("snapshot_team_ids"),
-      " score filters. Use ",
-      ui.code("team_id"),
-      " with ",
-      ui.code("dx teams info --team-id"),
-      ".",
+      `Snapshot Team IDs are only valid within this snapshot and feed ${ui.code("snapshot_team_ids")} score filters. Use ${ui.code("team_id")} with ${ui.code("dx teams info --team-id")}.`,
     ),
   );
   blocks.push(ui.p(ui.link(snapshotWebLink(snapshotId, "drivers", runtime))));
@@ -774,9 +774,7 @@ function buildSnapshotTeamTree(teams: SnapshotTeam[]): SnapshotTeamNode[] {
   }
 
   const sortNodes = (items: SnapshotTeamNode[]): void => {
-    items.sort((left, right) =>
-      compareSnapshotTeams(left.team, right.team),
-    );
+    items.sort((left, right) => compareSnapshotTeams(left.team, right.team));
     for (const item of items) {
       sortNodes(item.children);
     }
@@ -794,7 +792,9 @@ function compareSnapshotTeams(left: SnapshotTeam, right: SnapshotTeam): number {
     return leftName.localeCompare(rightName);
   }
 
-  return normalizeSortValue(left.id).localeCompare(normalizeSortValue(right.id));
+  return normalizeSortValue(left.id).localeCompare(
+    normalizeSortValue(right.id),
+  );
 }
 
 function normalizeSortValue(value: unknown): string {
@@ -810,13 +810,13 @@ function appendSnapshotTeamBlock(
   blocks.push(ui.h2(heading));
 
   const details = [
-    optionalDetail(
-      "Snapshot Team ID",
-      formatText(node.team.id),
-      node.team.id,
-    ),
+    optionalDetail("Snapshot Team ID", formatText(node.team.id), node.team.id),
     optionalDetail("Team ID", formatText(node.team.team_id), node.team.team_id),
-    optionalDetail("Manager", formatText(node.team.manager), node.team.manager),
+    // Match `dx teams info`: show "(None)" when the API returns a null manager,
+    // omit the row only when the field is absent entirely.
+    node.team.manager !== undefined
+      ? ui.dli("Manager", formatSnapshotTeamManager(node.team.manager))
+      : null,
     optionalDetail(
       "Parent ID",
       formatText(node.team.parent_id),
@@ -840,6 +840,32 @@ function formatSnapshotTeamSummary(team: SnapshotTeam): string {
       : "Unnamed team";
 
   return name;
+}
+
+function formatSnapshotTeamManager(
+  manager: SnapshotTeamManager | string | null | undefined,
+): string {
+  if (typeof manager === "string") {
+    return formatText(manager);
+  }
+
+  if (!manager) {
+    return ui.dim("(None)");
+  }
+
+  const parts = [
+    typeof manager.name === "string" && manager.name.trim().length > 0
+      ? manager.name
+      : null,
+    typeof manager.email === "string" && manager.email.trim().length > 0
+      ? `<${manager.email}>`
+      : null,
+    typeof manager.id === "string" && manager.id.trim().length > 0
+      ? `(${ui.code(manager.id)})`
+      : null,
+  ].filter((part) => part !== null);
+
+  return parts.length > 0 ? parts.join(" ") : ui.dim("(None)");
 }
 
 function formatCommentHeading(comment: SnapshotDriverComment): string {
