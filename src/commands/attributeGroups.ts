@@ -50,16 +50,20 @@ export function attributeGroupsCommand(): Command {
   return attributeGroups;
 }
 
-export type AttributeValue = {
+export type Attribute = {
   id: string;
   name: string;
+  position: number;
 };
 
 export type AttributeGroup = {
   id: string;
   name: string;
   type: string;
-  attribute_values: AttributeValue[];
+  hidden: boolean;
+  position: number;
+  privileged: boolean;
+  attributes: Attribute[];
 };
 
 export type ListAttributeGroupsResponse = {
@@ -113,16 +117,16 @@ function renderAttributeGroups(attributeGroups: AttributeGroup[]): void {
       ),
     );
 
-    if (attributeGroup.attribute_values.length === 0) {
-      blocks.push(ui.p(`Attribute values: ${ui.dim("(None)")}`));
+    if (attributeGroup.attributes.length === 0) {
+      blocks.push(ui.p(`Attributes: ${ui.dim("(None)")}`));
       continue;
     }
 
-    blocks.push(ui.p("Attribute values:"));
+    blocks.push(ui.p("Attributes:"));
     blocks.push(
       ui.ul(
-        attributeGroup.attribute_values.map((attributeValue) =>
-          ui.li(`${attributeValue.name} (${ui.code(attributeValue.id)})`),
+        attributeGroup.attributes.map((attribute) =>
+          ui.li(`${attribute.name} (${ui.code(attribute.id)})`),
         ),
       ),
     );
