@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `dx attributeGroups list` to fetch snapshot attribute groups and attribute IDs, with human-readable and `--json` output.
+
+### Updated
+
+- the dx-cli skill snapshot guidance to explain using attribute value IDs with the `attribute_ids` snapshot filter.
+
 ## 0.8.0 - 2026-10-15
 
 ### Added
