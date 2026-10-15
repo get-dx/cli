@@ -29,15 +29,15 @@ export function entityTypesCommand() {
   entityTypes
     .command("create")
     .description(
-      "Create a new entity type from a YAML file or stdin. The `init` command can be used to generate a starting template.",
+      "Create a new entity type from a YAML or JSON file or stdin. The `init` command can be used to generate a starting template.",
     )
     .option(
       "--from-file <path>",
-      "Read a YAML file and create an entity type from its contents",
+      "Read a YAML or JSON file and create an entity type from its contents",
     )
     .option(
       "--from-stdin",
-      "Read YAML from stdin and create an entity type from its contents",
+      "Read YAML or JSON from stdin and create an entity type from its contents",
     )
     .addHelpText(
       "afterAll",
@@ -312,16 +312,16 @@ export function entityTypesCommand() {
   entityTypes
     .command("update")
     .description(
-      "Update an existing entity type from a YAML file or stdin. The `init` command can be used to initialize the entity type file.",
+      "Update an existing entity type from a YAML or JSON file or stdin. The `init` command can be used to initialize the entity type file.",
     )
     .argument("<identifier>", "The unique identifier of the entity type")
     .option(
       "--from-file <path>",
-      "Read a YAML file and update the entity type with its contents",
+      "Read a YAML or JSON file and update the entity type with its contents",
     )
     .option(
       "--from-stdin",
-      "Read YAML from stdin and update the entity type with its contents",
+      "Read YAML or JSON from stdin and update the entity type with its contents",
     )
     .addHelpText(
       "afterAll",

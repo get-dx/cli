@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `dx auth login`: Recognize `DX_WEB_BASE_URL=https://app.getdx.com` (with a scheme or trailing slash) as the cloud deployment instead of requiring `DX_API_BASE_URL`.
 
+## 0.8.0 - 2026-10-15
+
+### Added
+
+- `dx workflows create`: Add support for creating Self-service workflows from a YAML or JSON file or stdin.
+- `dx workflows init`: Add support for writing a blank workflow YAML template.
+
+### Updated
+
+- `dx scorecards create`, `dx scorecards update`, `dx studio reports create`, `dx studio reports update`, `dx catalog entityTypes create`, `dx catalog entityTypes update`: Clarify in the help text that `--from-file` and `--from-stdin` accept JSON as well as YAML.
+
 ## 0.7.0 - 2026-10-05
 
 ### Added
