@@ -25,15 +25,15 @@ export function scorecardsCommand() {
   scorecards
     .command("create")
     .description(
-      "Create a new scorecard from a YAML file or stdin. The `init` command can be used to generate a starting template.",
+      "Create a new scorecard from a YAML or JSON file or stdin. The `init` command can be used to generate a starting template.",
     )
     .option(
       "--from-file <path>",
-      "Read a YAML file and create a scorecard from its contents",
+      "Read a YAML or JSON file and create a scorecard from its contents",
     )
     .option(
       "--from-stdin",
-      "Read YAML from stdin and create a scorecard from its contents",
+      "Read YAML or JSON from stdin and create a scorecard from its contents",
     )
     .addHelpText(
       "afterAll",
@@ -320,16 +320,16 @@ export function scorecardsCommand() {
   scorecards
     .command("update")
     .description(
-      "Update an existing scorecard from a YAML file or stdin. The `init` command can be used to initialize the scorecard file.",
+      "Update an existing scorecard from a YAML or JSON file or stdin. The `init` command can be used to initialize the scorecard file.",
     )
     .argument("<id>", "The unique ID of the scorecard")
     .option(
       "--from-file <path>",
-      "Read a YAML file and update the scorecard with its contents",
+      "Read a YAML or JSON file and update the scorecard with its contents",
     )
     .option(
       "--from-stdin",
-      "Read YAML from stdin and update the scorecard with its contents",
+      "Read YAML or JSON from stdin and update the scorecard with its contents",
     )
     .addHelpText(
       "afterAll",
