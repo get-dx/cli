@@ -40,22 +40,31 @@ describe("attributeGroups command", () => {
         id: "grp_1",
         name: "Region",
         type: "ADMIN_MANAGED",
-        attribute_values: [
-          { id: "attr_1", name: "North America" },
-          { id: "attr_2", name: "Europe" },
+        hidden: false,
+        position: 0,
+        privileged: false,
+        attributes: [
+          { id: "attr_1", name: "North America", position: 0 },
+          { id: "attr_2", name: "Europe", position: 1 },
         ],
       },
       {
         id: "grp_2",
         name: "Tenure",
         type: "SELF_REPORTED",
-        attribute_values: [{ id: "attr_3", name: "0-2 years" }],
+        hidden: false,
+        position: 1,
+        privileged: true,
+        attributes: [{ id: "attr_3", name: "0-2 years", position: 0 }],
       },
       {
         id: "grp_3",
         name: "Department",
         type: "DX_MANAGED",
-        attribute_values: [],
+        hidden: true,
+        position: 2,
+        privileged: false,
+        attributes: [],
       },
     ],
   };
@@ -88,8 +97,15 @@ describe("attributeGroups command", () => {
     expect(output).toContain("North America");
     expect(output).toContain("attr_1");
     expect(output).toContain("Self reported");
+    expect(output.match(/Privileged/g)).toHaveLength(1);
+    expect(output.match(/Hidden/g)).toHaveLength(1);
+    expect(output.indexOf("Region")).toBeLessThan(output.indexOf("Tenure"));
+    expect(output.indexOf("Tenure")).toBeLessThan(output.indexOf("Department"));
+    expect(output.indexOf("North America")).toBeLessThan(
+      output.indexOf("Europe"),
+    );
     expect(output).toContain("DX managed");
-    expect(output).toContain("Attribute values: (None)");
+    expect(output).toContain("Attributes: (None)");
   });
 
   it("prints raw JSON with --json", async () => {
@@ -135,12 +151,20 @@ describe("attributeGroups command", () => {
   });
 
   it("shows command help with examples", async () => {
+    vi.spyOn(process, "exit").mockImplementation(((
+      code?: string | number | null,
+    ) => {
+      throw new Error(`process.exit called with ${code}`);
+    }) as typeof process.exit);
+
     const { run } = await import("../cli.js");
-    await run(["node", "dx", "attributeGroups", "--help"]);
+    await expect(
+      run(["node", "dx", "attributeGroups", "list", "--help"]),
+    ).rejects.toThrow("process.exit called with 0");
 
     const output = stdoutWrites.join("");
     expect(output).toContain(
-      "List attribute groups and values for filtering snapshot scores",
+      "List attribute groups and their attribute values",
     );
     expect(output).toContain("dx attributeGroups list");
     expect(output).toContain("dx --json attributeGroups list");

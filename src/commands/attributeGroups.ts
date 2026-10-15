@@ -85,7 +85,8 @@ export async function listAttributeGroups(
   return response.body;
 }
 
-function renderAttributeGroups(attributeGroups: AttributeGroup[]): void {
+function renderAttributeGroups(unsortedGroups: AttributeGroup[]): void {
+  const attributeGroups = [...unsortedGroups].sort(byPosition);
   const blocks: ui.Block[] = [ui.h1("Attribute Groups")];
   blocks.push(
     ui.p(
@@ -112,8 +113,12 @@ function renderAttributeGroups(attributeGroups: AttributeGroup[]): void {
         [
           ui.dli("Type", formatAttributeGroupType(attributeGroup.type)),
           ui.dli("ID", ui.code(attributeGroup.id)),
+          ui.dli("Position", attributeGroup.position.toString()),
+          ...(attributeGroup.hidden ? [ui.dli("Hidden", "Yes")] : []),
+          // The API only returns privileged groups the user can see.
+          ...(attributeGroup.privileged ? [ui.dli("Privileged", "Yes")] : []),
         ],
-        { termWidth: 8 },
+        { termWidth: 12 },
       ),
     );
 
@@ -125,14 +130,20 @@ function renderAttributeGroups(attributeGroups: AttributeGroup[]): void {
     blocks.push(ui.p("Attributes:"));
     blocks.push(
       ui.ul(
-        attributeGroup.attributes.map((attribute) =>
-          ui.li(`${attribute.name} (${ui.code(attribute.id)})`),
-        ),
+        [...attributeGroup.attributes]
+          .sort(byPosition)
+          .map((attribute) =>
+            ui.li(`${attribute.name} (${ui.code(attribute.id)})`),
+          ),
       ),
     );
   }
 
   renderRichText(blocks);
+}
+
+function byPosition(a: { position: number }, b: { position: number }): number {
+  return a.position - b.position;
 }
 
 function formatAttributeGroupType(type: string): string {
