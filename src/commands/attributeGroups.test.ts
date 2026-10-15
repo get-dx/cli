@@ -66,6 +66,18 @@ describe("attributeGroups command", () => {
         privileged: false,
         attributes: [],
       },
+      {
+        id: "grp_4",
+        name: "Location",
+        type: "admin_managed",
+        hidden: false,
+        position: null,
+        privileged: false,
+        attributes: [
+          { id: "attr_5", name: "US", position: null },
+          { id: "attr_4", name: "India", position: null },
+        ],
+      },
     ],
   };
 
@@ -99,6 +111,14 @@ describe("attributeGroups command", () => {
     expect(output).toContain("Self reported");
     expect(output.match(/Privileged/g)).toHaveLength(1);
     expect(output.match(/Hidden/g)).toHaveLength(1);
+    // Position is only shown when set (Location has none).
+    expect(output.match(/Position:/g)).toHaveLength(3);
+    // Null positions sort last and don't crash; lowercase types are labelled.
+    expect(output.indexOf("Department")).toBeLessThan(
+      output.indexOf("Location"),
+    );
+    expect(output.indexOf("India")).toBeLessThan(output.indexOf("US"));
+    expect(output.match(/Admin managed/g)).toHaveLength(2);
     expect(output.indexOf("Region")).toBeLessThan(output.indexOf("Tenure"));
     expect(output.indexOf("Tenure")).toBeLessThan(output.indexOf("Department"));
     expect(output.indexOf("North America")).toBeLessThan(
