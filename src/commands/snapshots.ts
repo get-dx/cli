@@ -224,7 +224,7 @@ export function snapshotsCommand(): Command {
           renderJson(response);
         } else {
           renderSnapshotTeams(
-            extractSnapshotTeams(response),
+            response.snapshot_teams,
             snapshotId,
             runtime,
           );
@@ -299,19 +299,17 @@ type ListSnapshotsResponse = {
 };
 
 type SnapshotTeam = {
-  ancestors?: string[];
-  id?: string;
-  is_parent?: boolean;
-  manager?: TeamMember | null;
-  membership_count?: number | null;
-  name?: string;
-  parent_id?: string | null;
-  team_id?: string;
+  id: string;
+  is_parent: boolean;
+  manager: TeamMember | null;
+  name: string;
+  parent_id: string | null;
+  team_id: string;
 };
 
 type ListSnapshotTeamsResponse = {
   ok: true;
-  snapshot_teams?: SnapshotTeam[];
+  snapshot_teams: SnapshotTeam[];
 };
 
 type SnapshotTeamScore = {
@@ -565,9 +563,10 @@ function renderSnapshotTeams(
     return;
   }
 
-  for (const team of buildSnapshotTeamTree(teams)) {
-    appendSnapshotTeamBlock(blocks, team, 0);
-  }
+  const rootTeams = buildSnapshotTeamTree(teams);
+  rootTeams.forEach(rootTeam => {
+    appendSnapshotTeamBlock(blocks, rootTeam, 0);
+  })
 
   renderRichText(blocks);
 }
@@ -720,125 +719,75 @@ function extractCsatComments(
   );
 }
 
-function extractSnapshotTeams(
-  response: ListSnapshotTeamsResponse,
-): SnapshotTeam[] {
-  return response.snapshot_teams ?? [];
-}
-
-type SnapshotTeamNode = {
-  children: SnapshotTeamNode[];
+class SnapshotTeamTreeNode {
   team: SnapshotTeam;
+  children: SnapshotTeamTreeNode[] = [];
+
+  constructor(team: SnapshotTeam) {
+    this.team = team;
+  }
 };
 
-function buildSnapshotTeamTree(teams: SnapshotTeam[]): SnapshotTeamNode[] {
-  const nodes = teams.map((team) => ({ children: [], team }));
-  const nodesById = new Map<string, SnapshotTeamNode>();
+function buildSnapshotTeamTree(teams: SnapshotTeam[]): SnapshotTeamTreeNode[] {
+  const nodes = new Map<string, SnapshotTeamTreeNode>();
+  teams.forEach(team => {
+    nodes.set(team.id, new SnapshotTeamTreeNode(team));
+  })
+  const rootTeams: SnapshotTeamTreeNode[] = [];
 
-  for (const node of nodes) {
-    if (typeof node.team.id === "string" && node.team.id.trim().length > 0) {
-      nodesById.set(node.team.id, node);
-    }
-  }
+  teams.forEach(team => {
+    const currentNode = nodes.get(team.id)!;
 
-  const roots: SnapshotTeamNode[] = [];
-  const parentOf = new Map<SnapshotTeamNode, SnapshotTeamNode>();
-
-  for (const node of nodes) {
-    const parentId =
-      typeof node.team.parent_id === "string" ? node.team.parent_id : null;
-    const parent = parentId ? nodesById.get(parentId) : undefined;
-
-    if (parent && parent !== node) {
-      parent.children.push(node);
-      parentOf.set(node, parent);
+    if (currentNode.team.parent_id === null) {
+      // It's a top-level root node
+      rootTeams.push(currentNode);
     } else {
-      roots.push(node);
+      // Append it to its parent's children array
+      nodes.get(currentNode.team.parent_id)!.children.push(currentNode);
     }
-  }
+  })
 
-  // Teams whose parent_id chain forms a cycle never reach a root. Detach the
-  // first such team from its parent and promote it so the cycle still renders.
-  const visited = new Set<SnapshotTeamNode>();
-  const visit = (node: SnapshotTeamNode): void => {
-    if (visited.has(node)) {
-      return;
-    }
-    visited.add(node);
-    for (const child of node.children) {
-      visit(child);
-    }
-  };
-
-  for (const root of roots) {
-    visit(root);
-  }
-
-  for (const node of nodes) {
-    if (visited.has(node)) {
-      continue;
-    }
-
-    const parent = parentOf.get(node);
-    if (parent) {
-      parent.children.splice(parent.children.indexOf(node), 1);
-    }
-    roots.push(node);
-    visit(node);
-  }
-
-  const sortNodes = (items: SnapshotTeamNode[]): void => {
+  const sortNodes = (items: SnapshotTeamTreeNode[]): void => {
     items.sort((left, right) => compareSnapshotTeams(left.team, right.team));
     for (const item of items) {
       sortNodes(item.children);
     }
   };
 
-  sortNodes(roots);
-  return roots;
+  sortNodes(rootTeams);
+  return rootTeams;
 }
 
 function compareSnapshotTeams(left: SnapshotTeam, right: SnapshotTeam): number {
-  const leftName = normalizeSortValue(left.name);
-  const rightName = normalizeSortValue(right.name);
+  const leftName = left.name.toLocaleLowerCase();
+  const rightName = right.name.toLocaleLowerCase();
 
   if (leftName !== rightName) {
     return leftName.localeCompare(rightName);
   }
 
-  return normalizeSortValue(left.id).localeCompare(
-    normalizeSortValue(right.id),
-  );
-}
+  // If the names are the same, compare the IDs
+  const leftId = left.id.toLocaleLowerCase();
+  const rightId = right.id.toLocaleLowerCase();
 
-function normalizeSortValue(value: unknown): string {
-  return typeof value === "string" ? value.toLocaleLowerCase() : "";
+  return leftId.localeCompare(rightId);
 }
 
 function appendSnapshotTeamBlock(
   blocks: ui.Block[],
-  node: SnapshotTeamNode,
+  node: SnapshotTeamTreeNode,
   depth: number,
 ): void {
-  const name =
-    typeof node.team.name === "string" && node.team.name.trim().length > 0
-      ? node.team.name.trim()
-      : "Unnamed team";
-  blocks.push(depth === 0 ? ui.h2(name) : ui.h3(name));
+  blocks.push(depth === 0 ? ui.h2(node.team.name) : ui.h3(node.team.name));
 
   const details = [
     optionalDetail("Snapshot Team ID", formatText(node.team.id), node.team.id),
     optionalDetail("Team ID", formatText(node.team.team_id), node.team.team_id),
     // Match `dx teams info`: show "(None)" when the API returns a null manager,
     // omit the row only when the field is absent entirely.
-    node.team.manager !== undefined
+    node.team.manager
       ? ui.dli("Manager", formatTeamMember(node.team.manager))
       : null,
-    optionalDetail(
-      "Members",
-      formatNumber(node.team.membership_count),
-      node.team.membership_count,
-    ),
     optionalDetail(
       "Parent ID",
       formatText(node.team.parent_id),
@@ -850,9 +799,9 @@ function appendSnapshotTeamBlock(
     blocks.push(ui.dl(details, { termWidth: 18 }));
   }
 
-  for (const child of node.children) {
+  node.children.forEach(child => {
     appendSnapshotTeamBlock(blocks, child, depth + 1);
-  }
+  })
 }
 
 function formatCommentHeading(comment: SnapshotDriverComment): string {
