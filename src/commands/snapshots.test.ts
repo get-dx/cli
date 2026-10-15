@@ -117,7 +117,7 @@ describe("snapshots command", () => {
             id: "NTI0MjY",
             name: "Machine Learning",
             team_id: "NTA1OTM",
-            parent: true,
+            is_parent: true,
             parent_id: "NTI0MjQ",
             ancestors: ["LTE", "NTI0MjY", "NTI0MjQ"],
           },

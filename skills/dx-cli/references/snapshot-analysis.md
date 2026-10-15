@@ -5,7 +5,7 @@ Use the `dx` CLI snapshot endpoints to turn one snapshot into a concise insight 
 ## Terms
 
 - **Snapshot**: A completed DX Snapshot survey/reporting cycle. Use `dx snapshots list --json` for IDs, timing, and completion counts before choosing one to analyze.
-- **Snapshot team**: A team record frozen at the time of the snapshot. The Snapshot Team `id` is only valid within that snapshot and feeds score endpoint `snapshot_team_ids` filters. `snapshot_team.parent` identifies parent-rollup rows; `snapshot_team.team_id` links back to the stable DX team.
+- **Snapshot team**: A team record frozen at the time of the snapshot. The Snapshot Team `id` is only valid within that snapshot and feeds score endpoint `snapshot_team_ids` filters. `snapshot_team.is_parent` identifies parent-rollup rows; `snapshot_team.team_id` links back to the stable DX team.
 - **Snapshot item**: A scored question or metric included in the snapshot. `snapshot.snapshot_items` groups item metadata into `factors`, `csat`, and `kpis`.
 - **Developer Experience Index (DXI)**: The overall developer-experience score, calculated from driver scores out of 100. Treat it as a baseline for quarterly progress and as an impact/ROI framing device.
 - **Driver / factor**: A developer-experience driver. Product-facing docs and reports call these drivers; the API uses `factor` as the `item_type` and stores metadata in `snapshot_items.factors`.

@@ -10,6 +10,7 @@ import { CliError, EXIT_CODES } from "../errors.js";
 import { request } from "../http.js";
 import { renderJson, renderRichText } from "../renderers.js";
 import { buildRuntime } from "../runtime.js";
+import { formatTeamMember, type TeamMember } from "./teams.js";
 import type { Runtime } from "../types.js";
 import * as ui from "../ui.js";
 
@@ -132,52 +133,6 @@ export function snapshotsCommand(): Command {
 
   snapshots.addCommand(driverComments);
 
-  const teams = new Command()
-    .name("teams")
-    .description("Work with snapshot teams");
-
-  teams
-    .command("list")
-    .description("List teams for a snapshot")
-    .option("--id <id>", "The unique ID of the snapshot")
-    .addHelpText(
-      "afterAll",
-      createExampleText([
-        {
-          label: "List teams for a snapshot",
-          command: "dx snapshots teams list --id MjUyNbaY",
-        },
-        {
-          label: "List snapshot teams as JSON",
-          command: "dx --json snapshots teams list --id MjUyNbaY",
-        },
-        {
-          label: "Use the snapshot team ID with score filters",
-          command:
-            "dx snapshots teams list --id MjUyNbaY  # use the Snapshot Team ID as snapshot_team_ids",
-        },
-      ]),
-    )
-    .action(
-      wrapAction(async (options, command) => {
-        const snapshotId = parseRequiredTextOption(options.id, "--id");
-        const runtime = await buildRuntime(getContext(command));
-        const response = await listSnapshotTeams(runtime, snapshotId);
-
-        if (runtime.context.json) {
-          renderJson(response);
-        } else {
-          renderSnapshotTeams(
-            extractSnapshotTeams(response),
-            snapshotId,
-            runtime,
-          );
-        }
-      }),
-    );
-
-  snapshots.addCommand(teams);
-
   snapshots
     .command("info")
     .description("Retrieve results for a single snapshot")
@@ -237,6 +192,47 @@ export function snapshotsCommand(): Command {
         }
       }),
     );
+
+  const teams = new Command()
+    .name("teams")
+    .description("Work with snapshot teams");
+
+  teams
+    .command("list")
+    .description("List teams for a snapshot")
+    .option("--id <id>", "The unique ID of the snapshot")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "List teams for a snapshot",
+          command: "dx snapshots teams list --id MjUyNbaY",
+        },
+        {
+          label: "List snapshot teams as JSON",
+          command: "dx --json snapshots teams list --id MjUyNbaY",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (options, command) => {
+        const snapshotId = parseRequiredTextOption(options.id, "--id");
+        const runtime = await buildRuntime(getContext(command));
+        const response = await listSnapshotTeams(runtime, snapshotId);
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderSnapshotTeams(
+            extractSnapshotTeams(response),
+            snapshotId,
+            runtime,
+          );
+        }
+      }),
+    );
+
+  snapshots.addCommand(teams);
 
   return snapshots;
 }
@@ -302,17 +298,12 @@ type ListSnapshotsResponse = {
   snapshots: Snapshot[];
 };
 
-type SnapshotTeamManager = {
-  id?: string;
-  name?: string;
-  email?: string;
-};
-
 type SnapshotTeam = {
   ancestors?: string[];
   id?: string;
   is_parent?: boolean;
-  manager?: SnapshotTeamManager | string | null;
+  manager?: TeamMember | null;
+  membership_count?: number | null;
   name?: string;
   parent_id?: string | null;
   team_id?: string;
@@ -321,9 +312,6 @@ type SnapshotTeam = {
 type ListSnapshotTeamsResponse = {
   ok: true;
   snapshot_teams?: SnapshotTeam[];
-  snapshotTeams?: SnapshotTeam[];
-  snapshotteams?: SnapshotTeam[];
-  teams?: SnapshotTeam[];
 };
 
 type SnapshotTeamScore = {
@@ -735,13 +723,7 @@ function extractCsatComments(
 function extractSnapshotTeams(
   response: ListSnapshotTeamsResponse,
 ): SnapshotTeam[] {
-  return (
-    response.snapshot_teams ??
-    response.snapshotTeams ??
-    response.snapshotteams ??
-    response.teams ??
-    []
-  );
+  return response.snapshot_teams ?? [];
 }
 
 type SnapshotTeamNode = {
@@ -760,17 +742,49 @@ function buildSnapshotTeamTree(teams: SnapshotTeam[]): SnapshotTeamNode[] {
   }
 
   const roots: SnapshotTeamNode[] = [];
+  const parentOf = new Map<SnapshotTeamNode, SnapshotTeamNode>();
 
   for (const node of nodes) {
     const parentId =
       typeof node.team.parent_id === "string" ? node.team.parent_id : null;
     const parent = parentId ? nodesById.get(parentId) : undefined;
 
-    if (parent) {
+    if (parent && parent !== node) {
       parent.children.push(node);
+      parentOf.set(node, parent);
     } else {
       roots.push(node);
     }
+  }
+
+  // Teams whose parent_id chain forms a cycle never reach a root. Detach the
+  // first such team from its parent and promote it so the cycle still renders.
+  const visited = new Set<SnapshotTeamNode>();
+  const visit = (node: SnapshotTeamNode): void => {
+    if (visited.has(node)) {
+      return;
+    }
+    visited.add(node);
+    for (const child of node.children) {
+      visit(child);
+    }
+  };
+
+  for (const root of roots) {
+    visit(root);
+  }
+
+  for (const node of nodes) {
+    if (visited.has(node)) {
+      continue;
+    }
+
+    const parent = parentOf.get(node);
+    if (parent) {
+      parent.children.splice(parent.children.indexOf(node), 1);
+    }
+    roots.push(node);
+    visit(node);
   }
 
   const sortNodes = (items: SnapshotTeamNode[]): void => {
@@ -806,8 +820,11 @@ function appendSnapshotTeamBlock(
   node: SnapshotTeamNode,
   depth: number,
 ): void {
-  const heading = `${depth > 0 ? `${"  ".repeat(depth)}↳ ` : ""}${formatSnapshotTeamSummary(node.team)}`;
-  blocks.push(ui.h2(heading));
+  const name =
+    typeof node.team.name === "string" && node.team.name.trim().length > 0
+      ? node.team.name.trim()
+      : "Unnamed team";
+  blocks.push(depth === 0 ? ui.h2(name) : ui.h3(name));
 
   const details = [
     optionalDetail("Snapshot Team ID", formatText(node.team.id), node.team.id),
@@ -815,8 +832,13 @@ function appendSnapshotTeamBlock(
     // Match `dx teams info`: show "(None)" when the API returns a null manager,
     // omit the row only when the field is absent entirely.
     node.team.manager !== undefined
-      ? ui.dli("Manager", formatSnapshotTeamManager(node.team.manager))
+      ? ui.dli("Manager", formatTeamMember(node.team.manager))
       : null,
+    optionalDetail(
+      "Members",
+      formatNumber(node.team.membership_count),
+      node.team.membership_count,
+    ),
     optionalDetail(
       "Parent ID",
       formatText(node.team.parent_id),
@@ -831,41 +853,6 @@ function appendSnapshotTeamBlock(
   for (const child of node.children) {
     appendSnapshotTeamBlock(blocks, child, depth + 1);
   }
-}
-
-function formatSnapshotTeamSummary(team: SnapshotTeam): string {
-  const name =
-    typeof team.name === "string" && team.name.trim().length > 0
-      ? team.name.trim()
-      : "Unnamed team";
-
-  return name;
-}
-
-function formatSnapshotTeamManager(
-  manager: SnapshotTeamManager | string | null | undefined,
-): string {
-  if (typeof manager === "string") {
-    return formatText(manager);
-  }
-
-  if (!manager) {
-    return ui.dim("(None)");
-  }
-
-  const parts = [
-    typeof manager.name === "string" && manager.name.trim().length > 0
-      ? manager.name
-      : null,
-    typeof manager.email === "string" && manager.email.trim().length > 0
-      ? `<${manager.email}>`
-      : null,
-    typeof manager.id === "string" && manager.id.trim().length > 0
-      ? `(${ui.code(manager.id)})`
-      : null,
-  ].filter((part) => part !== null);
-
-  return parts.length > 0 ? parts.join(" ") : ui.dim("(None)");
 }
 
 function formatCommentHeading(comment: SnapshotDriverComment): string {
