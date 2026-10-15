@@ -223,11 +223,7 @@ export function snapshotsCommand(): Command {
         if (runtime.context.json) {
           renderJson(response);
         } else {
-          renderSnapshotTeams(
-            response.snapshot_teams,
-            snapshotId,
-            runtime,
-          );
+          renderSnapshotTeams(response.snapshot_teams, snapshotId, runtime);
         }
       }),
     );
@@ -564,9 +560,9 @@ function renderSnapshotTeams(
   }
 
   const rootTeams = buildSnapshotTeamTree(teams);
-  rootTeams.forEach(rootTeam => {
+  rootTeams.forEach((rootTeam) => {
     appendSnapshotTeamBlock(blocks, rootTeam, 0);
-  })
+  });
 
   renderRichText(blocks);
 }
@@ -726,16 +722,16 @@ class SnapshotTeamTreeNode {
   constructor(team: SnapshotTeam) {
     this.team = team;
   }
-};
+}
 
 function buildSnapshotTeamTree(teams: SnapshotTeam[]): SnapshotTeamTreeNode[] {
   const nodes = new Map<string, SnapshotTeamTreeNode>();
-  teams.forEach(team => {
+  teams.forEach((team) => {
     nodes.set(team.id, new SnapshotTeamTreeNode(team));
-  })
+  });
   const rootTeams: SnapshotTeamTreeNode[] = [];
 
-  teams.forEach(team => {
+  teams.forEach((team) => {
     const currentNode = nodes.get(team.id)!;
 
     if (currentNode.team.parent_id === null) {
@@ -745,7 +741,7 @@ function buildSnapshotTeamTree(teams: SnapshotTeam[]): SnapshotTeamTreeNode[] {
       // Append it to its parent's children array
       nodes.get(currentNode.team.parent_id)!.children.push(currentNode);
     }
-  })
+  });
 
   const sortNodes = (items: SnapshotTeamTreeNode[]): void => {
     items.sort((left, right) => compareSnapshotTeams(left.team, right.team));
@@ -778,16 +774,18 @@ function appendSnapshotTeamBlock(
   node: SnapshotTeamTreeNode,
   depth: number,
 ): void {
-  blocks.push(depth === 0 ? ui.h2(node.team.name) : ui.h3(node.team.name));
+  blocks.push(
+    depth === 0
+      ? ui.h2(node.team.name)
+      : ui.h3(`${"↳".repeat(depth)} ${node.team.name}`),
+  );
 
   const details = [
     optionalDetail("Snapshot Team ID", formatText(node.team.id), node.team.id),
     optionalDetail("Team ID", formatText(node.team.team_id), node.team.team_id),
     // Match `dx teams info`: show "(None)" when the API returns a null manager,
     // omit the row only when the field is absent entirely.
-    node.team.manager
-      ? ui.dli("Manager", formatTeamMember(node.team.manager))
-      : null,
+    ui.dli("Manager", formatTeamMember(node.team.manager)),
     optionalDetail(
       "Parent ID",
       formatText(node.team.parent_id),
@@ -799,9 +797,9 @@ function appendSnapshotTeamBlock(
     blocks.push(ui.dl(details, { termWidth: 18 }));
   }
 
-  node.children.forEach(child => {
+  node.children.forEach((child) => {
     appendSnapshotTeamBlock(blocks, child, depth + 1);
-  })
+  });
 }
 
 function formatCommentHeading(comment: SnapshotDriverComment): string {
