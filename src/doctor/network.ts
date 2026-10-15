@@ -1,13 +1,15 @@
 import { describeError, errorCode, timed } from "./format.js";
-import { CHECK_TIMEOUT_MS, type NetworkProbes } from "./probes.js";
+import {
+  CHECK_TIMEOUT_MS,
+  DOCTOR_HEADER,
+  type NetworkProbes,
+} from "./probes.js";
 import { check, type Check, type Section } from "./types.js";
 
 export type NetworkFacts = {
   /** Whether the DX API answered an HTTPS request. */
   apiReachable: boolean;
 };
-
-const PROBE_HEADER = { "X-DX-Doctor-Probe": "1" };
 
 const TLS_VERIFY_HINT =
   "Your network may be intercepting HTTPS traffic with its own certificate.\nSet NODE_EXTRA_CA_CERTS to your corporate CA bundle (PEM), or ask your network team to allow {host}.";
@@ -231,7 +233,7 @@ async function apiRequestCheck(
       const response = await probes.fetch(url, {
         headers: {
           ...clientHeaders(version),
-          ...PROBE_HEADER,
+          ...DOCTOR_HEADER,
           Accept: "application/json",
         },
         signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
@@ -291,7 +293,7 @@ async function webAppCheck(
   try {
     const { value: status, ms } = await timed(async () => {
       const response = await probes.fetch(webBaseUrl, {
-        headers: { ...clientHeaders(version), ...PROBE_HEADER },
+        headers: { ...clientHeaders(version), ...DOCTOR_HEADER },
         signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
       });
       await response.body?.cancel();
