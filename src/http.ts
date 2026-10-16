@@ -13,6 +13,7 @@ export async function request<T extends Record<string, unknown>>(
 ): Promise<RequestResponse<T>> {
   const method = options.method || "GET";
   const headers = new Headers({
+    ...options.headers,
     Accept: "application/json",
     "X-Client-Type": "dx-cli",
     "X-Client-Version": runtime.version,
@@ -61,6 +62,7 @@ export async function request<T extends Record<string, unknown>>(
       method,
       headers,
       body: requestBody,
+      signal: options.signal,
     });
   } catch (error) {
     throw new HttpError(
