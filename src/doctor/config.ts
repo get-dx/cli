@@ -120,11 +120,7 @@ function configFileCheck(): Check {
 }
 
 function deploymentCheck(webBaseUrl: string): Check {
-  // `parseWebBaseUrl` only recognizes the bare "app.getdx.com" as cloud, not
-  // the full URL that `resolveWebBaseUrl` returns.
-  const parsed = isCloudWebBaseUrl(webBaseUrl)
-    ? ({ type: "cloud" } as const)
-    : parseWebBaseUrl(webBaseUrl);
+  const parsed = parseWebBaseUrl(webBaseUrl);
   switch (parsed.type) {
     case "cloud":
       return check("deployment", "Deployment", "ok", "cloud", {
@@ -159,14 +155,6 @@ function deploymentCheck(webBaseUrl: string): Check {
           data: { type: "invalid" },
         },
       );
-  }
-}
-
-function isCloudWebBaseUrl(webBaseUrl: string): boolean {
-  try {
-    return new URL(webBaseUrl).hostname === "app.getdx.com";
-  } catch {
-    return false;
   }
 }
 
