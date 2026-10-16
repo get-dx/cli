@@ -6,8 +6,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   deriveBaseUrlsFromEnv,
   getConfigPath,
+  inspectConfigFile,
   readConfig,
+  resolveApiBaseUrlWithSource,
   resolveWebBaseUrl,
+  resolveWebBaseUrlWithSource,
   writeConfig,
 } from "./config.js";
 
@@ -136,5 +139,80 @@ describe("readConfig", () => {
     const stored = readConfig();
     expect(stored.apiBaseUrl).toBe("https://new.example.com");
     expect(stored.webBaseUrl).toBe("https://app.example.com");
+  });
+});
+
+describe("resolve*BaseUrlWithSource", () => {
+  it("reports env as the source when the env var is set", () => {
+    process.env.DX_API_BASE_URL = "https://api.acme.getdx.io/";
+    writeConfig({ apiBaseUrl: "https://stored.example.com" });
+
+    expect(resolveApiBaseUrlWithSource()).toEqual({
+      url: "https://api.acme.getdx.io",
+      source: "env",
+    });
+  });
+
+  it("reports config as the source when stored in the config file", () => {
+    delete process.env.DX_WEB_BASE_URL;
+    writeConfig({ webBaseUrl: "https://acme.getdx.io" });
+
+    expect(resolveWebBaseUrlWithSource()).toEqual({
+      url: "https://acme.getdx.io",
+      source: "config",
+    });
+  });
+
+  it("reports default when nothing is configured", () => {
+    delete process.env.DX_API_BASE_URL;
+
+    expect(resolveApiBaseUrlWithSource()).toEqual({
+      url: "https://api.getdx.com",
+      source: "default",
+    });
+  });
+});
+
+describe("inspectConfigFile", () => {
+  it("reports a missing config file", () => {
+    fs.rmSync(getConfigPath());
+
+    expect(inspectConfigFile()).toEqual({
+      status: "missing",
+      path: getConfigPath(),
+    });
+  });
+
+  it("reports invalid JSON instead of hiding it", () => {
+    fs.writeFileSync(getConfigPath(), "{ not json");
+
+    const inspection = inspectConfigFile();
+
+    expect(inspection.status).toBe("invalid");
+    expect(readConfig()).toEqual({});
+  });
+
+  it("reports non-object JSON as invalid", () => {
+    fs.writeFileSync(getConfigPath(), "[]");
+
+    expect(inspectConfigFile()).toMatchObject({
+      status: "invalid",
+      error: "expected a JSON object",
+    });
+  });
+
+  it("reports the parsed config, size, and modification time", () => {
+    writeConfig({ apiBaseUrl: "https://example.com" });
+
+    const inspection = inspectConfigFile();
+
+    expect(inspection).toMatchObject({
+      status: "ok",
+      config: { apiBaseUrl: "https://example.com" },
+    });
+    if (inspection.status === "ok") {
+      expect(inspection.sizeBytes).toBeGreaterThan(0);
+      expect(inspection.modifiedAt).toBeInstanceOf(Date);
+    }
   });
 });
