@@ -24,7 +24,7 @@ import cliPackage from "../package.json" with { type: "json" };
 const VERSION_CHECK_INTERVAL_HOURS = 24;
 const SNOOZE_DAYS = 7;
 
-const SKIP_COMMANDS = new Set(["auth", "init"]);
+const SKIP_COMMANDS = new Set(["auth", "doctor", "init"]);
 const SKIP_OPTIONS = new Set(["-h", "--help", "-v", "--version"]);
 
 export interface VersionCheckResult {

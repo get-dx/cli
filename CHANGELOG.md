@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `dx snapshots snapshotTeams list`: Add support for listing the teams in a snapshot, including Snapshot Team IDs for `snapshot_team_ids` score filters.
 - `dx attributeGroups list` to fetch snapshot attribute groups and attribute IDs, with human-readable and `--json` output.
+- `dx doctor`: Diagnose installation, configuration, authentication, and network problems in one shareable report.
 
 ### Updated
 

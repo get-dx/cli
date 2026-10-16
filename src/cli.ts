@@ -3,6 +3,7 @@ import { Command, Option } from "commander";
 import { attributeGroupsCommand } from "./commands/attributeGroups.js";
 import { authCommand } from "./commands/auth.js";
 import { catalogCommand } from "./commands/catalog.js";
+import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
 import { scorecardsCommand } from "./commands/scorecards.js";
 import { snapshotsCommand } from "./commands/snapshots.js";
@@ -78,6 +79,7 @@ function createProgram(): Command {
   program.addCommand(attributeGroupsCommand());
   program.addCommand(authCommand());
   program.addCommand(catalogCommand());
+  program.addCommand(doctorCommand());
   program.addCommand(initCommand());
   program.addCommand(scorecardsCommand());
   program.addCommand(snapshotsCommand());
