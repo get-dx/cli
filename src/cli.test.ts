@@ -44,6 +44,7 @@ describe("cli", () => {
 
     const output = stdout.join("");
     expect(output).toContain("Usage: dx [options] [command]");
+    expect(output).toContain("attributeGroups");
     expect(output).toContain("-v, --version");
     expect(output).not.toContain("-V, --version");
     expect(stderr.join("")).toBe("");
