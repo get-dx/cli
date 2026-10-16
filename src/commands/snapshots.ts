@@ -310,7 +310,7 @@ type SnapshotTeamWithManager = {
   name: string;
   parent_id: string | null;
   team_id: string;
-}
+};
 
 type ListSnapshotTeamsResponse = {
   ok: true;
@@ -733,7 +733,9 @@ class SnapshotTeamTreeNode {
   }
 }
 
-function buildSnapshotTeamTree(teams: SnapshotTeamWithManager[]): SnapshotTeamTreeNode[] {
+function buildSnapshotTeamTree(
+  teams: SnapshotTeamWithManager[],
+): SnapshotTeamTreeNode[] {
   const nodes = new Map<string, SnapshotTeamTreeNode>();
   teams.forEach((team) => {
     nodes.set(team.id, new SnapshotTeamTreeNode(team));
@@ -763,7 +765,10 @@ function buildSnapshotTeamTree(teams: SnapshotTeamWithManager[]): SnapshotTeamTr
   return rootTeams;
 }
 
-function compareSnapshotTeams(left: SnapshotTeamWithManager, right: SnapshotTeamWithManager): number {
+function compareSnapshotTeams(
+  left: SnapshotTeamWithManager,
+  right: SnapshotTeamWithManager,
+): number {
   const leftName = left.name.toLocaleLowerCase();
   const rightName = right.name.toLocaleLowerCase();
 
