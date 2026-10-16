@@ -4,17 +4,25 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { writeConfig } from "../config.js";
+import { writeConfig, getConfigPath } from "../config.js";
+import type { TokenLookup } from "../secrets.js";
 import { detectInstall, type LatestVersionLookup } from "./cli.js";
 import { runDoctor, type DoctorDependencies } from "./index.js";
 import type { Check, DoctorReport } from "./types.js";
 
 import cliPackage from "../../package.json" with { type: "json" };
 
+const { getTokenWithSource } = vi.hoisted(() => ({
+  getTokenWithSource: vi.fn<(baseUrl: string) => Promise<TokenLookup>>(),
+}));
+
+vi.mock("../secrets.js", () => ({ getTokenWithSource }));
+
 vi.mock("../skill.js", () => ({
   isSkillInstalled: vi.fn().mockResolvedValue(false),
 }));
 
+const TOKEN = "dxp_abcdefghijklmnop1234";
 const originalEnv = { ...process.env };
 let configHome: string;
 
@@ -35,6 +43,13 @@ beforeEach(() => {
     apiBaseUrl: "https://api.getdx.com",
     webBaseUrl: "https://app.getdx.com",
   });
+
+  getTokenWithSource.mockReset();
+  getTokenWithSource.mockResolvedValue({
+    source: "keychain",
+    token: TOKEN,
+    storeName: "macOS Keychain",
+  });
 });
 
 afterEach(() => {
@@ -54,9 +69,101 @@ describe("runDoctor", () => {
     expect(report.sections.map((section) => section.id)).toEqual([
       "cli",
       "environment",
+      "config",
       "skill",
     ]);
     expect(find(report, "environment", "none").message).toBe("(none set)");
+  });
+
+  it("never includes the raw token in the report", async () => {
+    process.env.DX_API_TOKEN = TOKEN;
+    getTokenWithSource.mockResolvedValue({ source: "env", token: TOKEN });
+
+    const report = await doctor();
+
+    expect(JSON.stringify(report)).not.toContain(TOKEN);
+    expect(find(report, "config", "token")).toMatchObject({
+      status: "ok",
+      source: "env",
+    });
+  });
+
+  describe("config", () => {
+    it("fails when no token is found", async () => {
+      getTokenWithSource.mockResolvedValue({
+        source: "none",
+        storeName: "macOS Keychain",
+      });
+
+      const report = await doctor();
+
+      expect(find(report, "config", "token")).toMatchObject({
+        status: "fail",
+        message: "no token found (checked DX_API_TOKEN and macOS Keychain)",
+      });
+    });
+
+    it("reports keychain errors separately from a missing token", async () => {
+      getTokenWithSource.mockResolvedValue({
+        source: "error",
+        storeName: "Linux Secret Service (secret-tool)",
+        error: "`secret-tool` is not installed",
+      });
+
+      const report = await doctor();
+
+      expect(find(report, "config", "token").message).toBe(
+        "could not read Linux Secret Service (secret-tool): `secret-tool` is not installed",
+      );
+    });
+
+    it("warns when the config file is missing and no env token is set", async () => {
+      fs.rmSync(getConfigPath());
+
+      const report = await doctor();
+
+      const configFile = find(report, "config", "config_file");
+      expect(configFile.status).toBe("warn");
+      expect(configFile.hint).toContain("dx auth login");
+      expect(find(report, "config", "api_base_url").source).toBe("default");
+    });
+
+    it("is fine with a missing config file when DX_API_TOKEN is set", async () => {
+      fs.rmSync(getConfigPath());
+      process.env.DX_API_TOKEN = TOKEN;
+
+      const report = await doctor();
+
+      expect(find(report, "config", "config_file").status).toBe("ok");
+    });
+
+    it("fails on an invalid config file", async () => {
+      fs.writeFileSync(getConfigPath(), "{ truncated");
+
+      const report = await doctor();
+
+      expect(find(report, "config", "config_file").status).toBe("fail");
+    });
+
+    it("fails when DX_API_BASE_URL is set without DX_WEB_BASE_URL", async () => {
+      process.env.DX_API_BASE_URL = "https://api.acme.getdx.io";
+
+      const report = await doctor();
+
+      expect(find(report, "config", "base_url_env").status).toBe("fail");
+      expect(find(report, "config", "api_base_url").source).toBe("env");
+    });
+
+    it("recognizes cloud and dedicated deployments", async () => {
+      expect(find(await doctor(), "config", "deployment").message).toBe(
+        "cloud",
+      );
+
+      process.env.DX_WEB_BASE_URL = "https://acme.getdx.io";
+      expect(find(await doctor(), "config", "deployment").message).toBe(
+        "dedicated (acme)",
+      );
+    });
   });
 
   describe("environment", () => {
@@ -127,6 +234,10 @@ describe("runDoctor", () => {
     });
 
     it("falls back to npm when there is no token", async () => {
+      getTokenWithSource.mockResolvedValue({
+        source: "none",
+        storeName: "macOS Keychain",
+      });
       const latestVersion = lookupReturning(cliPackage.version);
 
       const report = await doctor({ latestVersion });
@@ -134,6 +245,20 @@ describe("runDoctor", () => {
       expect(latestVersion.fromApi).not.toHaveBeenCalled();
       expect(find(report, "cli", "version").data).toMatchObject({
         latest_source: "npm",
+      });
+    });
+
+    it("falls back to npm when the API lookup fails", async () => {
+      const latestVersion: LatestVersionLookup = {
+        fromApi: vi.fn().mockRejectedValue(new Error("boom")),
+        fromNpm: vi.fn().mockResolvedValue(cliPackage.version),
+      };
+
+      const report = await doctor({ latestVersion });
+
+      expect(find(report, "cli", "version")).toMatchObject({
+        status: "ok",
+        data: { latest_source: "npm" },
       });
     });
 
@@ -147,6 +272,7 @@ describe("runDoctor", () => {
 
       const version = find(report, "cli", "version");
       expect(version.status).toBe("fail");
+      expect(version.hint).toContain("DX API: api down");
       expect(version.hint).toContain("npm: npm blocked");
       expect(report.ok).toBe(false);
     });

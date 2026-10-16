@@ -1,4 +1,5 @@
-import type { CliContext } from "../types.js";
+import { buildLogger } from "../runtime.js";
+import type { CliContext, Runtime } from "../types.js";
 import {
   checkCli,
   defaultLatestVersionLookup,
@@ -6,9 +7,12 @@ import {
   type InstallInfo,
   type LatestVersionLookup,
 } from "./cli.js";
+import { checkConfig } from "./config.js";
 import { checkEnvironment } from "./environment.js";
 import { checkSkill } from "./skill.js";
 import type { CheckStatus, DoctorReport, Section } from "./types.js";
+
+import cliPackage from "../../package.json" with { type: "json" };
 
 export type DoctorPhase = "config" | "network" | "auth" | "version";
 
@@ -28,7 +32,7 @@ const defaultDependencies: DoctorDependencies = {
  * Run every doctor check. Never throws: problems are reported as checks.
  */
 export async function runDoctor(
-  _context: CliContext,
+  context: CliContext,
   options: {
     dependencies?: Partial<DoctorDependencies>;
     onPhase?: (phase: DoctorPhase) => void;
@@ -40,19 +44,33 @@ export async function runDoctor(
 
   onPhase("config");
   const environment = checkEnvironment();
+  const config = await checkConfig();
+  const { apiBaseUrl, webBaseUrl, token } = config.facts;
+
+  const runtime: Runtime | null = token
+    ? {
+        apiBaseUrl,
+        webBaseUrl,
+        token,
+        context,
+        version: cliPackage.version,
+        logger: buildLogger(context),
+      }
+    : null;
 
   onPhase("version");
-  // Without a token, the latest version comes from the npm registry.
   const cli = await checkCli({
-    runtime: null,
-    apiReachable: false,
+    runtime,
+    // Until network checks exist, always try the DX API when there's a token.
+    // A failed lookup falls back to the npm registry.
+    apiReachable: true,
     install: deps.install(),
     latestVersion: deps.latestVersion,
     now,
   });
   const skill = await checkSkill();
 
-  return buildReport([cli, environment, skill]);
+  return buildReport([cli, environment, config.section, skill]);
 }
 
 function buildReport(sections: Section[]): DoctorReport {
