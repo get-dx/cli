@@ -26,7 +26,7 @@ const PHASE_MESSAGES: Record<DoctorPhase, string> = {
 export function doctorCommand(): Command {
   return new Command("doctor")
     .description(
-      "Diagnose installation, configuration, authentication, and network problems",
+      "Diagnose problems with your CLI instance's installation, configuration, networking, and authentication",
     )
     .addHelpText(
       "afterAll",
