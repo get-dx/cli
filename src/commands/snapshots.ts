@@ -10,6 +10,7 @@ import { CliError, EXIT_CODES } from "../errors.js";
 import { request } from "../http.js";
 import { renderJson, renderRichText } from "../renderers.js";
 import { buildRuntime } from "../runtime.js";
+import { formatTeamMember, type TeamMember } from "./teams.js";
 import type { Runtime } from "../types.js";
 import * as ui from "../ui.js";
 
@@ -192,6 +193,43 @@ export function snapshotsCommand(): Command {
       }),
     );
 
+  const snapshotTeams = new Command()
+    .name("snapshotTeams")
+    .description("Work with snapshot teams");
+
+  snapshotTeams
+    .command("list")
+    .description("List teams for a snapshot")
+    .option("--id <id>", "The unique ID of the snapshot")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "List teams for a snapshot",
+          command: "dx snapshots snapshotTeams list --id MjUyNbaY",
+        },
+        {
+          label: "List snapshot teams as JSON",
+          command: "dx --json snapshots snapshotTeams list --id MjUyNbaY",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (options, command) => {
+        const snapshotId = parseRequiredTextOption(options.id, "--id");
+        const runtime = await buildRuntime(getContext(command));
+        const response = await listSnapshotTeams(runtime, snapshotId);
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderSnapshotTeams(response.snapshot_teams, snapshotId, runtime);
+        }
+      }),
+    );
+
+  snapshots.addCommand(snapshotTeams);
+
   return snapshots;
 }
 
@@ -265,6 +303,20 @@ type SnapshotTeam = {
   team_id?: string;
 };
 
+type SnapshotTeamWithManager = {
+  id: string;
+  is_parent: boolean;
+  manager: TeamMember | null;
+  name: string;
+  parent_id: string | null;
+  team_id: string;
+};
+
+type ListSnapshotTeamsResponse = {
+  ok: true;
+  snapshot_teams: SnapshotTeamWithManager[];
+};
+
 type SnapshotTeamScore = {
   contributor_count?: number | null;
   item_id?: string | null;
@@ -323,6 +375,22 @@ async function listSnapshotCsatComments(
         cursor: options.cursor,
         limit: options.limit,
       },
+    },
+  );
+
+  return response.body;
+}
+
+async function listSnapshotTeams(
+  runtime: Runtime,
+  snapshotId: string,
+): Promise<ListSnapshotTeamsResponse> {
+  const response = await request<ListSnapshotTeamsResponse>(
+    runtime,
+    "/snapshots.snapshotTeams.list",
+    {
+      method: "GET",
+      query: { snapshot_id: snapshotId },
     },
   );
 
@@ -480,6 +548,34 @@ function renderSnapshotCsatComments(
   renderRichText(blocks);
 }
 
+function renderSnapshotTeams(
+  teams: SnapshotTeamWithManager[],
+  snapshotId: string,
+  runtime: Runtime,
+): void {
+  const blocks: ui.Block[] = [ui.h1("Snapshot Teams")];
+  blocks.push(ui.p(`Displaying ${ui.bold(teams.length.toString())} teams.`));
+  blocks.push(
+    ui.p(
+      `Snapshot Team IDs are only valid within this snapshot and feed ${ui.code("snapshot_team_ids")} score filters. Use ${ui.code("team_id")} with ${ui.code("dx teams info --team-id")}.`,
+    ),
+  );
+  blocks.push(ui.p(ui.link(snapshotWebLink(snapshotId, "drivers", runtime))));
+
+  if (teams.length === 0) {
+    blocks.push(ui.p(ui.dim("(None)")));
+    renderRichText(blocks);
+    return;
+  }
+
+  const rootTeams = buildSnapshotTeamTree(teams);
+  rootTeams.forEach((rootTeam) => {
+    appendSnapshotTeamBlock(blocks, rootTeam, 0);
+  });
+
+  renderRichText(blocks);
+}
+
 function renderSnapshotInfo(
   snapshot: SnapshotInfo,
   snapshotId: string,
@@ -626,6 +722,98 @@ function extractCsatComments(
     response.comments ??
     []
   );
+}
+
+class SnapshotTeamTreeNode {
+  team: SnapshotTeamWithManager;
+  children: SnapshotTeamTreeNode[] = [];
+
+  constructor(team: SnapshotTeamWithManager) {
+    this.team = team;
+  }
+}
+
+function buildSnapshotTeamTree(
+  teams: SnapshotTeamWithManager[],
+): SnapshotTeamTreeNode[] {
+  const nodes = new Map<string, SnapshotTeamTreeNode>();
+  teams.forEach((team) => {
+    nodes.set(team.id, new SnapshotTeamTreeNode(team));
+  });
+  const rootTeams: SnapshotTeamTreeNode[] = [];
+
+  teams.forEach((team) => {
+    const currentNode = nodes.get(team.id)!;
+
+    if (currentNode.team.parent_id === null) {
+      // It's a top-level root node
+      rootTeams.push(currentNode);
+    } else {
+      // Append it to its parent's children array
+      nodes.get(currentNode.team.parent_id)!.children.push(currentNode);
+    }
+  });
+
+  const sortNodes = (items: SnapshotTeamTreeNode[]): void => {
+    items.sort((left, right) => compareSnapshotTeams(left.team, right.team));
+    for (const item of items) {
+      sortNodes(item.children);
+    }
+  };
+
+  sortNodes(rootTeams);
+  return rootTeams;
+}
+
+function compareSnapshotTeams(
+  left: SnapshotTeamWithManager,
+  right: SnapshotTeamWithManager,
+): number {
+  const leftName = left.name.toLocaleLowerCase();
+  const rightName = right.name.toLocaleLowerCase();
+
+  if (leftName !== rightName) {
+    return leftName.localeCompare(rightName);
+  }
+
+  // If the names are the same, compare the IDs
+  const leftId = left.id.toLocaleLowerCase();
+  const rightId = right.id.toLocaleLowerCase();
+
+  return leftId.localeCompare(rightId);
+}
+
+function appendSnapshotTeamBlock(
+  blocks: ui.Block[],
+  node: SnapshotTeamTreeNode,
+  depth: number,
+): void {
+  blocks.push(
+    depth === 0
+      ? ui.h2(node.team.name)
+      : ui.h3(`${"↳".repeat(depth)} ${node.team.name}`),
+  );
+
+  const details = [
+    optionalDetail("Snapshot Team ID", formatText(node.team.id), node.team.id),
+    optionalDetail("Team ID", formatText(node.team.team_id), node.team.team_id),
+    // Match `dx teams info`: show "(None)" when the API returns a null manager,
+    // omit the row only when the field is absent entirely.
+    ui.dli("Manager", formatTeamMember(node.team.manager)),
+    optionalDetail(
+      "Parent ID",
+      formatText(node.team.parent_id),
+      node.team.parent_id,
+    ),
+  ].filter((detail) => detail !== null);
+
+  if (details.length > 0) {
+    blocks.push(ui.dl(details, { termWidth: 18 }));
+  }
+
+  node.children.forEach((child) => {
+    appendSnapshotTeamBlock(blocks, child, depth + 1);
+  });
 }
 
 function formatCommentHeading(comment: SnapshotDriverComment): string {

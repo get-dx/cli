@@ -137,6 +137,40 @@ describe("snapshots command", () => {
     },
   };
 
+  const snapshotTeamsResponse = {
+    ok: true as const,
+    snapshot_teams: [
+      {
+        id: "root-team",
+        name: "Platform",
+        team_id: "team-root",
+        is_parent: true,
+        parent_id: null,
+        manager: {
+          id: "user-1",
+          name: "Jane Manager",
+          email: "jane@example.com",
+        },
+      },
+      {
+        id: "child-team",
+        name: "Application Services",
+        team_id: "team-child",
+        is_parent: false,
+        parent_id: "root-team",
+        manager: null,
+      },
+      {
+        id: "sibling-team",
+        name: "Data Platform",
+        team_id: "team-sibling",
+        is_parent: false,
+        parent_id: "root-team",
+        manager: null,
+      },
+    ],
+  };
+
   it("lists snapshot CSAT comments in human-readable output", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
     process.env.DX_WEB_BASE_URL = "https://app.example.com";
@@ -556,6 +590,95 @@ describe("snapshots command", () => {
 
     expect(stdoutWrites.join("")).toContain("Build speed");
     expect(stdoutWrites.join("")).toContain("Tests could be faster.");
+  });
+
+  it("lists snapshot teams in tree order in human-readable output", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(snapshotTeamsResponse), {
+          status: 200,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "snapshotTeams",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.snapshotTeams.list?snapshot_id=MjUyNbaY",
+      expect.objectContaining({ method: "GET" }),
+    );
+    const output = stdoutWrites.join("");
+    expect(output).toContain("Snapshot Teams");
+    expect(output).toContain("Displaying 3 teams.");
+    expect(output).toContain("snapshot_team_ids");
+    expect(output).toContain("Platform");
+    expect(output).toContain("Application Services");
+    expect(output).toContain("Data Platform");
+    expect(output).toContain("Snapshot Team ID");
+    expect(output).toContain("child-team");
+    expect(output).toContain("team-child");
+    expect(output).toContain("Jane Manager <jane@example.com> (user-1)");
+    expect(output).toContain("(None)");
+    expect(output.indexOf("Platform")).toBeLessThan(
+      output.indexOf("Application Services"),
+    );
+    expect(output.indexOf("Application Services")).toBeLessThan(
+      output.indexOf("Data Platform"),
+    );
+  });
+
+  it("prints the snapshots teams API response with --json", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(snapshotTeamsResponse), {
+          status: 200,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "--json",
+      "snapshots",
+      "snapshotTeams",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(JSON.parse(stdoutWrites.join(""))).toEqual(snapshotTeamsResponse);
+  });
+
+  it("errors when snapshot teams are missing --id", async () => {
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+
+    const { run } = await import("../cli.js");
+    await run(["node", "dx", "snapshots", "snapshotTeams", "list"]);
+
+    expect(stderrWrites.join("")).toContain("--id is required");
+    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
   });
 
   it("errors when snapshot driver comments are missing --id", async () => {
