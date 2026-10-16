@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  deriveBaseUrlsFromEnv,
   getConfigPath,
   readConfig,
   resolveWebBaseUrl,
@@ -20,6 +21,52 @@ beforeEach(() => {
 
 afterEach(() => {
   process.env = { ...originalEnv };
+});
+
+describe("deriveBaseUrlsFromEnv", () => {
+  const cloudBaseUrls = {
+    apiBaseUrl: "https://api.getdx.com",
+    webBaseUrl: "https://app.getdx.com",
+  };
+
+  it("defaults to cloud when DX_WEB_BASE_URL is unset", () => {
+    delete process.env.DX_WEB_BASE_URL;
+    delete process.env.DX_API_BASE_URL;
+
+    expect(deriveBaseUrlsFromEnv()).toEqual(cloudBaseUrls);
+  });
+
+  it.each([
+    "app.getdx.com",
+    "app.getdx.com/",
+    "https://app.getdx.com",
+    "https://app.getdx.com/",
+    "http://app.getdx.com",
+  ])("treats DX_WEB_BASE_URL=%s as cloud", (webBaseUrl) => {
+    process.env.DX_WEB_BASE_URL = webBaseUrl;
+    delete process.env.DX_API_BASE_URL;
+
+    expect(deriveBaseUrlsFromEnv()).toEqual(cloudBaseUrls);
+  });
+
+  it("derives dedicated base URLs from a getdx.io host", () => {
+    process.env.DX_WEB_BASE_URL = "https://acme.getdx.io/";
+    delete process.env.DX_API_BASE_URL;
+
+    expect(deriveBaseUrlsFromEnv()).toEqual({
+      apiBaseUrl: "https://api.acme.getdx.io",
+      webBaseUrl: "https://acme.getdx.io",
+    });
+  });
+
+  it("requires DX_API_BASE_URL for a managed deployment", () => {
+    process.env.DX_WEB_BASE_URL = "https://dx.example.com";
+    delete process.env.DX_API_BASE_URL;
+
+    expect(() => deriveBaseUrlsFromEnv()).toThrow(
+      "DX_API_BASE_URL must be specified when authenticating with a managed deployment",
+    );
+  });
 });
 
 describe("resolveWebBaseUrl", () => {

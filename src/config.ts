@@ -207,7 +207,7 @@ type ParsedWebBaseUrl =
 function parseWebBaseUrl(raw: string): ParsedWebBaseUrl {
   const normalized = raw.trim().replace(/\/$/, "");
 
-  if (!normalized || normalized === "app.getdx.com") {
+  if (!normalized) {
     return { type: "cloud" };
   }
 
@@ -216,6 +216,10 @@ function parseWebBaseUrl(raw: string): ParsedWebBaseUrl {
       normalized.startsWith("http") ? normalized : `https://${normalized}`,
     );
     const host = url.hostname;
+
+    if (host === "app.getdx.com") {
+      return { type: "cloud" };
+    }
 
     const dedicatedMatch = host.match(/^(.+)\.getdx\.io$/);
     if (dedicatedMatch) {
