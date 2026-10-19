@@ -8,6 +8,11 @@ import { writeConfig, getConfigPath } from "../config.js";
 import type { TokenLookup } from "../secrets.js";
 import { detectInstall, type LatestVersionLookup } from "./cli.js";
 import { runDoctor, type DoctorDependencies } from "./index.js";
+import {
+  ProbeTimeoutError,
+  type NetworkProbes,
+  type TlsHandshakeResult,
+} from "./probes.js";
 import type { Check, DoctorReport } from "./types.js";
 
 import cliPackage from "../../package.json" with { type: "json" };
@@ -50,6 +55,8 @@ beforeEach(() => {
     token: TOKEN,
     storeName: "macOS Keychain",
   });
+
+  vi.stubGlobal("fetch", vi.fn(authInfoResponse));
 });
 
 afterEach(() => {
@@ -70,8 +77,16 @@ describe("runDoctor", () => {
       "cli",
       "environment",
       "config",
+      "network",
+      "auth",
       "skill",
     ]);
+    expect(find(report, "network", "tls").message).toContain(
+      'issuer "WE1 (Google Trust Services)"',
+    );
+    expect(find(report, "auth", "token_valid").message).toContain(
+      'personal access token "laptop"',
+    );
     expect(find(report, "environment", "none").message).toBe("(none set)");
   });
 
@@ -88,8 +103,242 @@ describe("runDoctor", () => {
     });
   });
 
+  it("sends the doctor header on the authenticated request", async () => {
+    await doctor();
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toBe("https://api.getdx.com/auth.info");
+    expect(new Headers(init?.headers).get("X-DX-Doctor")).toBe("1");
+  });
+
+  it("sends the doctor header on the unauthenticated request", async () => {
+    const probes = healthyProbes();
+
+    await doctor({ probes });
+
+    const [url, init] = vi.mocked(probes.fetch).mock.calls[0];
+    expect(url).toBe("https://api.getdx.com/auth.info");
+    expect(new Headers(init?.headers).get("X-DX-Doctor")).toBe("1");
+    expect(new Headers(init?.headers).get("Authorization")).toBeNull();
+  });
+
+  describe("network", () => {
+    it("explains a connection reset during the TLS handshake", async () => {
+      const probes = healthyProbes({
+        tlsHandshake: vi
+          .fn()
+          .mockRejectedValue(errorWithCode("read ECONNRESET", "ECONNRESET")),
+      });
+
+      const report = await doctor({ probes });
+
+      expect(find(report, "network", "dns").status).toBe("ok");
+      expect(find(report, "network", "tcp").status).toBe("ok");
+      expect(find(report, "network", "tls")).toMatchObject({
+        status: "fail",
+        message: "connection reset by peer during handshake (ECONNRESET)",
+      });
+      expect(find(report, "network", "tls").hint).toContain(
+        "firewall or proxy",
+      );
+      expect(find(report, "network", "https")).toMatchObject({
+        status: "skip",
+        message: "skipped because the TLS handshake failed",
+      });
+      expect(find(report, "auth", "token_valid")).toMatchObject({
+        status: "skip",
+        message: "skipped because the API is unreachable",
+      });
+      expect(report.ok).toBe(false);
+    });
+
+    it("fails when the certificate chain is not trusted", async () => {
+      const probes = healthyProbes({
+        tlsHandshake: vi.fn().mockResolvedValue(
+          tlsResult({
+            authorized: false,
+            authorizationError: "SELF_SIGNED_CERT_IN_CHAIN",
+            rootIsBundled: false,
+            rootIssuer: "Corp Root CA",
+          }),
+        ),
+      });
+
+      const report = await doctor({ probes });
+
+      const tls = find(report, "network", "tls");
+      expect(tls.status).toBe("fail");
+      expect(tls.message).toContain("SELF_SIGNED_CERT_IN_CHAIN");
+      expect(tls.hint).toContain("NODE_EXTRA_CA_CERTS");
+    });
+
+    it("warns when the chain is only trusted through a non-bundled CA", async () => {
+      const probes = healthyProbes({
+        tlsHandshake: vi
+          .fn()
+          .mockResolvedValue(
+            tlsResult({ rootIsBundled: false, rootIssuer: "Corp Root CA" }),
+          ),
+      });
+
+      const report = await doctor({ probes });
+
+      const tls = find(report, "network", "tls");
+      expect(tls.status).toBe("warn");
+      expect(tls.hint).toContain('intercepted by "Corp Root CA"');
+      expect(find(report, "network", "https").status).toBe("ok");
+    });
+
+    it("reports timeouts with their duration", async () => {
+      const probes = healthyProbes({
+        tcpConnect: vi.fn().mockRejectedValue(new ProbeTimeoutError(10_000)),
+      });
+
+      const report = await doctor({ probes });
+
+      expect(find(report, "network", "tcp")).toMatchObject({
+        status: "fail",
+        message: "connecting to port 443 timed out after 10s",
+      });
+      expect(find(report, "network", "tls").status).toBe("skip");
+    });
+
+    it("explains when DNS cannot resolve the host", async () => {
+      const probes = healthyProbes({
+        lookup: vi
+          .fn()
+          .mockRejectedValue(
+            errorWithCode("getaddrinfo ENOTFOUND api.getdx.com", "ENOTFOUND"),
+          ),
+      });
+
+      const report = await doctor({ probes });
+
+      expect(find(report, "network", "dns").hint).toContain(
+        "api.getdx.com could not be resolved",
+      );
+      expect(find(report, "network", "tcp").message).toBe(
+        "skipped because DNS lookup failed",
+      );
+    });
+
+    it("fails when something other than the API answers", async () => {
+      const probes = healthyProbes({
+        fetch: vi.fn(
+          async () =>
+            new Response("<html>Blocked by policy</html>", { status: 200 }),
+        ),
+      });
+
+      const report = await doctor({ probes });
+
+      const https = find(report, "network", "https");
+      expect(https.status).toBe("fail");
+      expect(https.message).toContain("non-JSON");
+      expect(https.hint).toContain("captive portal");
+    });
+
+    it("skips TLS for a plain HTTP API base URL", async () => {
+      writeConfig({
+        apiBaseUrl: "http://localhost:3000",
+        webBaseUrl: "http://localhost:3001",
+      });
+      const probes = healthyProbes();
+
+      const report = await doctor({ probes });
+
+      expect(find(report, "network", "tcp").message).toContain("port 3000");
+      expect(find(report, "network", "tls").status).toBe("skip");
+      expect(probes.tlsHandshake).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("auth", () => {
+    it("fails when the API rejects the token", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          Response.json({ ok: false, error: "not_authed" }, { status: 401 }),
+        ),
+      );
+
+      const report = await doctor();
+
+      const tokenValid = find(report, "auth", "token_valid");
+      expect(tokenValid.status).toBe("fail");
+      expect(tokenValid.message).toContain("token rejected by api.getdx.com");
+    });
+
+    it.each([
+      {
+        status: 403,
+        error: "forbidden",
+        message: "access denied by api.getdx.com (HTTP 403: forbidden)",
+        hint: "IP allowlist, proxy, or firewall",
+      },
+      {
+        status: 429,
+        error: "rate_limited",
+        message: "rate limited by api.getdx.com (HTTP 429)",
+        hint: "Wait a minute",
+      },
+      {
+        status: 503,
+        error: "service_unavailable",
+        message: "HTTP 503: service_unavailable",
+        hint: "The DX API is having problems",
+      },
+    ])(
+      "explains an HTTP $status from the auth check",
+      async ({ status, error, message, hint }) => {
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(async () => Response.json({ ok: false, error }, { status })),
+        );
+
+        const report = await doctor();
+
+        const tokenValid = find(report, "auth", "token_valid");
+        expect(tokenValid).toMatchObject({
+          status: "fail",
+          message,
+          data: { status },
+        });
+        expect(tokenValid.hint).toContain(hint);
+      },
+    );
+
+    it("warns when a personal access token expires soon", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          authInfoResponse({ expires_at: "2026-10-17T12:00:00Z" }),
+        ),
+      );
+
+      const report = await doctor();
+
+      const expires = find(report, "auth", "expires");
+      expect(expires.status).toBe("warn");
+      expect(expires.message).toMatch(/\(3d\)$/);
+    });
+
+    it("fails when a personal access token has expired", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          authInfoResponse({ expires_at: "2026-10-01T00:00:00Z" }),
+        ),
+      );
+
+      const report = await doctor();
+
+      expect(find(report, "auth", "expires").status).toBe("fail");
+    });
+  });
+
   describe("config", () => {
-    it("fails when no token is found", async () => {
+    it("fails when no token is found and skips auth", async () => {
       getTokenWithSource.mockResolvedValue({
         source: "none",
         storeName: "macOS Keychain",
@@ -101,6 +350,9 @@ describe("runDoctor", () => {
         status: "fail",
         message: "no token found (checked DX_API_TOKEN and macOS Keychain)",
       });
+      expect(find(report, "auth", "token_valid").message).toBe(
+        "skipped because no token is configured",
+      );
     });
 
     it("reports keychain errors separately from a missing token", async () => {
@@ -344,6 +596,7 @@ function doctor(
     { json: true },
     {
       dependencies: {
+        probes: healthyProbes(),
         latestVersion: lookupReturning(cliPackage.version),
         install: () => ({
           method: "npm",
@@ -365,9 +618,62 @@ function find(report: DoctorReport, sectionId: string, checkId: string): Check {
   return found;
 }
 
+function healthyProbes(overrides: Partial<NetworkProbes> = {}): NetworkProbes {
+  return {
+    lookup: vi.fn().mockResolvedValue(["104.18.20.33"]),
+    tcpConnect: vi.fn().mockResolvedValue(undefined),
+    tlsHandshake: vi.fn().mockResolvedValue(tlsResult()),
+    fetch: vi.fn(async (input: string | URL | Request) =>
+      String(input).endsWith("/auth.info")
+        ? Response.json({ ok: false, error: "not_authed" }, { status: 401 })
+        : new Response("<html></html>", { status: 200 }),
+    ),
+    ...overrides,
+  };
+}
+
+function tlsResult(
+  overrides: Partial<TlsHandshakeResult> = {},
+): TlsHandshakeResult {
+  return {
+    protocol: "TLSv1.3",
+    authorized: true,
+    authorizationError: null,
+    certificate: {
+      subject: "getdx.com",
+      issuer: "WE1 (Google Trust Services)",
+      validTo: "2026-12-30T00:00:00.000Z",
+    },
+    rootIsBundled: true,
+    rootIssuer: "GTS Root R4 (Google Trust Services LLC)",
+    ...overrides,
+  };
+}
+
+function authInfoResponse(
+  overrides: { expires_at?: string | null } = {},
+): Response {
+  return Response.json({
+    ok: true,
+    auth: {
+      token_type: "personal_access_token",
+      token_name: "laptop",
+      scopes: ["entities:read"],
+      created_at: "2026-01-01T00:00:00Z",
+      expires_at: null,
+      ...overrides,
+    },
+    account: { name: "Acme Corp" },
+  });
+}
+
 function lookupReturning(version: string): LatestVersionLookup {
   return {
     fromApi: vi.fn().mockResolvedValue(version),
     fromNpm: vi.fn().mockResolvedValue(version),
   };
+}
+
+function errorWithCode(message: string, code: string): Error {
+  return Object.assign(new Error(message), { code });
 }
