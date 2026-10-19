@@ -269,6 +269,45 @@ describe("runDoctor", () => {
       expect(tokenValid.message).toContain("token rejected by api.getdx.com");
     });
 
+    it.each([
+      {
+        status: 403,
+        error: "forbidden",
+        message: "access denied by api.getdx.com (HTTP 403: forbidden)",
+        hint: "IP allowlist, proxy, or firewall",
+      },
+      {
+        status: 429,
+        error: "rate_limited",
+        message: "rate limited by api.getdx.com (HTTP 429)",
+        hint: "Wait a minute",
+      },
+      {
+        status: 503,
+        error: "service_unavailable",
+        message: "HTTP 503: service_unavailable",
+        hint: "The DX API is having problems",
+      },
+    ])(
+      "explains an HTTP $status from the auth check",
+      async ({ status, error, message, hint }) => {
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(async () => Response.json({ ok: false, error }, { status })),
+        );
+
+        const report = await doctor();
+
+        const tokenValid = find(report, "auth", "token_valid");
+        expect(tokenValid).toMatchObject({
+          status: "fail",
+          message,
+          data: { status },
+        });
+        expect(tokenValid.hint).toContain(hint);
+      },
+    );
+
     it("warns when a personal access token expires soon", async () => {
       vi.stubGlobal(
         "fetch",

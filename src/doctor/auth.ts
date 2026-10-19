@@ -18,23 +18,11 @@ export async function checkAuth(options: {
 }): Promise<Section> {
   const { runtime, apiReachable, now } = options;
 
-  const skipReason = !runtime
-    ? "no token is configured"
-    : !apiReachable
-      ? "the API is unreachable"
-      : null;
-  if (!runtime || skipReason) {
-    return {
-      ...SECTION,
-      checks: [
-        check(
-          "token_valid",
-          "Token valid",
-          "skip",
-          `skipped because ${skipReason}`,
-        ),
-      ],
-    };
+  if (!runtime) {
+    return skipped("no token is configured");
+  }
+  if (!apiReachable) {
+    return skipped("the API is unreachable");
   }
 
   const host = new URL(runtime.apiBaseUrl).host;
@@ -80,6 +68,15 @@ export async function checkAuth(options: {
   return { ...SECTION, checks };
 }
 
+function skipped(reason: string): Section {
+  return {
+    ...SECTION,
+    checks: [
+      check("token_valid", "Token valid", "skip", `skipped because ${reason}`),
+    ],
+  };
+}
+
 function tokenErrorCheck(error: unknown, host: string): Check {
   if (error instanceof HttpError && error.status === 401) {
     return check(
@@ -95,16 +92,15 @@ function tokenErrorCheck(error: unknown, host: string): Check {
   }
 
   if (error instanceof HttpError && error.status !== undefined) {
-    return check(
-      "token_valid",
-      "Token valid",
-      "fail",
-      `HTTP ${error.status}: ${error.message}`,
-      {
-        hint: "The DX API could not validate the token. Try again, and contact DX support if this persists.",
-        data: { status: error.status },
-      },
+    const { message, hint } = describeHttpFailure(
+      error.status,
+      error.message,
+      host,
     );
+    return check("token_valid", "Token valid", "fail", message, {
+      hint,
+      data: { status: error.status },
+    });
   }
 
   return check(
@@ -117,6 +113,38 @@ function tokenErrorCheck(error: unknown, host: string): Check {
       data: { status: null },
     },
   );
+}
+
+function describeHttpFailure(
+  status: number,
+  errorMessage: string,
+  host: string,
+): { message: string; hint: string } {
+  if (status === 403) {
+    return {
+      message: `access denied by ${host} (HTTP 403: ${errorMessage})`,
+      hint: "The token was recognized but this request was refused. An IP allowlist, proxy, or firewall may be blocking it. Check with your DX admin or network team.",
+    };
+  }
+
+  if (status === 429) {
+    return {
+      message: `rate limited by ${host} (HTTP 429)`,
+      hint: "Too many requests. Wait a minute and run `dx doctor` again.",
+    };
+  }
+
+  if (status >= 500) {
+    return {
+      message: `HTTP ${status}: ${errorMessage}`,
+      hint: "The DX API is having problems. Try again in a few minutes, and contact DX support if this persists.",
+    };
+  }
+
+  return {
+    message: `HTTP ${status}: ${errorMessage}`,
+    hint: "The DX API could not validate the token. Try again, and contact DX support if this persists.",
+  };
 }
 
 function expiryCheck(expiresAt: string | null | undefined, now: Date): Check {
