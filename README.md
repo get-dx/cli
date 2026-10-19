@@ -29,13 +29,6 @@ dx <subcommand> --help
 
 For usage instructions and for more information about configuration, visit the [DX CLI documentation](https://docs.getdx.com/cli/).
 
-Snapshot attribute filtering helpers:
-
-```shell
-dx attributeGroups list
-dx --json attributeGroups list
-```
-
 ## Developing the CLI
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md).
