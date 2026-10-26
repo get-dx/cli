@@ -323,6 +323,13 @@ type StudioReportTile = {
   sql: string | null;
   chart_type: string;
   chart_config: Record<string, unknown>;
+  section_id?: number | null;
+};
+
+type StudioReportSection = {
+  id: string;
+  name: string;
+  description: string | null;
 };
 
 type StudioReportOwner = {
@@ -343,6 +350,7 @@ type StudioReport = {
   owner: StudioReportOwner | null;
   url: string;
   tiles: StudioReportTile[];
+  sections: StudioReportSection[];
   created_at: string;
   updated_at: string;
 };
@@ -353,6 +361,13 @@ type StudioReportTilePayload = {
   sql: string | null;
   chart_type: string;
   chart_config: Record<string, unknown>;
+  section_id?: number | null;
+};
+
+type StudioReportSectionPayload = {
+  id?: string;
+  name: string;
+  description: string | null;
 };
 
 type ResponseMetadata = {
@@ -369,6 +384,7 @@ type CreateStudioReportPayload = {
   viewer_emails?: string[];
   editor_emails?: string[];
   tiles?: StudioReportTilePayload[];
+  sections?: StudioReportSectionPayload[];
 };
 
 type UpdateStudioReportPayload = CreateStudioReportPayload & {
@@ -648,12 +664,18 @@ function studioReportToYaml(report: StudioReport): string {
     viewer_emails: report.viewer_emails ?? [],
     edit_access_type: report.edit_access_type,
     editor_emails: report.editor_emails ?? [],
+    sections: report.sections?.map((section) => ({
+      id: section.id,
+      name: section.name,
+      description: section.description,
+    })),
     tiles: report.tiles.map((tile) => ({
       id: tile.id,
       title: tile.title,
       sql: tile.sql,
       chart_type: tile.chart_type,
       chart_config: tile.chart_config,
+      section_id: tile.section_id,
     })),
   };
 
