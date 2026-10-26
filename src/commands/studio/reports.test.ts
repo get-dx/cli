@@ -93,6 +93,7 @@ describe("studio reports command", () => {
           xAxis: "week_start",
           yAxes: ["deploys"],
         },
+        section_id: "section_one",
       },
       {
         id: "tile_table",
@@ -100,7 +101,6 @@ describe("studio reports command", () => {
         sql: "SELECT * FROM deployments LIMIT 10",
         chart_type: "table",
         chart_config: {},
-        section_id: "section_one",
       },
     ],
     sections: [
@@ -725,7 +725,7 @@ describe("studio reports command", () => {
       };
       expect(parsed.tiles.map((tile) => tile.section_id)).toEqual([
         "section_one",
-        null,
+        undefined,
       ]);
       const section = parsed.sections[0];
       expect(section.id).toEqual("section_one");
