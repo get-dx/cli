@@ -238,6 +238,11 @@ export function snapshotsCommand(): Command {
     .command("list")
     .description("List workflow scores and details for a snapshot")
     .option("--id <id>", "The unique ID of the snapshot")
+    .option("--team-ids [teamIds...]", "Filter the results to users in these snapshot teams")
+    .option("--snapshot-team-ids [snapshotTeamIds...]", "Filter the results to users in these teams")
+    .option("--group-ids [groupIds...]", "Filter the results to users in these groups")
+    .option("--branch-ids [branchIds...]", "Filter the results to users in these branches")
+    .option("--attribute-ids [attributeIds...]", "Filter the results to users with these attributes")
     .addHelpText(
       "afterAll",
       createExampleText([
@@ -255,7 +260,7 @@ export function snapshotsCommand(): Command {
       wrapAction(async (options, command) => {
         const snapshotId = parseRequiredTextOption(options.id, "--id");
         const runtime = await buildRuntime(getContext(command));
-        const response = await listSnapshotWorkflowScores(runtime, snapshotId);
+        const response = await listSnapshotWorkflowScores(runtime, snapshotId, options);
 
         if (runtime.context.json) {
           renderJson(response);
@@ -383,6 +388,18 @@ type SnapshotWorkflowScoreDistribution = {
   count: number;
 };
 
+type SnapshotWorkflowScoresFilterItem = {
+  id: string;
+  name: string;
+};
+
+type SnapshotWorkflowScoresAttributeGroup = {
+  id: string;
+  name: string;
+  type: string;
+  attributes: SnapshotWorkflowScoresFilterItem[];
+};
+
 type SnapshotWorkflowScoreResult = {
   workflow: SnapshotWorkflowScoreWorkflow;
   score: number;
@@ -400,11 +417,11 @@ type SnapshotWorkflowScoresFilters = {
     completed_count: number;
     total_count: number;
   };
-  teams: string[];
-  snapshot_teams: string[];
-  groups: string[];
-  branches: string[];
-  attribute_groups: string[];
+  teams: SnapshotWorkflowScoresFilterItem[];
+  snapshot_teams: SnapshotWorkflowScoresFilterItem[];
+  groups: SnapshotWorkflowScoresFilterItem[];
+  branches: SnapshotWorkflowScoresFilterItem[];
+  attribute_groups: SnapshotWorkflowScoresAttributeGroup[];
 };
 
 type ListSnapshotWorkflowScoresResponse = {
@@ -496,17 +513,42 @@ async function listSnapshotTeams(
 async function listSnapshotWorkflowScores(
   runtime: Runtime,
   snapshotId: string,
+  options: Record<string, string>,
 ): Promise<ListSnapshotWorkflowScoresResponse> {
+  const query: Record<string, string> = {
+    snapshot_id: snapshotId,
+    ...normalizeSnapshotOptions(options),
+  }
   const response = await request<ListSnapshotWorkflowScoresResponse>(
     runtime,
     "/snapshots.workflowScores.list",
     {
       method: "GET",
-      query: { snapshot_id: snapshotId },
+      query,
     },
   );
 
   return response.body;
+}
+
+function normalizeSnapshotOptions(options: Record<string, string>): Record<string, string> {
+  // Commander normalizes multi word options to camelCase, so typing --team-ids gives us
+  // options.teamIds. Normalize to what our Web API accepts, which is snake case.
+  const optionMapping = {
+    teamIds: "team_ids",
+    snapshotTeamIds: "snapshot_team_ids",
+    groupIds: "group_ids",
+    branchIds: "branch_ids",
+    attributeIds: "attribute_ids",
+  }
+  const webApiOptions: Record<string, string> = {}
+  Object.entries(optionMapping).forEach(([cliOptionName, webApiOptionName]) => {
+    if (Object.hasOwn(options, cliOptionName)) {
+      webApiOptions[webApiOptionName] = options[cliOptionName]
+    }
+  })
+
+  return webApiOptions;
 }
 
 async function getSnapshotInfo(
