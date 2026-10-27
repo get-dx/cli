@@ -869,6 +869,7 @@ function renderSnapshotWorkflowScores(
 
   for (const result of results) {
     blocks.push(ui.h2(result.workflow.name));
+    blocks.push(ui.p(result.workflow.prompt));
 
     if (result.hidden) {
       blocks.push(ui.p(ui.dim("(Hidden)")));
