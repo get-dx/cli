@@ -3,6 +3,7 @@ import { Command } from "commander";
 import {
   createExampleText,
   getContext,
+  parseCommaSeparatedValues,
   parsePositiveIntOption,
   wrapAction,
 } from "../commandHelpers.js";
@@ -238,26 +239,11 @@ export function snapshotsCommand(): Command {
     .command("list")
     .description("List workflow scores and details for a snapshot")
     .option("--id <id>", "The unique ID of the snapshot")
-    .option(
-      "--team-ids [teamIds...]",
-      "Filter the results to users in these snapshot teams",
-    )
-    .option(
-      "--snapshot-team-ids [snapshotTeamIds...]",
-      "Filter the results to users in these teams",
-    )
-    .option(
-      "--group-ids [groupIds...]",
-      "Filter the results to users in these groups",
-    )
-    .option(
-      "--branch-ids [branchIds...]",
-      "Filter the results to users in these branches",
-    )
-    .option(
-      "--attribute-ids [attributeIds...]",
-      "Filter the results to users with these attributes",
-    )
+    .option("--team-ids <ids>", "Comma-separated team IDs")
+    .option("--snapshot-team-ids <ids>", "Comma-separated snapshot team IDs")
+    .option("--group-ids <ids>", "Comma-separated group IDs")
+    .option("--branch-ids <ids>", "Comma-separated branch IDs")
+    .option("--attribute-ids <ids>", "Comma-separated attribute IDs")
     .addHelpText(
       "afterAll",
       createExampleText([
@@ -270,14 +256,14 @@ export function snapshotsCommand(): Command {
           command: "dx --json snapshots workflowScores list --id MjUyNbaY",
         },
         {
+          label: "Filter workflow scores by team IDs",
+          command:
+            "dx snapshots workflowScores list --id MjUyNbaY --team-ids MTExNDg5,MTExNDg4",
+        },
+        {
           label: "Filter workflow scores by snapshot team IDs",
           command:
             "dx snapshots workflowScores list --id MjUyNbaY --snapshot-team-ids NTcxMDM",
-        },
-        {
-          label: "Filter workflow scores by team IDs",
-          command:
-            "dx snapshots workflowScores list --id MjUyNbaY --team-ids MTExNDg5 MTExNDg4",
         },
         {
           label: "Filter workflow scores by group IDs",
@@ -300,16 +286,26 @@ export function snapshotsCommand(): Command {
       wrapAction(async (options, command) => {
         const snapshotId = parseRequiredTextOption(options.id, "--id");
         const runtime = await buildRuntime(getContext(command));
-        const response = await listSnapshotWorkflowScores(
+        const response = await request<ListSnapshotWorkflowScoresResponse>(
           runtime,
-          snapshotId,
-          options,
+          "/snapshots.workflowScores.list",
+          {
+            method: "GET",
+            query: {
+              snapshot_id: snapshotId,
+              ...normalizeSnapshotFilterOptions(options),
+            },
+          },
         );
 
         if (runtime.context.json) {
-          renderJson(response);
+          renderJson(response.body);
         } else {
-          renderSnapshotWorkflowScores(response.results, snapshotId, runtime);
+          renderSnapshotWorkflowScores(
+            response.body.results,
+            snapshotId,
+            runtime,
+          );
         }
       }),
     );
@@ -446,7 +442,8 @@ type SnapshotWorkflowScoresAttributeGroup = {
 
 type SnapshotWorkflowScoreResult = {
   workflow: SnapshotWorkflowScoreWorkflow;
-  score: number;
+  // null when the workflow is hidden
+  score: number | null;
   distribution: SnapshotWorkflowScoreDistribution[];
   total_respondents: number;
   total_cohort: number;
@@ -554,47 +551,26 @@ async function listSnapshotTeams(
   return response.body;
 }
 
-async function listSnapshotWorkflowScores(
-  runtime: Runtime,
-  snapshotId: string,
-  options: Record<string, string>,
-): Promise<ListSnapshotWorkflowScoresResponse> {
-  const query: Record<string, string> = {
-    snapshot_id: snapshotId,
-    ...normalizeSnapshotOptions(options),
+type SnapshotFilterOptions = {
+  teamIds?: string;
+  snapshotTeamIds?: string;
+  groupIds?: string;
+  branchIds?: string;
+  attributeIds?: string;
+};
+
+function normalizeSnapshotFilterOptions(
+  options: SnapshotFilterOptions,
+): Record<string, string | undefined> {
+  return {
+    snapshot_team_ids: parseCommaSeparatedValues(options.snapshotTeamIds)?.join(
+      ",",
+    ),
+    team_ids: parseCommaSeparatedValues(options.teamIds)?.join(","),
+    group_ids: parseCommaSeparatedValues(options.groupIds)?.join(","),
+    attribute_ids: parseCommaSeparatedValues(options.attributeIds)?.join(","),
+    branch_ids: parseCommaSeparatedValues(options.branchIds)?.join(","),
   };
-  const response = await request<ListSnapshotWorkflowScoresResponse>(
-    runtime,
-    "/snapshots.workflowScores.list",
-    {
-      method: "GET",
-      query,
-    },
-  );
-
-  return response.body;
-}
-
-function normalizeSnapshotOptions(
-  options: Record<string, string>,
-): Record<string, string> {
-  // Commander normalizes multi word options to camelCase, so typing --team-ids gives us
-  // options.teamIds. Normalize to what our Web API accepts, which is snake case.
-  const optionMapping = {
-    teamIds: "team_ids",
-    snapshotTeamIds: "snapshot_team_ids",
-    groupIds: "group_ids",
-    branchIds: "branch_ids",
-    attributeIds: "attribute_ids",
-  };
-  const webApiOptions: Record<string, string> = {};
-  Object.entries(optionMapping).forEach(([cliOptionName, webApiOptionName]) => {
-    if (Object.hasOwn(options, cliOptionName)) {
-      webApiOptions[webApiOptionName] = options[cliOptionName];
-    }
-  });
-
-  return webApiOptions;
 }
 
 async function getSnapshotInfo(
@@ -845,6 +821,7 @@ function renderSnapshotWorkflowScores(
     ui.p(`Displaying ${ui.bold(results.length.toString())} workflows.`),
     ui.p(
       ui.link(
+        // Sort the web view by workflow name, ascending (sb = sort by, sr = sort reversed)
         snapshotWebLink(snapshotId, "workflow", runtime, {
           sb: "name",
           sr: "false",
@@ -870,7 +847,10 @@ function renderSnapshotWorkflowScores(
       ui.dl(
         [
           ui.dli("Workflow ID", result.workflow.id),
-          optionalDetail("Score", formatNumber(result.score), result.score),
+          ui.dli(
+            "Score",
+            result.hidden ? ui.dim("(Hidden)") : formatNumber(result.score),
+          ),
           optionalDetail(
             "Respondents",
             formatNumber(result.total_respondents),
@@ -886,7 +866,6 @@ function renderSnapshotWorkflowScores(
             "Lower is better",
             result.workflow.lower_is_better ? "Yes" : "No",
           ),
-          ui.dli("Hidden", result.hidden ? "Yes" : "No"),
           ui.dli("Benchmark", benchmarkValue),
         ].filter((detail) => detail !== null),
         { termWidth: 16 },
