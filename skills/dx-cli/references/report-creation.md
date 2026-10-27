@@ -96,6 +96,8 @@ tiles:
     chart_type: table
     chart_config: {}
     section_name: "Top section"
+    width: full
+    height: "1/2"
 ```
 
 ### Access settings
@@ -122,6 +124,8 @@ Provide `editor_emails` only when `edit_access_type` is `specific_users`.
 Supported tile `chart_type` values are `line`, `pie`, `stacked_bar`, `scatter`, and `table`.
 
 `line`, `stacked_bar`, and `scatter` chart configs require `xAxis` and `yAxes`; `pie` chart configs require `labelColumn` and `valueColumn`; `table` chart configs can be `{}`.
+
+Tiles `width` and `height` fields may set to one of the following values: "1/4", "1/3", "1/2", "2/3", "3/4", or "full".
 
 ### Sections
 

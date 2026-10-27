@@ -324,6 +324,8 @@ type StudioReportTile = {
   chart_type: string;
   chart_config: Record<string, unknown>;
   section_id?: number | null;
+  width?: string;
+  height?: string;
 };
 
 type StudioReportSection = {
@@ -362,6 +364,8 @@ type StudioReportTilePayload = {
   chart_type: string;
   chart_config: Record<string, unknown>;
   section_id?: number | null;
+  width?: string;
+  height?: string;
 };
 
 type StudioReportSectionPayload = {
@@ -676,6 +680,8 @@ function studioReportToYaml(report: StudioReport): string {
       chart_type: tile.chart_type,
       chart_config: tile.chart_config,
       section_id: tile.section_id,
+      width: tile.width,
+      height: tile.height,
     })),
   };
 
