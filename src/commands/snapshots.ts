@@ -260,7 +260,6 @@ export function snapshotsCommand(): Command {
         if (runtime.context.json) {
           renderJson(response);
         } else {
-          ensureWorkflowScoresSuccess(response);
           renderSnapshotWorkflowScores(response.results, snapshotId, runtime);
         }
       }),
@@ -414,12 +413,6 @@ type ListSnapshotWorkflowScoresResponse = {
   results: SnapshotWorkflowScoreResult[];
 };
 
-type SnapshotApiErrorResponse = {
-  ok: false;
-  error?: string;
-  error_details?: Record<string, unknown>;
-};
-
 type SnapshotTeamScore = {
   contributor_count?: number | null;
   item_id?: string | null;
@@ -503,37 +496,17 @@ async function listSnapshotTeams(
 async function listSnapshotWorkflowScores(
   runtime: Runtime,
   snapshotId: string,
-): Promise<ListSnapshotWorkflowScoresResponse | SnapshotApiErrorResponse> {
-  const response = await request<
-    ListSnapshotWorkflowScoresResponse | SnapshotApiErrorResponse
-  >(runtime, "/snapshots.workflowScores.list", {
-    method: "GET",
-    query: { snapshot_id: snapshotId },
-  });
+): Promise<ListSnapshotWorkflowScoresResponse> {
+  const response = await request<ListSnapshotWorkflowScoresResponse>(
+    runtime,
+    "/snapshots.workflowScores.list",
+    {
+      method: "GET",
+      query: { snapshot_id: snapshotId },
+    },
+  );
 
   return response.body;
-}
-
-function ensureWorkflowScoresSuccess(
-  response: ListSnapshotWorkflowScoresResponse | SnapshotApiErrorResponse,
-): asserts response is ListSnapshotWorkflowScoresResponse {
-  if (response.ok) {
-    return;
-  }
-
-  const errorCode = response.error?.trim() ?? "Failed to list snapshot workflow scores";
-
-  const details =
-    response.error_details && typeof response.error_details === "object"
-      ? Object.entries(response.error_details)
-          .map(([field, value]) => `${field}: ${String(value)}`)
-      : [];
-
-  const message =
-    details.length > 0 ? `${errorCode} (${details.join(", ")})` : errorCode;
-  const exitCode =
-    errorCode === "invalid_arguments" ? EXIT_CODES.ARGUMENT_ERROR : 1;
-  throw new CliError(message, exitCode);
 }
 
 async function getSnapshotInfo(
@@ -782,7 +755,14 @@ function renderSnapshotWorkflowScores(
   const blocks: ui.Block[] = [
     ui.h1("Snapshot Workflow Scores"),
     ui.p(`Displaying ${ui.bold(results.length.toString())} workflows.`),
-    ui.p(ui.link(snapshotWebLink(snapshotId, "workflow", runtime, { sb: "name", sr: "false" }))),
+    ui.p(
+      ui.link(
+        snapshotWebLink(snapshotId, "workflow", runtime, {
+          sb: "name",
+          sr: "false",
+        }),
+      ),
+    ),
   ];
 
   if (results.length === 0) {
@@ -1126,10 +1106,13 @@ function snapshotWebLink(
   runtime: Runtime,
   queryParams: Record<string, string> = {},
 ): string {
-  return ui.webLink(
-    `/snapshots/${snapshotId}/${section}?${new URLSearchParams(queryParams).toString()}`,
-    runtime,
-  );
+  let urlPath = `/snapshots/${snapshotId}/${section}`;
+  const params = new URLSearchParams(queryParams);
+  if (params.size > 0) {
+    urlPath += `?${params.toString()}`;
+  }
+
+  return ui.webLink(urlPath, runtime);
 }
 
 function parseRequiredTextOption(value: unknown, flag: string): string {
