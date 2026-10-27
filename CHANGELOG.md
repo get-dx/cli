@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `dx catalog relations create|delete|info|list|update`: Manage relation definitions between entity types in the Software Catalog.
+
 ## 0.9.0 - 2026-10-19
 
 ### Added
