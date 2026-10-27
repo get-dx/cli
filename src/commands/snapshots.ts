@@ -782,7 +782,7 @@ function renderSnapshotWorkflowScores(
   const blocks: ui.Block[] = [
     ui.h1("Snapshot Workflow Scores"),
     ui.p(`Displaying ${ui.bold(results.length.toString())} workflows.`),
-    ui.p(ui.link(snapshotWebLink(snapshotId, "workflow", runtime))),
+    ui.p(ui.link(snapshotWebLink(snapshotId, "workflow", runtime, { sb: "name", sr: "false" }))),
   ];
 
   if (results.length === 0) {
@@ -1124,8 +1124,12 @@ function snapshotWebLink(
   snapshotId: string,
   section: "drivers" | "drivers/comments" | "csat/comments" | "workflow",
   runtime: Runtime,
+  queryParams: Record<string, string> = {},
 ): string {
-  return ui.webLink(`/snapshots/${snapshotId}/${section}`, runtime);
+  return ui.webLink(
+    `/snapshots/${snapshotId}/${section}?${new URLSearchParams(queryParams).toString()}`,
+    runtime,
+  );
 }
 
 function parseRequiredTextOption(value: unknown, flag: string): string {
