@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `dx reports create/update`: Added support for managing sections in a report
+- `dx reports create/update`: Added support for managing sections and tile sizes in a report
 
 ## 0.9.0 - 2026-10-19
 
