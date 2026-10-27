@@ -230,6 +230,44 @@ export function snapshotsCommand(): Command {
 
   snapshots.addCommand(snapshotTeams);
 
+  const workflowScores = new Command()
+    .name("workflowScores")
+    .description("Work with snapshot workflow scores");
+
+  workflowScores
+    .command("list")
+    .description("List workflow scores and details for a snapshot")
+    .option("--id <id>", "The unique ID of the snapshot")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "List workflow scores for a snapshot",
+          command: "dx snapshots workflowScores list --id MjUyNbaY",
+        },
+        {
+          label: "List snapshot workflow scores as JSON",
+          command: "dx --json snapshots workflowScores list --id MjUyNbaY",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (options, command) => {
+        const snapshotId = parseRequiredTextOption(options.id, "--id");
+        const runtime = await buildRuntime(getContext(command));
+        const response = await listSnapshotWorkflowScores(runtime, snapshotId);
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          ensureWorkflowScoresSuccess(response);
+          renderSnapshotWorkflowScores(response.results, snapshotId, runtime);
+        }
+      }),
+    );
+
+  snapshots.addCommand(workflowScores);
+
   return snapshots;
 }
 
@@ -317,6 +355,71 @@ type ListSnapshotTeamsResponse = {
   snapshot_teams: SnapshotTeamWithManager[];
 };
 
+type SnapshotWorkflowScoreOption = {
+  label: string;
+  value: number;
+};
+
+type SnapshotWorkflowScoreBenchmark = {
+  name: string;
+  p_50: number;
+  p_75: number;
+  p_90: number;
+  year: number;
+};
+
+type SnapshotWorkflowScoreWorkflow = {
+  id: string;
+  name: string;
+  prompt: string;
+  options: SnapshotWorkflowScoreOption[];
+  unit: string;
+  lower_is_better: boolean;
+  benchmark: SnapshotWorkflowScoreBenchmark | null;
+};
+
+type SnapshotWorkflowScoreDistribution = {
+  label: string;
+  value: number;
+  count: number;
+};
+
+type SnapshotWorkflowScoreResult = {
+  workflow: SnapshotWorkflowScoreWorkflow;
+  score: number;
+  distribution: SnapshotWorkflowScoreDistribution[];
+  total_respondents: number;
+  total_cohort: number;
+  hidden: boolean;
+};
+
+type SnapshotWorkflowScoresFilters = {
+  snapshot: {
+    id: string;
+    scheduled_for: string;
+    completed_at: string;
+    completed_count: number;
+    total_count: number;
+  };
+  teams: string[];
+  snapshot_teams: string[];
+  groups: string[];
+  branches: string[];
+  attribute_groups: string[];
+};
+
+type ListSnapshotWorkflowScoresResponse = {
+  ok: true;
+  filters: SnapshotWorkflowScoresFilters;
+  results: SnapshotWorkflowScoreResult[];
+};
+
+type SnapshotApiErrorResponse = {
+  ok: false;
+  error?: string;
+  error_details?: Record<string, unknown>;
+};
+
 type SnapshotTeamScore = {
   contributor_count?: number | null;
   item_id?: string | null;
@@ -395,6 +498,42 @@ async function listSnapshotTeams(
   );
 
   return response.body;
+}
+
+async function listSnapshotWorkflowScores(
+  runtime: Runtime,
+  snapshotId: string,
+): Promise<ListSnapshotWorkflowScoresResponse | SnapshotApiErrorResponse> {
+  const response = await request<
+    ListSnapshotWorkflowScoresResponse | SnapshotApiErrorResponse
+  >(runtime, "/snapshots.workflowScores.list", {
+    method: "GET",
+    query: { snapshot_id: snapshotId },
+  });
+
+  return response.body;
+}
+
+function ensureWorkflowScoresSuccess(
+  response: ListSnapshotWorkflowScoresResponse | SnapshotApiErrorResponse,
+): asserts response is ListSnapshotWorkflowScoresResponse {
+  if (response.ok) {
+    return;
+  }
+
+  const errorCode = response.error?.trim() ?? "Failed to list snapshot workflow scores";
+
+  const details =
+    response.error_details && typeof response.error_details === "object"
+      ? Object.entries(response.error_details)
+          .map(([field, value]) => `${field}: ${String(value)}`)
+      : [];
+
+  const message =
+    details.length > 0 ? `${errorCode} (${details.join(", ")})` : errorCode;
+  const exitCode =
+    errorCode === "invalid_arguments" ? EXIT_CODES.ARGUMENT_ERROR : 1;
+  throw new CliError(message, exitCode);
 }
 
 async function getSnapshotInfo(
@@ -630,6 +769,64 @@ function renderSnapshotInfo(
     );
     blocks.push(ui.h3("Benchmarks"));
     blocks.push(ui.p(formatBenchmarkTable(teamScore)));
+  }
+
+  renderRichText(blocks);
+}
+
+function renderSnapshotWorkflowScores(
+  results: SnapshotWorkflowScoreResult[],
+  snapshotId: string,
+  runtime: Runtime,
+): void {
+  const blocks: ui.Block[] = [
+    ui.h1("Snapshot Workflow Scores"),
+    ui.p(`Displaying ${ui.bold(results.length.toString())} workflows.`),
+    ui.p(ui.link(snapshotWebLink(snapshotId, "workflow", runtime))),
+  ];
+
+  if (results.length === 0) {
+    blocks.push(ui.p(ui.dim("(None)")));
+    renderRichText(blocks);
+    return;
+  }
+
+  for (const result of results) {
+    blocks.push(ui.h2(result.workflow.name));
+    const benchmark = result.workflow.benchmark;
+    const benchmarkValue = benchmark
+      ? `${benchmark.name} (${benchmark.year}) p50=${benchmark.p_50}, p75=${benchmark.p_75}, p90=${benchmark.p_90}`
+      : ui.dim("(None)");
+
+    blocks.push(
+      ui.dl(
+        [
+          ui.dli("Workflow ID", result.workflow.id),
+          optionalDetail("Score", formatNumber(result.score), result.score),
+          optionalDetail(
+            "Respondents",
+            formatNumber(result.total_respondents),
+            result.total_respondents,
+          ),
+          optionalDetail(
+            "Cohort size",
+            formatNumber(result.total_cohort),
+            result.total_cohort,
+          ),
+          ui.dli("Unit", formatText(result.workflow.unit)),
+          ui.dli(
+            "Lower is better",
+            result.workflow.lower_is_better ? "Yes" : "No",
+          ),
+          ui.dli("Hidden", result.hidden ? "Yes" : "No"),
+          ui.dli("Benchmark", benchmarkValue),
+        ].filter((detail) => detail !== null),
+        { termWidth: 16 },
+      ),
+    );
+
+    blocks.push(ui.h3("Distribution"));
+    blocks.push(ui.p(formatWorkflowDistributionTable(result.distribution)));
   }
 
   renderRichText(blocks);
@@ -883,6 +1080,32 @@ function formatBenchmarkTable(teamScore: SnapshotTeamScore): string {
     ["vs_90th", formatBenchmarkNumber(teamScore.vs_90th)],
   ];
   const columns = ["Benchmark", "Value"];
+  return buildTable(columns, rows);
+}
+
+function formatBenchmarkNumber(value: unknown): string {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value.toString()
+    : "(None)";
+}
+
+function formatWorkflowDistributionTable(
+  distribution: SnapshotWorkflowScoreDistribution[],
+): string {
+  if (distribution.length === 0) {
+    return "(None)";
+  }
+
+  const rows = distribution.map((item) => [
+    item.label,
+    item.value.toString(),
+    item.count.toString(),
+  ]);
+  const columns = ["Label", "Value", "Count"];
+  return buildTable(columns, rows);
+}
+
+function buildTable(columns: string[], rows: string[][]): string {
   const widths = columns.map((column, index) =>
     Math.max(column.length, ...rows.map((row) => row[index].length)),
   );
@@ -897,15 +1120,9 @@ function formatBenchmarkTable(teamScore: SnapshotTeamScore): string {
   return [border, header, border, ...body, border].join("\n");
 }
 
-function formatBenchmarkNumber(value: unknown): string {
-  return typeof value === "number" && Number.isFinite(value)
-    ? value.toString()
-    : "(None)";
-}
-
 function snapshotWebLink(
   snapshotId: string,
-  section: "drivers" | "drivers/comments" | "csat/comments",
+  section: "drivers" | "drivers/comments" | "csat/comments" | "workflow",
   runtime: Runtime,
 ): string {
   return ui.webLink(`/snapshots/${snapshotId}/${section}`, runtime);

@@ -171,6 +171,25 @@ describe("snapshots command", () => {
     ],
   };
 
+  const workflowScoresResponse = {
+    ok: true as const,
+    filters: {
+      snapshot: {
+        id: "MjUyNbaY",
+        scheduled_for: "2024-06-16",
+        completed_at: "2024-07-01T14:01:51.027Z",
+        completed_count: 3077,
+        total_count: 3686,
+      },
+      teams: [],
+      snapshot_teams: [],
+      groups: [],
+      branches: [],
+      attribute_groups: [],
+    },
+    results: [],
+  };
+
   it("lists snapshot CSAT comments in human-readable output", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
     process.env.DX_WEB_BASE_URL = "https://app.example.com";
@@ -667,6 +686,144 @@ describe("snapshots command", () => {
     ]);
 
     expect(JSON.parse(stdoutWrites.join(""))).toEqual(snapshotTeamsResponse);
+  });
+
+  it("lists snapshot workflow scores in human-readable output", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(workflowScoresResponse), {
+          status: 200,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "workflowScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.workflowScores.list?snapshot_id=MjUyNbaY",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(stdoutWrites.join("")).toContain("Snapshot Workflow Scores");
+    expect(stdoutWrites.join("")).toContain("Displaying 0 workflows.");
+  });
+
+  it("prints the snapshots workflow scores API response with --json", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(workflowScoresResponse), {
+          status: 200,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "--json",
+      "snapshots",
+      "workflowScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(JSON.parse(stdoutWrites.join(""))).toEqual(workflowScoresResponse);
+  });
+
+  it("surfaces workflow scores invalid argument details when API returns ok=false", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error: "invalid_arguments",
+            error_details: {
+              snapshot_id: "Must be a valid snapshot id",
+            },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "workflowScores",
+      "list",
+      "--id",
+      "not-a-real-id",
+    ]);
+
+    expect(stderrWrites.join("")).toContain("invalid_arguments");
+    expect(stderrWrites.join("")).toContain(
+      "snapshot_id: Must be a valid snapshot id",
+    );
+    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+  });
+
+  it("prints workflow scores ok=false payload with --json", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+
+    const errorPayload = {
+      ok: false,
+      error: "invalid_arguments",
+      error_details: {
+        snapshot_id: "Must be a valid snapshot id",
+      },
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify(errorPayload), { status: 200 }),
+        ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "--json",
+      "snapshots",
+      "workflowScores",
+      "list",
+      "--id",
+      "not-a-real-id",
+    ]);
+
+    expect(JSON.parse(stdoutWrites.join(""))).toEqual(errorPayload);
   });
 
   it("errors when snapshot teams are missing --id", async () => {
