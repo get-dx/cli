@@ -766,6 +766,7 @@ describe("snapshots command", () => {
     );
     expect(stdoutWrites.join("")).toContain("Snapshot Workflow Scores");
     expect(stdoutWrites.join("")).toContain("Displaying 0 workflows.");
+    expect(stdoutWrites.join("")).not.toContain("Note: the web link");
     expect(stdoutWrites.join("")).toContain(
       "https://app.example.com/snapshots/MjUyNbaY/workflow?sb=name&sr=false",
     );
@@ -804,9 +805,100 @@ describe("snapshots command", () => {
     expect(visible).toContain("Under 5 minutes");
     expect(visible).toContain("42");
     expect(visible).not.toContain("(Hidden)");
-    expect(hidden).toContain("wf-review");
     expect(hidden).toContain("(Hidden)");
-    expect(hidden).toContain("(None)");
+    expect(hidden).not.toContain("wf-review");
+    expect(hidden).not.toContain("Distribution");
+  });
+
+  it("renders a single workflow and the empty distribution", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com";
+    getToken.mockReturnValue("token-123");
+
+    const [visibleResult] = workflowScoresWithResultsResponse.results;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ...workflowScoresResponse,
+            results: [{ ...visibleResult, distribution: [] }],
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "workflowScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    const [, distribution] = stdoutWrites.join("").split("Distribution");
+    expect(stdoutWrites.join("")).toContain("Displaying 1 workflow.");
+    expect(distribution).toContain("(None)");
+  });
+
+  it("renders applied workflow score filters and notes the unfiltered web link", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ...workflowScoresResponse,
+            filters: {
+              ...workflowScoresResponse.filters,
+              teams: [
+                { id: "team-1", name: "Platform" },
+                { id: "team-2", name: "Payments" },
+              ],
+              attribute_groups: [
+                {
+                  id: "attr-group-1",
+                  name: "Tenure",
+                  type: "string",
+                  attributes: [{ id: "attribute-1", name: "1-2 years" }],
+                },
+              ],
+            },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "workflowScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+      "--team-ids",
+      "team-1,team-2",
+      "--attribute-ids",
+      "attribute-1",
+    ]);
+
+    const output = stdoutWrites.join("");
+    expect(output).toContain("Platform, Payments");
+    expect(output).toContain("Tenure: 1-2 years");
+    expect(output).not.toContain("Snapshot teams");
+    expect(output).toContain(
+      "Note: the web link does not apply the filters above.",
+    );
   });
 
   it("passes workflow scores filter options to the API", async () => {
@@ -975,6 +1067,18 @@ describe("snapshots command", () => {
 
     const { run } = await import("../cli.js");
     await run(["node", "dx", "snapshots", "snapshotTeams", "list"]);
+
+    expect(stderrWrites.join("")).toContain("--id is required");
+    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+  });
+
+  it("errors when snapshot workflow scores are missing --id", async () => {
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+
+    const { run } = await import("../cli.js");
+    await run(["node", "dx", "snapshots", "workflowScores", "list"]);
 
     expect(stderrWrites.join("")).toContain("--id is required");
     expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);

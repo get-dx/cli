@@ -286,26 +286,16 @@ export function snapshotsCommand(): Command {
       wrapAction(async (options, command) => {
         const snapshotId = parseRequiredTextOption(options.id, "--id");
         const runtime = await buildRuntime(getContext(command));
-        const response = await request<ListSnapshotWorkflowScoresResponse>(
+        const response = await listSnapshotWorkflowScores(
           runtime,
-          "/snapshots.workflowScores.list",
-          {
-            method: "GET",
-            query: {
-              snapshot_id: snapshotId,
-              ...normalizeSnapshotFilterOptions(options),
-            },
-          },
+          snapshotId,
+          options,
         );
 
         if (runtime.context.json) {
-          renderJson(response.body);
+          renderJson(response);
         } else {
-          renderSnapshotWorkflowScores(
-            response.body.results,
-            snapshotId,
-            runtime,
-          );
+          renderSnapshotWorkflowScores(response, snapshotId, runtime);
         }
       }),
     );
@@ -551,6 +541,26 @@ async function listSnapshotTeams(
   return response.body;
 }
 
+async function listSnapshotWorkflowScores(
+  runtime: Runtime,
+  snapshotId: string,
+  options: SnapshotFilterOptions,
+): Promise<ListSnapshotWorkflowScoresResponse> {
+  const response = await request<ListSnapshotWorkflowScoresResponse>(
+    runtime,
+    "/snapshots.workflowScores.list",
+    {
+      method: "GET",
+      query: {
+        snapshot_id: snapshotId,
+        ...normalizeSnapshotFilterOptions(options),
+      },
+    },
+  );
+
+  return response.body;
+}
+
 type SnapshotFilterOptions = {
   teamIds?: string;
   snapshotTeamIds?: string;
@@ -559,18 +569,23 @@ type SnapshotFilterOptions = {
   attributeIds?: string;
 };
 
+const SNAPSHOT_FILTER_QUERY_KEYS: [keyof SnapshotFilterOptions, string][] = [
+  ["teamIds", "team_ids"],
+  ["snapshotTeamIds", "snapshot_team_ids"],
+  ["groupIds", "group_ids"],
+  ["branchIds", "branch_ids"],
+  ["attributeIds", "attribute_ids"],
+];
+
 function normalizeSnapshotFilterOptions(
   options: SnapshotFilterOptions,
 ): Record<string, string | undefined> {
-  return {
-    snapshot_team_ids: parseCommaSeparatedValues(options.snapshotTeamIds)?.join(
-      ",",
-    ),
-    team_ids: parseCommaSeparatedValues(options.teamIds)?.join(","),
-    group_ids: parseCommaSeparatedValues(options.groupIds)?.join(","),
-    attribute_ids: parseCommaSeparatedValues(options.attributeIds)?.join(","),
-    branch_ids: parseCommaSeparatedValues(options.branchIds)?.join(","),
-  };
+  return Object.fromEntries(
+    SNAPSHOT_FILTER_QUERY_KEYS.map(([option, queryKey]) => [
+      queryKey,
+      parseCommaSeparatedValues(options[option])?.join(","),
+    ]),
+  );
 }
 
 async function getSnapshotInfo(
@@ -812,13 +827,22 @@ function renderSnapshotInfo(
 }
 
 function renderSnapshotWorkflowScores(
-  results: SnapshotWorkflowScoreResult[],
+  response: ListSnapshotWorkflowScoresResponse,
   snapshotId: string,
   runtime: Runtime,
 ): void {
-  const blocks: ui.Block[] = [
-    ui.h1("Snapshot Workflow Scores"),
-    ui.p(`Displaying ${ui.bold(results.length.toString())} workflows.`),
+  const { results } = response;
+  const filterDetails = workflowScoresFilterDetails(response.filters);
+  const blocks: ui.Block[] = [ui.h1("Snapshot Workflow Scores")];
+
+  if (filterDetails.length > 0) {
+    blocks.push(ui.dl(filterDetails, { termWidth: 16 }));
+  }
+
+  blocks.push(
+    ui.p(
+      `Displaying ${ui.bold(results.length.toString())} ${results.length === 1 ? "workflow" : "workflows"}.`,
+    ),
     ui.p(
       ui.link(
         // Sort the web view by workflow name, ascending (sb = sort by, sr = sort reversed)
@@ -828,7 +852,14 @@ function renderSnapshotWorkflowScores(
         }),
       ),
     ),
-  ];
+  );
+
+  if (filterDetails.length > 0) {
+    // The web view does not accept encoded filter IDs, so the link cannot carry them
+    blocks.push(
+      ui.p(ui.dim("Note: the web link does not apply the filters above.")),
+    );
+  }
 
   if (results.length === 0) {
     blocks.push(ui.p(ui.dim("(None)")));
@@ -838,6 +869,12 @@ function renderSnapshotWorkflowScores(
 
   for (const result of results) {
     blocks.push(ui.h2(result.workflow.name));
+
+    if (result.hidden) {
+      blocks.push(ui.p(ui.dim("(Hidden)")));
+      continue;
+    }
+
     const benchmark = result.workflow.benchmark;
     const benchmarkValue = benchmark
       ? `${benchmark.name} (${benchmark.year}) p50=${benchmark.p_50}, p75=${benchmark.p_75}, p90=${benchmark.p_90}`
@@ -847,10 +884,7 @@ function renderSnapshotWorkflowScores(
       ui.dl(
         [
           ui.dli("Workflow ID", result.workflow.id),
-          ui.dli(
-            "Score",
-            result.hidden ? ui.dim("(Hidden)") : formatNumber(result.score),
-          ),
+          ui.dli("Score", formatNumber(result.score)),
           optionalDetail(
             "Respondents",
             formatNumber(result.total_respondents),
@@ -877,6 +911,31 @@ function renderSnapshotWorkflowScores(
   }
 
   renderRichText(blocks);
+}
+
+function workflowScoresFilterDetails(
+  filters: SnapshotWorkflowScoresFilters,
+): ReturnType<typeof ui.dli>[] {
+  const names = (items: SnapshotWorkflowScoresFilterItem[]) =>
+    items.map((item) => item.name).join(", ");
+  const attributes = filters.attribute_groups.flatMap((group) =>
+    group.attributes.map((attribute) => ({
+      id: attribute.id,
+      name: `${group.name}: ${attribute.name}`,
+    })),
+  );
+
+  return (
+    [
+      ["Teams", filters.teams],
+      ["Snapshot teams", filters.snapshot_teams],
+      ["Groups", filters.groups],
+      ["Branches", filters.branches],
+      ["Attributes", attributes],
+    ] as [string, SnapshotWorkflowScoresFilterItem[]][]
+  )
+    .filter(([, items]) => items.length > 0)
+    .map(([term, items]) => ui.dli(term, names(items)));
 }
 
 function renderSnapshots(snapshots: Snapshot[], runtime: Runtime): void {
@@ -1140,7 +1199,7 @@ function formatWorkflowDistributionTable(
   distribution: SnapshotWorkflowScoreDistribution[],
 ): string {
   if (distribution.length === 0) {
-    return "(None)";
+    return ui.dim("(None)");
   }
 
   const rows = distribution.map((item) => [

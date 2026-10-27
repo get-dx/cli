@@ -86,6 +86,15 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
 
    Use the Snapshot Team `id` values from this response for `snapshot_team_ids` filters on score endpoints. Use `team_id` when you need to inspect the stable DX team with `dx teams info`.
 
+   Optionally fetch workflow scores (e.g. build time, review wait time) with the same filters:
+
+   ```bash
+   dx snapshots workflowScores list --id <snapshot_id> --json
+   dx snapshots workflowScores list --id <snapshot_id> --snapshot-team-ids <id1>,<id2> --json
+   ```
+
+   Skip results with `hidden: true`; their `score` is `null` because too few people responded. Compare `score` against `workflow.benchmark` using `workflow.lower_is_better`.
+
 6. Interpret the snapshot info response:
    - Read score rows from `snapshot.team_scores`.
    - Read item metadata from `snapshot.snapshot_items`, which contains `factors`, `csat`, and `kpis` arrays.
