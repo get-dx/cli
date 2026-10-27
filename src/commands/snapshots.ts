@@ -238,11 +238,26 @@ export function snapshotsCommand(): Command {
     .command("list")
     .description("List workflow scores and details for a snapshot")
     .option("--id <id>", "The unique ID of the snapshot")
-    .option("--team-ids [teamIds...]", "Filter the results to users in these snapshot teams")
-    .option("--snapshot-team-ids [snapshotTeamIds...]", "Filter the results to users in these teams")
-    .option("--group-ids [groupIds...]", "Filter the results to users in these groups")
-    .option("--branch-ids [branchIds...]", "Filter the results to users in these branches")
-    .option("--attribute-ids [attributeIds...]", "Filter the results to users with these attributes")
+    .option(
+      "--team-ids [teamIds...]",
+      "Filter the results to users in these snapshot teams",
+    )
+    .option(
+      "--snapshot-team-ids [snapshotTeamIds...]",
+      "Filter the results to users in these teams",
+    )
+    .option(
+      "--group-ids [groupIds...]",
+      "Filter the results to users in these groups",
+    )
+    .option(
+      "--branch-ids [branchIds...]",
+      "Filter the results to users in these branches",
+    )
+    .option(
+      "--attribute-ids [attributeIds...]",
+      "Filter the results to users with these attributes",
+    )
     .addHelpText(
       "afterAll",
       createExampleText([
@@ -254,13 +269,42 @@ export function snapshotsCommand(): Command {
           label: "List snapshot workflow scores as JSON",
           command: "dx --json snapshots workflowScores list --id MjUyNbaY",
         },
+        {
+          label: "Filter workflow scores by snapshot team IDs",
+          command:
+            "dx snapshots workflowScores list --id MjUyNbaY --snapshot-team-ids NTcxMDM",
+        },
+        {
+          label: "Filter workflow scores by team IDs",
+          command:
+            "dx snapshots workflowScores list --id MjUyNbaY --team-ids MTExNDg5 MTExNDg4",
+        },
+        {
+          label: "Filter workflow scores by group IDs",
+          command:
+            "dx snapshots workflowScores list --id MjUyNbaY --group-ids MzYyMjM",
+        },
+        {
+          label: "Filter workflow scores by attribute IDs",
+          command:
+            "dx snapshots workflowScores list --id MjUyNbaY --attribute-ids NzI4OA",
+        },
+        {
+          label: "Filter workflow scores by branch IDs",
+          command:
+            "dx snapshots workflowScores list --id MjUyNbaY --branch-ids MQ",
+        },
       ]),
     )
     .action(
       wrapAction(async (options, command) => {
         const snapshotId = parseRequiredTextOption(options.id, "--id");
         const runtime = await buildRuntime(getContext(command));
-        const response = await listSnapshotWorkflowScores(runtime, snapshotId, options);
+        const response = await listSnapshotWorkflowScores(
+          runtime,
+          snapshotId,
+          options,
+        );
 
         if (runtime.context.json) {
           renderJson(response);
@@ -518,7 +562,7 @@ async function listSnapshotWorkflowScores(
   const query: Record<string, string> = {
     snapshot_id: snapshotId,
     ...normalizeSnapshotOptions(options),
-  }
+  };
   const response = await request<ListSnapshotWorkflowScoresResponse>(
     runtime,
     "/snapshots.workflowScores.list",
@@ -531,7 +575,9 @@ async function listSnapshotWorkflowScores(
   return response.body;
 }
 
-function normalizeSnapshotOptions(options: Record<string, string>): Record<string, string> {
+function normalizeSnapshotOptions(
+  options: Record<string, string>,
+): Record<string, string> {
   // Commander normalizes multi word options to camelCase, so typing --team-ids gives us
   // options.teamIds. Normalize to what our Web API accepts, which is snake case.
   const optionMapping = {
@@ -540,13 +586,13 @@ function normalizeSnapshotOptions(options: Record<string, string>): Record<strin
     groupIds: "group_ids",
     branchIds: "branch_ids",
     attributeIds: "attribute_ids",
-  }
-  const webApiOptions: Record<string, string> = {}
+  };
+  const webApiOptions: Record<string, string> = {};
   Object.entries(optionMapping).forEach(([cliOptionName, webApiOptionName]) => {
     if (Object.hasOwn(options, cliOptionName)) {
-      webApiOptions[webApiOptionName] = options[cliOptionName]
+      webApiOptions[webApiOptionName] = options[cliOptionName];
     }
-  })
+  });
 
   return webApiOptions;
 }
