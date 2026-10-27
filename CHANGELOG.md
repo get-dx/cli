@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.9.1 - 2026-10-28
+
+### Added
+
+- `dx snapshots workflowScores list`: Add support for listing the workflow scores for a snapshot.
+
+### Updated
+
+- the dx-cli skill snapshot guidance to explain using filters with the `workflowScores` command.
+
 ## 0.9.0 - 2026-10-19
 
 ### Added
