@@ -4,6 +4,7 @@ src/*.js
 test/*.js
 .pnpm-store/
 .codex/
+tmp/
 
 # Created through symlink, see CONTRIBUTING.md for details
 .agents
