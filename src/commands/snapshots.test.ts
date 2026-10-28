@@ -889,6 +889,10 @@ describe("snapshots command", () => {
       "MjUyNbaY",
       "--team-ids",
       "team-1,team-2",
+      "--group-ids",
+      "group-1",
+      "--branch-ids",
+      "MQ",
       "--attribute-ids",
       "attribute-1",
     ]);
@@ -898,7 +902,48 @@ describe("snapshots command", () => {
     expect(output).toContain("Tenure: 1-2 years");
     expect(output).not.toContain("Snapshot teams");
     expect(output).toContain(
-      "https://app.example.com/snapshots/MjUyNbaY/workflow?sb=name&sr=false&team_ids=team-1%2Cteam-2&attribute_ids=attribute-1",
+      "https://app.example.com/snapshots/MjUyNbaY/workflow?sb=name&sr=false&team_ids=team-1%2Cteam-2&group_ids=group-1&branch=MQ&tag_ids=attribute-1",
+    );
+    expect(output).not.toContain("Web link omits");
+  });
+
+  it("omits filters the web app can't combine from the web link", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(workflowScoresResponse), {
+          status: 200,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "workflowScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+      "--group-ids",
+      "group-1",
+      "--snapshot-team-ids",
+      "snapshot-team-1",
+      "--branch-ids",
+      "MQ,Mg",
+    ]);
+
+    const output = stdoutWrites.join("");
+    expect(output).toContain(
+      "https://app.example.com/snapshots/MjUyNbaY/workflow?sb=name&sr=false&group_ids=group-1\n",
+    );
+    expect(output).toContain(
+      "Web link omits --snapshot-team-ids and --branch-ids; the web app can't apply them with these filters.",
     );
   });
 
@@ -932,7 +977,7 @@ describe("snapshots command", () => {
       "--group-ids",
       "group-1",
       "--branch-ids",
-      "branch-1",
+      "branch-1,branch-2",
       "--attribute-ids",
       "attribute-1,attribute-2",
     ]);
@@ -943,7 +988,7 @@ describe("snapshots command", () => {
       team_ids: "team-1,team-2",
       snapshot_team_ids: "snapshot-team-1",
       group_ids: "group-1",
-      branch_ids: "branch-1",
+      branch_ids: "branch-1,branch-2",
       attribute_ids: "attribute-1,attribute-2",
     });
   });

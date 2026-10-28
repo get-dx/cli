@@ -286,22 +286,16 @@ export function snapshotsCommand(): Command {
       wrapAction(async (options, command) => {
         const snapshotId = parseRequiredTextOption(options.id, "--id");
         const runtime = await buildRuntime(getContext(command));
-        const filterQuery = normalizeSnapshotFilterOptions(options);
         const response = await listSnapshotWorkflowScores(
           runtime,
           snapshotId,
-          filterQuery,
+          options,
         );
 
         if (runtime.context.json) {
           renderJson(response);
         } else {
-          renderSnapshotWorkflowScores(
-            response,
-            snapshotId,
-            filterQuery,
-            runtime,
-          );
+          renderSnapshotWorkflowScores(response, snapshotId, options, runtime);
         }
       }),
     );
@@ -550,7 +544,7 @@ async function listSnapshotTeams(
 async function listSnapshotWorkflowScores(
   runtime: Runtime,
   snapshotId: string,
-  filterQuery: SnapshotFilterQuery,
+  options: SnapshotFilterOptions,
 ): Promise<ListSnapshotWorkflowScoresResponse> {
   const response = await request<ListSnapshotWorkflowScoresResponse>(
     runtime,
@@ -559,7 +553,7 @@ async function listSnapshotWorkflowScores(
       method: "GET",
       query: {
         snapshot_id: snapshotId,
-        ...filterQuery,
+        ...snapshotFilterQuery(options, "apiKey"),
       },
     },
   );
@@ -575,23 +569,57 @@ type SnapshotFilterOptions = {
   attributeIds?: string;
 };
 
-const SNAPSHOT_FILTER_QUERY_KEYS: [keyof SnapshotFilterOptions, string][] = [
-  ["teamIds", "team_ids"],
-  ["snapshotTeamIds", "snapshot_team_ids"],
-  ["groupIds", "group_ids"],
-  ["branchIds", "branch_ids"],
-  ["attributeIds", "attribute_ids"],
+// The web app names some filter params differently from the API
+const SNAPSHOT_FILTER_KEYS: {
+  option: keyof SnapshotFilterOptions;
+  apiKey: string;
+  webKey: string;
+}[] = [
+  { option: "teamIds", apiKey: "team_ids", webKey: "team_ids" },
+  {
+    option: "snapshotTeamIds",
+    apiKey: "snapshot_team_ids",
+    webKey: "snapshot_team_ids",
+  },
+  { option: "groupIds", apiKey: "group_ids", webKey: "group_ids" },
+  { option: "branchIds", apiKey: "branch_ids", webKey: "branch" },
+  { option: "attributeIds", apiKey: "attribute_ids", webKey: "tag_ids" },
 ];
 
-type SnapshotFilterQuery = Record<string, string | undefined>;
+// The web app can't combine groups with snapshot teams (selecting a group
+// clears snapshot teams) and only selects one branch at a time, so drop those
+// filters from the link and report which ones were left out
+function snapshotWebFilters(options: SnapshotFilterOptions): {
+  query: Record<string, string | undefined>;
+  omittedFlags: string[];
+} {
+  const webOptions = { ...options };
+  const omittedFlags: string[] = [];
 
-function normalizeSnapshotFilterOptions(
+  if (
+    parseCommaSeparatedValues(options.groupIds) &&
+    parseCommaSeparatedValues(options.snapshotTeamIds)
+  ) {
+    webOptions.snapshotTeamIds = undefined;
+    omittedFlags.push("--snapshot-team-ids");
+  }
+
+  if ((parseCommaSeparatedValues(options.branchIds)?.length ?? 0) > 1) {
+    webOptions.branchIds = undefined;
+    omittedFlags.push("--branch-ids");
+  }
+
+  return { query: snapshotFilterQuery(webOptions, "webKey"), omittedFlags };
+}
+
+function snapshotFilterQuery(
   options: SnapshotFilterOptions,
-): SnapshotFilterQuery {
+  target: "apiKey" | "webKey",
+): Record<string, string | undefined> {
   return Object.fromEntries(
-    SNAPSHOT_FILTER_QUERY_KEYS.map(([option, queryKey]) => [
-      queryKey,
-      parseCommaSeparatedValues(options[option])?.join(","),
+    SNAPSHOT_FILTER_KEYS.map((keys) => [
+      keys[target],
+      parseCommaSeparatedValues(options[keys.option])?.join(","),
     ]),
   );
 }
@@ -837,11 +865,12 @@ function renderSnapshotInfo(
 function renderSnapshotWorkflowScores(
   response: ListSnapshotWorkflowScoresResponse,
   snapshotId: string,
-  filterQuery: SnapshotFilterQuery,
+  filterOptions: SnapshotFilterOptions,
   runtime: Runtime,
 ): void {
   const { results } = response;
   const filterDetails = workflowScoresFilterDetails(response.filters);
+  const webFilters = snapshotWebFilters(filterOptions);
   const blocks: ui.Block[] = [ui.h1("Snapshot Workflow Scores")];
 
   if (filterDetails.length > 0) {
@@ -858,11 +887,21 @@ function renderSnapshotWorkflowScores(
         snapshotWebLink(snapshotId, "workflow", runtime, {
           sb: "name",
           sr: "false",
-          ...filterQuery,
+          ...webFilters.query,
         }),
       ),
     ),
   );
+
+  if (webFilters.omittedFlags.length > 0) {
+    blocks.push(
+      ui.p(
+        ui.dim(
+          `Web link omits ${webFilters.omittedFlags.join(" and ")}; the web app can't apply them with these filters.`,
+        ),
+      ),
+    );
+  }
 
   if (results.length === 0) {
     blocks.push(ui.p(ui.dim("(None)")));
