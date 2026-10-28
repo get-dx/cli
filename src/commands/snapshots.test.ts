@@ -902,9 +902,11 @@ describe("snapshots command", () => {
     expect(output).toContain("Tenure: 1-2 years");
     expect(output).not.toContain("Snapshot teams");
     expect(output).toContain(
-      "https://app.example.com/snapshots/MjUyNbaY/workflow?sb=name&sr=false&team_ids=team-1%2Cteam-2&group_ids=group-1&branch=MQ&tag_ids=attribute-1",
+      "https://app.example.com/snapshots/MjUyNbaY/workflow?sb=name&sr=false&team_ids=team-1%2Cteam-2&group_ids=group-1&branch=MQ\n",
     );
-    expect(output).not.toContain("Web link omits");
+    expect(output).toContain(
+      "Web link omits --attribute-ids; the web app can't apply those filters.",
+    );
   });
 
   it("omits filters the web app can't combine from the web link", async () => {
@@ -943,7 +945,7 @@ describe("snapshots command", () => {
       "https://app.example.com/snapshots/MjUyNbaY/workflow?sb=name&sr=false&group_ids=group-1\n",
     );
     expect(output).toContain(
-      "Web link omits --snapshot-team-ids and --branch-ids; the web app can't apply them with these filters.",
+      "Web link omits --snapshot-team-ids and --branch-ids; the web app can't apply those filters.",
     );
   });
 

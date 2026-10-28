@@ -569,11 +569,12 @@ type SnapshotFilterOptions = {
   attributeIds?: string;
 };
 
-// The web app names some filter params differently from the API
+// The web app names some filter params differently from the API. Attributes
+// have no webKey because the web app only accepts decoded tag IDs.
 const SNAPSHOT_FILTER_KEYS: {
   option: keyof SnapshotFilterOptions;
   apiKey: string;
-  webKey: string;
+  webKey?: string;
 }[] = [
   { option: "teamIds", apiKey: "team_ids", webKey: "team_ids" },
   {
@@ -583,7 +584,7 @@ const SNAPSHOT_FILTER_KEYS: {
   },
   { option: "groupIds", apiKey: "group_ids", webKey: "group_ids" },
   { option: "branchIds", apiKey: "branch_ids", webKey: "branch" },
-  { option: "attributeIds", apiKey: "attribute_ids", webKey: "tag_ids" },
+  { option: "attributeIds", apiKey: "attribute_ids" },
 ];
 
 // The web app can't combine groups with snapshot teams (selecting a group
@@ -609,6 +610,10 @@ function snapshotWebFilters(options: SnapshotFilterOptions): {
     omittedFlags.push("--branch-ids");
   }
 
+  if (parseCommaSeparatedValues(options.attributeIds)) {
+    omittedFlags.push("--attribute-ids");
+  }
+
   return { query: snapshotFilterQuery(webOptions, "webKey"), omittedFlags };
 }
 
@@ -617,10 +622,12 @@ function snapshotFilterQuery(
   target: "apiKey" | "webKey",
 ): Record<string, string | undefined> {
   return Object.fromEntries(
-    SNAPSHOT_FILTER_KEYS.map((keys) => [
-      keys[target],
-      parseCommaSeparatedValues(options[keys.option])?.join(","),
-    ]),
+    SNAPSHOT_FILTER_KEYS.flatMap((keys) => {
+      const key = keys[target];
+      return key
+        ? [[key, parseCommaSeparatedValues(options[keys.option])?.join(",")]]
+        : [];
+    }),
   );
 }
 
@@ -897,7 +904,7 @@ function renderSnapshotWorkflowScores(
     blocks.push(
       ui.p(
         ui.dim(
-          `Web link omits ${webFilters.omittedFlags.join(" and ")}; the web app can't apply them with these filters.`,
+          `Web link omits ${webFilters.omittedFlags.join(" and ")}; the web app can't apply those filters.`,
         ),
       ),
     );
