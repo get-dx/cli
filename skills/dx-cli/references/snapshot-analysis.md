@@ -49,7 +49,7 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
 - Use DXI to identify areas for improvement, validate tooling investments, and tell the story of DevEx impact in terms of time saved, quality improvements, or measurable outcomes.
 - Treat drivers (`item_type: "factor"`) as the broad developer-experience "why" signal. Review driver scores, trends, and comments, then cross-reference with CSAT to validate priorities.
 - Include KPI items when present, especially impact, speed, quality, adoption, or time-loss measures that sharpen prioritization.
-- Use workflow scores as the quantitative counterpart to CSAT: CSAT says how people feel about a tool, workflows say how much time or friction the activity costs (build time, review wait time, local environment setup, time saved with AI).
+- Use workflow scores as the quantitative counterpart to drivers. Driver scores describe sentiment, while workflow scores represent time cost (build time, review wait time, local environment setup, time saved with AI).
 - Compare workflow scores against benchmark percentiles to size the opportunity, then slice by `--group-ids`, `--branch-ids`, or `--attribute-ids` to find where friction concentrates.
 - Group comments by platform domain, workflow, tool, or service when the data supports it. Call out whether a theme is broad, team-specific, or only weakly supported.
 - Translate findings into product/roadmap opportunities: likely owner, affected audience, expected impact, and the metric or comment theme to monitor in the next Snapshot.
