@@ -184,7 +184,7 @@ export function relationsCommand() {
     .command("list")
     .description("List relation definitions in your software catalog")
     .option("--cursor <cursor>", "Cursor for the next page of results")
-    .option("--limit <n>", "Max relations per page (default is 50)", (value) =>
+    .option("--limit <n>", "Max relations per page (default is 25)", (value) =>
       parsePositiveIntOption(value, "--limit"),
     )
     .addHelpText(
