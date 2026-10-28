@@ -47,7 +47,7 @@ export function renderRelationEdgeList(
         ui.dli("Relation", ui.code(query.relation)),
         ui.dli("Direction", query.direction),
       ],
-      { termWidth: 10 },
+      { termWidth: 11 },
     ),
   );
 
