@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## 0.9.1 - 2026-10-28
-
 ### Added
 
 - `dx snapshots workflowScores list`: Add support for listing the workflow scores for a snapshot.
