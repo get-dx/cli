@@ -1,4 +1,5 @@
 import fs from "fs";
+import { fileURLToPath } from "url";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -325,6 +326,13 @@ describe("catalog relationEdges commands", () => {
         "login-frontend:\n  - 123\n",
         'Targets for source "login-frontend"',
       ],
+      ["only comments", "# nothing here\n", "No edges found in ./edges.yaml"],
+      ["an empty map", "{}\n", "No edges found in ./edges.yaml"],
+      [
+        "sources with no targets",
+        "login-frontend: []\n",
+        "No edges found in ./edges.yaml",
+      ],
     ])("errors when the edges file is %s", async (_label, content, message) => {
       const { stderrWrites, exitSpy } = captureStderrAndExit();
       const fetchMock = mockApi({ ok: true });
@@ -347,6 +355,96 @@ describe("catalog relationEdges commands", () => {
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
       expect(stderrWrites.join("")).toContain(message);
       expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("initBulkUpsert", () => {
+    const TEMPLATE_PATH = fileURLToPath(
+      new URL("./relation-edges-blank-template.yaml", import.meta.url),
+    );
+
+    it("writes the blank template and suggests the bulkUpsert command", async () => {
+      const writes = captureStdout();
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const { run } = await import("../../cli.js");
+      const writeFileSyncSpy = vi
+        .spyOn(fs, "writeFileSync")
+        .mockImplementation(() => undefined);
+
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "relationEdges",
+        "initBulkUpsert",
+        "./edges.yaml",
+      ]);
+
+      expect(writeFileSyncSpy).toHaveBeenCalledWith(
+        "./edges.yaml",
+        fs.readFileSync(TEMPLATE_PATH, "utf8"),
+        "utf8",
+      );
+      const out = writes.join("");
+      expect(out).toContain("Blank template written to");
+      expect(out).toContain(
+        "dx catalog relationEdges bulkUpsert --relation <relation-identifier> --from-file ./edges.yaml",
+      );
+    });
+
+    it("returns JSON with --json flag", async () => {
+      const writes = captureStdout();
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      const { run } = await import("../../cli.js");
+      vi.spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
+
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "catalog",
+        "relationEdges",
+        "initBulkUpsert",
+        "./edges.yaml",
+      ]);
+
+      expect(JSON.parse(writes.join(""))).toEqual({
+        ok: true,
+        path: "./edges.yaml",
+      });
+    });
+
+    it("produces a template that bulkUpsert accepts", async () => {
+      captureStdout();
+      const fetchMock = mockApi({ ok: true });
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "catalog",
+        "relationEdges",
+        "bulkUpsert",
+        "--relation",
+        "service-depends-on-service",
+        "--from-file",
+        TEMPLATE_PATH,
+      ]);
+
+      expect(requestBody(fetchMock)).toEqual({
+        relation_identifier: "service-depends-on-service",
+        edges: {
+          "source-entity-identifier-1": [
+            "target-entity-identifier-a",
+            "target-entity-identifier-b",
+          ],
+          "source-entity-identifier-2": ["target-entity-identifier-c"],
+        },
+      });
     });
   });
 

@@ -18,8 +18,14 @@ import {
   renderRelationEdgeAdded,
   renderRelationEdgeList,
   renderRelationEdgeRemoved,
+  renderRelationEdgesTemplateWritten,
   renderRelationEdgesUpserted,
 } from "./relationEdgesRendering.js";
+
+const RELATION_EDGES_BLANK_TEMPLATE_YAML = fs.readFileSync(
+  new URL("./relation-edges-blank-template.yaml", import.meta.url),
+  "utf8",
+);
 
 export function relationEdgesCommand() {
   const relationEdges = new Command()
@@ -67,11 +73,18 @@ export function relationEdgesCommand() {
       "Create or update many relation edges for one relation from a YAML or JSON file or stdin. The file maps each source entity identifier to a list of target entity identifiers.",
     )
     .option("--relation <identifier>", "Relation identifier (required)")
-    .option("--from-file <path>", "Path to a YAML or JSON file of edges")
+    .option(
+      "--from-file <path>",
+      "Path to a YAML or JSON file of edges. Use `initBulkUpsert` to generate a template.",
+    )
     .option("--from-stdin", "Read YAML or JSON edges from stdin")
     .addHelpText(
       "afterAll",
       createExampleText([
+        {
+          label: "Generate a template first",
+          command: "dx catalog relationEdges initBulkUpsert ./edges.yaml",
+        },
         {
           label: "Upsert edges from a YAML file",
           command:
@@ -108,7 +121,10 @@ export function relationEdgesCommand() {
         const raw = options.fromFile
           ? readYamlFile(options.fromFile as string)
           : await readYamlStdin();
-        const edges = parseEdgesMap(raw);
+        const edges = parseEdgesMap(
+          raw,
+          options.fromFile ? (options.fromFile as string) : "stdin",
+        );
 
         const runtime = await buildRuntime(getContext(command));
         const response = await bulkUpsertRelationEdges(
@@ -121,6 +137,40 @@ export function relationEdgesCommand() {
           renderJson(response);
         } else {
           renderRelationEdgesUpserted(options.relation as string, edges);
+        }
+      }),
+    );
+
+  relationEdges
+    .command("initBulkUpsert")
+    .description(
+      "Write a blank YAML template of relation edges to use with `bulkUpsert`",
+    )
+    .argument("<path>", "File path to write the YAML to")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Write a blank relation edges template",
+          command: "dx catalog relationEdges initBulkUpsert ./edges.yaml",
+        },
+        {
+          label: "Upsert edges from the template",
+          command:
+            "dx catalog relationEdges bulkUpsert --relation service-depends-on-service --from-file ./edges.yaml",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (path, _options, command) => {
+        const runtime = await buildRuntime(getContext(command));
+
+        fs.writeFileSync(path, RELATION_EDGES_BLANK_TEMPLATE_YAML, "utf8");
+
+        if (runtime.context.json) {
+          renderJson({ ok: true, path });
+        } else {
+          renderRelationEdgesTemplateWritten(path);
         }
       }),
     );
@@ -364,8 +414,11 @@ function requireEdgeOptions(options: {
   };
 }
 
-function parseEdgesMap(raw: unknown): RelationEdgesMap {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+function parseEdgesMap(raw: unknown, sourceLabel: string): RelationEdgesMap {
+  if (raw === null || raw === undefined) {
+    throw noEdgesError(sourceLabel);
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) {
     throw new CliError(
       "Edges must be an object mapping each source entity identifier to a list of target entity identifiers",
       EXIT_CODES.ARGUMENT_ERROR,
@@ -384,7 +437,19 @@ function parseEdgesMap(raw: unknown): RelationEdgesMap {
     }
   }
 
-  return raw as RelationEdgesMap;
+  const edges = raw as RelationEdgesMap;
+  if (Object.values(edges).every((targets) => targets.length === 0)) {
+    throw noEdgesError(sourceLabel);
+  }
+
+  return edges;
+}
+
+function noEdgesError(sourceLabel: string): CliError {
+  return new CliError(
+    `No edges found in ${sourceLabel}`,
+    EXIT_CODES.ARGUMENT_ERROR,
+  );
 }
 
 function readYamlFile(filePath: string): unknown {

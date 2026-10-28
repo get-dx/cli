@@ -33,6 +33,17 @@ export function renderRelationEdgesUpserted(
   ]);
 }
 
+export function renderRelationEdgesTemplateWritten(path: string) {
+  renderRichText([
+    ui.p(
+      `${ui.success(ui.GLYPHS.CHECK)} Blank template written to ${ui.code(path)}.`,
+    ),
+    ui.p(
+      `Edit the file, then run: ${ui.code(`dx catalog relationEdges bulkUpsert --relation <relation-identifier> --from-file ${path}`)}`,
+    ),
+  ]);
+}
+
 export function renderRelationEdgeList(
   entities: RelatedEntity[],
   query: { entity: string; relation: string; direction: string },

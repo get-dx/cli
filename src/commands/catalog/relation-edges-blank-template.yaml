@@ -1,0 +1,19 @@
+# Relation edges for bulk upsert
+#
+# Edit this file, then run:
+#
+# ```
+# dx catalog relationEdges bulkUpsert --relation <relation-identifier> --from-file <path>
+# ```
+#
+# Each key is a source entity identifier, and each value is a list of target
+# entity identifiers.
+#
+# Bulk upsert only adds edges. Existing edges that are not listed here are kept;
+# use `dx catalog relationEdges remove` to delete an edge.
+
+source-entity-identifier-1:
+  - target-entity-identifier-a
+  - target-entity-identifier-b
+source-entity-identifier-2:
+  - target-entity-identifier-c
