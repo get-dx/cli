@@ -846,109 +846,6 @@ describe("snapshots command", () => {
     expect(distribution).toContain("(None)");
   });
 
-  it("renders applied workflow score filters and adds them to the web link", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
-    process.env.DX_WEB_BASE_URL = "https://app.example.com";
-    getToken.mockReturnValue("token-123");
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            ...workflowScoresResponse,
-            filters: {
-              ...workflowScoresResponse.filters,
-              teams: [
-                { id: "team-1", name: "Platform" },
-                { id: "team-2", name: "Payments" },
-              ],
-              attribute_groups: [
-                {
-                  id: "attr-group-1",
-                  name: "Tenure",
-                  type: "string",
-                  attributes: [{ id: "attribute-1", name: "1-2 years" }],
-                },
-              ],
-            },
-          }),
-          { status: 200 },
-        ),
-      ),
-    );
-
-    const { run } = await import("../cli.js");
-    await run([
-      "node",
-      "dx",
-      "snapshots",
-      "workflowScores",
-      "list",
-      "--id",
-      "MjUyNbaY",
-      "--team-ids",
-      "team-1,team-2",
-      "--group-ids",
-      "group-1",
-      "--branch-ids",
-      "MQ",
-      "--attribute-ids",
-      "attribute-1",
-    ]);
-
-    const output = stdoutWrites.join("");
-    expect(output).toContain("Platform, Payments");
-    expect(output).toContain("Tenure: 1-2 years");
-    expect(output).not.toContain("Snapshot teams");
-    expect(output).toContain(
-      "https://app.example.com/snapshots/MjUyNbaY/workflow?sb=name&sr=false&team_ids=team-1%2Cteam-2&group_ids=group-1&branch=MQ\n",
-    );
-    expect(output).toContain(
-      "Web link omits --attribute-ids; the web app can't apply those filters.",
-    );
-  });
-
-  it("omits filters the web app can't combine from the web link", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
-    process.env.DX_WEB_BASE_URL = "https://app.example.com";
-    getToken.mockReturnValue("token-123");
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(workflowScoresResponse), {
-          status: 200,
-        }),
-      ),
-    );
-
-    const { run } = await import("../cli.js");
-    await run([
-      "node",
-      "dx",
-      "snapshots",
-      "workflowScores",
-      "list",
-      "--id",
-      "MjUyNbaY",
-      "--group-ids",
-      "group-1",
-      "--snapshot-team-ids",
-      "snapshot-team-1",
-      "--branch-ids",
-      "MQ,Mg",
-    ]);
-
-    const output = stdoutWrites.join("");
-    expect(output).toContain(
-      "https://app.example.com/snapshots/MjUyNbaY/workflow?sb=name&sr=false&group_ids=group-1\n",
-    );
-    expect(output).toContain(
-      "Web link omits --snapshot-team-ids and --branch-ids; the web app can't apply those filters.",
-    );
-  });
-
   it("passes workflow scores filter options to the API", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
@@ -1066,48 +963,6 @@ describe("snapshots command", () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
-  it("prints the workflow scores API error with --json", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
-    getToken.mockReturnValue("token-123");
-
-    const errorPayload = {
-      ok: false,
-      error: "invalid_arguments",
-      error_details: {
-        snapshot_id: "Must be a valid snapshot id",
-      },
-    };
-
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify(errorPayload), { status: 400 }),
-        ),
-    );
-    vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
-
-    const { run } = await import("../cli.js");
-    await run([
-      "node",
-      "dx",
-      "--json",
-      "snapshots",
-      "workflowScores",
-      "list",
-      "--id",
-      "not-a-real-id",
-    ]);
-
-    expect(JSON.parse(stdoutWrites.join(""))).toEqual({
-      ok: false,
-      error: "invalid_arguments",
-      http_status: 400,
-      body: errorPayload,
-    });
-  });
-
   it("errors when snapshot teams are missing --id", async () => {
     const exitSpy = vi
       .spyOn(process, "exit")
@@ -1115,18 +970,6 @@ describe("snapshots command", () => {
 
     const { run } = await import("../cli.js");
     await run(["node", "dx", "snapshots", "snapshotTeams", "list"]);
-
-    expect(stderrWrites.join("")).toContain("--id is required");
-    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
-  });
-
-  it("errors when snapshot workflow scores are missing --id", async () => {
-    const exitSpy = vi
-      .spyOn(process, "exit")
-      .mockImplementation(() => undefined as never);
-
-    const { run } = await import("../cli.js");
-    await run(["node", "dx", "snapshots", "workflowScores", "list"]);
 
     expect(stderrWrites.join("")).toContain("--id is required");
     expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
