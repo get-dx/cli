@@ -93,6 +93,7 @@ describe("studio reports command", () => {
           xAxis: "week_start",
           yAxes: ["deploys"],
         },
+        section_id: "section_one",
       },
       {
         id: "tile_table",
@@ -100,6 +101,13 @@ describe("studio reports command", () => {
         sql: "SELECT * FROM deployments LIMIT 10",
         chart_type: "table",
         chart_config: {},
+      },
+    ],
+    sections: [
+      {
+        id: "section_one",
+        name: "A section",
+        description: "Optional section description",
       },
     ],
     created_at: "2026-04-13T20:10:05Z",
@@ -677,6 +685,52 @@ describe("studio reports command", () => {
         "tile_line",
         "tile_table",
       ]);
+    });
+
+    it("--id scaffolds each section with its id and each tile with its section_id", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValueOnce(
+          new Response(JSON.stringify(infoResponse), {
+            status: 200,
+          }),
+        ),
+      );
+      const writeFileSyncSpy = vi
+        .spyOn(fs, "writeFileSync")
+        .mockImplementation(() => undefined);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "init",
+        "./my-report.yaml",
+        "--id",
+        "rpt_new",
+      ]);
+
+      const yaml = writeFileSyncSpy.mock.calls[0]?.[1] as string;
+      expect(yaml).toContain("id: section_one");
+
+      // The scaffolded YAML round-trips into an update payload that keeps IDs.
+      const parsed = parseYaml(yaml) as {
+        tiles: { section_id: string | null }[];
+        sections: { id: string; name: string; description?: string }[];
+      };
+      expect(parsed.tiles.map((tile) => tile.section_id)).toEqual([
+        "section_one",
+        undefined,
+      ]);
+      const section = parsed.sections[0];
+      expect(section.id).toEqual("section_one");
+      expect(section.name).toEqual("A section");
+      expect(section.description).toEqual("Optional section description");
     });
 
     it("--id returns JSON with --json flag", async () => {
