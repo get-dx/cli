@@ -286,16 +286,22 @@ export function snapshotsCommand(): Command {
       wrapAction(async (options, command) => {
         const snapshotId = parseRequiredTextOption(options.id, "--id");
         const runtime = await buildRuntime(getContext(command));
+        const filterQuery = normalizeSnapshotFilterOptions(options);
         const response = await listSnapshotWorkflowScores(
           runtime,
           snapshotId,
-          options,
+          filterQuery,
         );
 
         if (runtime.context.json) {
           renderJson(response);
         } else {
-          renderSnapshotWorkflowScores(response, snapshotId, runtime);
+          renderSnapshotWorkflowScores(
+            response,
+            snapshotId,
+            filterQuery,
+            runtime,
+          );
         }
       }),
     );
@@ -544,7 +550,7 @@ async function listSnapshotTeams(
 async function listSnapshotWorkflowScores(
   runtime: Runtime,
   snapshotId: string,
-  options: SnapshotFilterOptions,
+  filterQuery: SnapshotFilterQuery,
 ): Promise<ListSnapshotWorkflowScoresResponse> {
   const response = await request<ListSnapshotWorkflowScoresResponse>(
     runtime,
@@ -553,7 +559,7 @@ async function listSnapshotWorkflowScores(
       method: "GET",
       query: {
         snapshot_id: snapshotId,
-        ...normalizeSnapshotFilterOptions(options),
+        ...filterQuery,
       },
     },
   );
@@ -577,9 +583,11 @@ const SNAPSHOT_FILTER_QUERY_KEYS: [keyof SnapshotFilterOptions, string][] = [
   ["attributeIds", "attribute_ids"],
 ];
 
+type SnapshotFilterQuery = Record<string, string | undefined>;
+
 function normalizeSnapshotFilterOptions(
   options: SnapshotFilterOptions,
-): Record<string, string | undefined> {
+): SnapshotFilterQuery {
   return Object.fromEntries(
     SNAPSHOT_FILTER_QUERY_KEYS.map(([option, queryKey]) => [
       queryKey,
@@ -829,6 +837,7 @@ function renderSnapshotInfo(
 function renderSnapshotWorkflowScores(
   response: ListSnapshotWorkflowScoresResponse,
   snapshotId: string,
+  filterQuery: SnapshotFilterQuery,
   runtime: Runtime,
 ): void {
   const { results } = response;
@@ -836,7 +845,7 @@ function renderSnapshotWorkflowScores(
   const blocks: ui.Block[] = [ui.h1("Snapshot Workflow Scores")];
 
   if (filterDetails.length > 0) {
-    blocks.push(ui.dl(filterDetails, { termWidth: 16 }));
+    blocks.push(ui.dl(filterDetails, { termWidth: 17 }));
   }
 
   blocks.push(
@@ -849,17 +858,11 @@ function renderSnapshotWorkflowScores(
         snapshotWebLink(snapshotId, "workflow", runtime, {
           sb: "name",
           sr: "false",
+          ...filterQuery,
         }),
       ),
     ),
   );
-
-  if (filterDetails.length > 0) {
-    // The web view does not accept encoded filter IDs, so the link cannot carry them
-    blocks.push(
-      ui.p(ui.dim("Note: the web link does not apply the filters above.")),
-    );
-  }
 
   if (results.length === 0) {
     blocks.push(ui.p(ui.dim("(None)")));
@@ -903,7 +906,7 @@ function renderSnapshotWorkflowScores(
           ),
           ui.dli("Benchmark", benchmarkValue),
         ].filter((detail) => detail !== null),
-        { termWidth: 16 },
+        { termWidth: 17 },
       ),
     );
 
@@ -1204,7 +1207,7 @@ function formatWorkflowDistributionTable(
   }
 
   const rows = distribution.map((item) => [
-    item.label,
+    item.label.trim(),
     item.value.toString(),
     item.count.toString(),
   ]);
@@ -1231,10 +1234,15 @@ function snapshotWebLink(
   snapshotId: string,
   section: "drivers" | "drivers/comments" | "csat/comments" | "workflow",
   runtime: Runtime,
-  queryParams: Record<string, string> = {},
+  queryParams: Record<string, string | undefined> = {},
 ): string {
   let urlPath = `/snapshots/${snapshotId}/${section}`;
-  const params = new URLSearchParams(queryParams);
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(queryParams)) {
+    if (value !== undefined) {
+      params.set(key, value);
+    }
+  }
   if (params.size > 0) {
     urlPath += `?${params.toString()}`;
   }

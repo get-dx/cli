@@ -212,7 +212,7 @@ describe("snapshots command", () => {
         score: 10.5,
         distribution: [
           { label: "Under 5 minutes", value: 5, count: 42 },
-          { label: "5-15 minutes", value: 10, count: 17 },
+          { label: " 5-15 minutes", value: 10, count: 17 },
         ],
         total_respondents: 59,
         total_cohort: 80,
@@ -766,7 +766,6 @@ describe("snapshots command", () => {
     );
     expect(stdoutWrites.join("")).toContain("Snapshot Workflow Scores");
     expect(stdoutWrites.join("")).toContain("Displaying 0 workflows.");
-    expect(stdoutWrites.join("")).not.toContain("Note: the web link");
     expect(stdoutWrites.join("")).toContain(
       "https://app.example.com/snapshots/MjUyNbaY/workflow?sb=name&sr=false",
     );
@@ -804,6 +803,8 @@ describe("snapshots command", () => {
     expect(visible).toContain("Industry (2024) p50=12, p75=8, p90=5");
     expect(visible).toContain("Under 5 minutes");
     expect(visible).toContain("42");
+    expect(visible).toContain("| 5-15 minutes    |");
+    expect(visible).toContain("Lower is better: Yes");
     expect(visible).not.toContain("(Hidden)");
     expect(hidden).toContain("(Hidden)");
     expect(hidden).not.toContain("wf-review");
@@ -845,7 +846,7 @@ describe("snapshots command", () => {
     expect(distribution).toContain("(None)");
   });
 
-  it("renders applied workflow score filters and notes the unfiltered web link", async () => {
+  it("renders applied workflow score filters and adds them to the web link", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
     process.env.DX_WEB_BASE_URL = "https://app.example.com";
     getToken.mockReturnValue("token-123");
@@ -897,7 +898,7 @@ describe("snapshots command", () => {
     expect(output).toContain("Tenure: 1-2 years");
     expect(output).not.toContain("Snapshot teams");
     expect(output).toContain(
-      "Note: the web link does not apply the filters above.",
+      "https://app.example.com/snapshots/MjUyNbaY/workflow?sb=name&sr=false&team_ids=team-1%2Cteam-2&attribute_ids=attribute-1",
     );
   });
 

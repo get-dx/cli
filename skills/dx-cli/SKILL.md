@@ -111,4 +111,4 @@ Use `dx snapshots workflowScores list --id <snapshot_id>` to list workflow score
 
 - Filter with comma-separated `--team-ids`, `--snapshot-team-ids`, `--group-ids`, `--branch-ids`, and `--attribute-ids`.
 - Workflows with `hidden: true` are below the reporting threshold; their `score` is `null`.
-- The printed web link does not apply filters. Use `--json` to return the raw API response unchanged.
+- The printed web link carries the same filters. Use `--json` to return the raw API response unchanged.
