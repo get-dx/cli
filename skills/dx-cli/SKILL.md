@@ -95,7 +95,7 @@ Use this for any question about DX itself rather than the user's own data: produ
 - [Report creation](./references/report-creation.md) — Studio reports: initializing YAML, creating reports, and updating existing reports.
 - [Scorecards management](./references/scorecards-management.md) — Scorecards and checks: listing, inspecting, creating, updating, and deleting via YAML.
 - [Failing checks](./references/failing-checks.md) — Review and resolve an entity's failing scorecard checks: triage, diagnosis, fixes, and re-evaluation.
-- [Snapshot analysis](./references/snapshot-analysis.md) — Analyze snapshot scores, teams, driver comments, and CSAT comments.
+- [Snapshot analysis](./references/snapshot-analysis.md) — Analyze snapshot scores, teams, workflow scores, driver comments, and CSAT comments.
 
 ## Snapshot teams
 
@@ -104,3 +104,11 @@ Use `dx snapshots snapshotTeams list --id <snapshot_id>` to list the teams captu
 - `id` is the Snapshot Team ID. It is only valid within that snapshot and is what DX score endpoints expect in the `snapshot_team_ids` filter.
 - `team_id` is the stable DX team ID. It can be used with `dx teams info --team-id <team_id>` to inspect the current DX team record.
 - Use `--json` to return the raw API response unchanged.
+
+## Snapshot workflow scores
+
+Use `dx snapshots workflowScores list --id <snapshot_id>` to list workflow scores (e.g. build time, review wait time) with benchmarks and response distributions.
+
+- Filter with comma-separated `--team-ids`, `--snapshot-team-ids`, `--group-ids`, `--branch-ids`, and `--attribute-ids`.
+- Workflows with `hidden: true` are below the reporting threshold; their `score` is `null`.
+- The printed web link carries the same filters, except where the web app can't represent them (attributes, groups with snapshot teams, or multiple branches); the output notes which were omitted. Use `--json` to return the raw API response unchanged.

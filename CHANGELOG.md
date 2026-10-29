@@ -9,7 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `dx reports create/update`: Added support for managing sections and tile sizes in a report
+- `dx reports create/update`: Added support for managing sections and tile sizes in a report.
+- `dx snapshots workflowScores list`: Add support for listing the workflow scores for a snapshot.
+
+### Updated
+
+- the dx-cli skill snapshot guidance to explain using filters with the `workflowScores` command.
 
 ## 0.9.0 - 2026-10-19
 
