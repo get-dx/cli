@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `dx reports create/update`: Added support for managing sections and tile sizes in a report.
 - `dx snapshots workflowScores list`: Add support for listing the workflow scores for a snapshot.
+- `dx catalog relations create/delete/info/list/update`: Manage relation definitions between entity types in the Software Catalog.
 
 ### Updated
 
