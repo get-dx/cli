@@ -46,20 +46,20 @@ export function relationsCommand() {
     .description(
       "Create a new relation definition between two entity types in your software catalog",
     )
-    .option(
+    .requiredOption(
       "--identifier <identifier>",
       "Unique identifier for the new relation (required)",
     )
-    .option(
+    .requiredOption(
       "--source-type <type>",
       "Entity type identifier for the source side of the relation (required)",
     )
-    .option(
+    .requiredOption(
       "--target-type <type>",
       "Entity type identifier for the target side of the relation (required)",
     )
-    .option("--type <type>", `${RELATION_TYPE_HELP} (required)`)
-    .option(
+    .requiredOption("--type <type>", `${RELATION_TYPE_HELP} (required)`)
+    .requiredOption(
       "--cardinality <cardinality>",
       `Relation cardinality. One of: ${RELATION_CARDINALITIES.join(", ")} (required)`,
     )
@@ -81,22 +81,6 @@ export function relationsCommand() {
     )
     .action(
       wrapAction(async (options, command) => {
-        const requiredFlags: [string, unknown][] = [
-          ["--identifier", options.identifier],
-          ["--source-type", options.sourceType],
-          ["--target-type", options.targetType],
-          ["--type", options.type],
-          ["--cardinality", options.cardinality],
-        ];
-        for (const [flag, value] of requiredFlags) {
-          if (!value) {
-            throw new CliError(
-              `${flag} is required`,
-              EXIT_CODES.ARGUMENT_ERROR,
-            );
-          }
-        }
-
         const runtime = await buildRuntime(getContext(command));
         const response = await createRelation(runtime, {
           identifier: options.identifier,
@@ -248,6 +232,13 @@ export function relationsCommand() {
     )
     .action(
       wrapAction(async (identifier, options, command) => {
+        if (options.type === undefined && options.description === undefined) {
+          throw new CliError(
+            "Provide at least one of --type or --description to update",
+            EXIT_CODES.ARGUMENT_ERROR,
+          );
+        }
+
         const runtime = await buildRuntime(getContext(command));
         const response = await updateRelation(runtime, identifier, {
           type: options.type,
