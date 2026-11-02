@@ -35,9 +35,15 @@ export function relationEdgesCommand() {
   relationEdges
     .command("add")
     .description("Add a relation edge between two entities")
-    .option("--relation <identifier>", "Relation identifier (required)")
-    .option("--source <identifier>", "Source entity identifier (required)")
-    .option("--target <identifier>", "Target entity identifier (required)")
+    .requiredOption("--relation <identifier>", "Relation identifier (required)")
+    .requiredOption(
+      "--source <identifier>",
+      "Source entity identifier (required)",
+    )
+    .requiredOption(
+      "--target <identifier>",
+      "Target entity identifier (required)",
+    )
     .addHelpText(
       "afterAll",
       createExampleText([
@@ -55,7 +61,11 @@ export function relationEdgesCommand() {
     )
     .action(
       wrapAction(async (options, command) => {
-        const edge = requireEdgeOptions(options);
+        const edge: RelationEdge = {
+          relation: options.relation,
+          source: options.source,
+          target: options.target,
+        };
         const runtime = await buildRuntime(getContext(command));
         const response = await addRelationEdge(runtime, edge);
 
@@ -72,7 +82,7 @@ export function relationEdgesCommand() {
     .description(
       "Create or update many relation edges for one relation from a YAML or JSON file or stdin. The file maps each source entity identifier to a list of target entity identifiers.",
     )
-    .option("--relation <identifier>", "Relation identifier (required)")
+    .requiredOption("--relation <identifier>", "Relation identifier (required)")
     .option(
       "--from-file <path>",
       "Path to a YAML or JSON file of edges. Use `initBulkUpsert` to generate a template.",
@@ -99,12 +109,6 @@ export function relationEdgesCommand() {
     )
     .action(
       wrapAction(async (options, command) => {
-        if (!options.relation) {
-          throw new CliError(
-            "--relation is required",
-            EXIT_CODES.ARGUMENT_ERROR,
-          );
-        }
         if (!options.fromFile && !options.fromStdin) {
           throw new CliError(
             "One of --from-file or --from-stdin is required",
@@ -178,8 +182,8 @@ export function relationEdgesCommand() {
   relationEdges
     .command("list")
     .description("List the entities connected to an entity through a relation")
-    .option("--entity <identifier>", "Entity identifier (required)")
-    .option("--relation <identifier>", "Relation identifier (required)")
+    .requiredOption("--entity <identifier>", "Entity identifier (required)")
+    .requiredOption("--relation <identifier>", "Relation identifier (required)")
     .option(
       "--direction <direction>",
       "Treat the entity as the source (`outgoing`) or target (`incoming`) of the relation (default is outgoing)",
@@ -212,16 +216,6 @@ export function relationEdgesCommand() {
     )
     .action(
       wrapAction(async (options, command) => {
-        if (!options.entity) {
-          throw new CliError("--entity is required", EXIT_CODES.ARGUMENT_ERROR);
-        }
-        if (!options.relation) {
-          throw new CliError(
-            "--relation is required",
-            EXIT_CODES.ARGUMENT_ERROR,
-          );
-        }
-
         const runtime = await buildRuntime(getContext(command));
         const response = await listRelationEdges(runtime, {
           entity_identifier: options.entity,
@@ -250,9 +244,15 @@ export function relationEdgesCommand() {
   relationEdges
     .command("remove")
     .description("Remove a relation edge between two entities")
-    .option("--relation <identifier>", "Relation identifier (required)")
-    .option("--source <identifier>", "Source entity identifier (required)")
-    .option("--target <identifier>", "Target entity identifier (required)")
+    .requiredOption("--relation <identifier>", "Relation identifier (required)")
+    .requiredOption(
+      "--source <identifier>",
+      "Source entity identifier (required)",
+    )
+    .requiredOption(
+      "--target <identifier>",
+      "Target entity identifier (required)",
+    )
     .addHelpText(
       "afterAll",
       createExampleText([
@@ -270,7 +270,11 @@ export function relationEdgesCommand() {
     )
     .action(
       wrapAction(async (options, command) => {
-        const edge = requireEdgeOptions(options);
+        const edge: RelationEdge = {
+          relation: options.relation,
+          source: options.source,
+          target: options.target,
+        };
         const runtime = await buildRuntime(getContext(command));
         const response = await removeRelationEdge(runtime, edge);
 
@@ -396,23 +400,6 @@ function edgeBody(edge: RelationEdge): Record<string, unknown> {
 }
 
 // --- Input helpers ---
-
-function requireEdgeOptions(options: {
-  relation?: string;
-  source?: string;
-  target?: string;
-}): RelationEdge {
-  for (const flag of ["relation", "source", "target"] as const) {
-    if (!options[flag]) {
-      throw new CliError(`--${flag} is required`, EXIT_CODES.ARGUMENT_ERROR);
-    }
-  }
-  return {
-    relation: options.relation!,
-    source: options.source!,
-    target: options.target!,
-  };
-}
 
 function parseEdgesMap(raw: unknown, sourceLabel: string): RelationEdgesMap {
   if (raw === null || raw === undefined) {

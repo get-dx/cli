@@ -172,7 +172,7 @@ describe("catalog relationEdges commands", () => {
         await run(["node", "dx", "catalog", "relationEdges", verb, ...args]);
 
         expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
-        expect(stderrWrites.join("")).toContain(`${flag} is required`);
+        expect(stderrWrites.join("")).toContain(`required option '${flag}`);
         expect(fetchMock).not.toHaveBeenCalled();
       },
     );
@@ -268,7 +268,7 @@ describe("catalog relationEdges commands", () => {
       ]);
 
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
-      expect(stderrWrites.join("")).toContain("--relation is required");
+      expect(stderrWrites.join("")).toContain("required option '--relation");
     });
 
     it("errors when neither --from-file nor --from-stdin is provided", async () => {
@@ -540,8 +540,8 @@ describe("catalog relationEdges commands", () => {
     });
 
     it.each([
-      [["--relation", "service-consumes-api"], "--entity is required"],
-      [["--entity", "payments-service"], "--relation is required"],
+      [["--relation", "service-consumes-api"], "required option '--entity"],
+      [["--entity", "payments-service"], "required option '--relation"],
     ])("errors when a required flag is missing", async (args, message) => {
       const { stderrWrites, exitSpy } = captureStderrAndExit();
       const fetchMock = mockApi(LIST_RESPONSE);
