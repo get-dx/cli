@@ -11,6 +11,8 @@ Use the `dx` CLI snapshot endpoints to turn one snapshot into a concise insight 
 - **Driver / factor**: A developer-experience driver. Product-facing docs and reports call these drivers; the API uses `factor` as the `item_type` and stores metadata in `snapshot_items.factors`.
 - **CSAT**: A satisfaction item, commonly for internal tools or services. CSAT score rows use `item_type: "csat"` and CSAT comments come from `dx snapshots csatComments list`.
 - **KPI**: A key performance indicator included in the snapshot results. KPI score rows use `item_type: "kpi"` and metadata comes from `snapshot_items.kpis`.
+- **Workflow**: A snapshot workflow question measuring a specific activity or friction point, such as build time, review wait time, interruption frequency, meeting load, rework, or time saved with AI. Fetch with `dx snapshots workflowScores list`.
+- **Workflow score**: The cohort's result for one workflow in the workflow's `unit` (e.g. hours, times per day). Compare `score` against `workflow.benchmark` percentiles using `workflow.lower_is_better`.
 - **Team score**: One `snapshot.team_scores[]` row for a single snapshot team and snapshot item. Join `item_id` to `snapshot_items` to label the row.
 - **Response count / contributor count**: Use these fields to judge signal strength and privacy sensitivity. Treat low-count rows cautiously.
 - **Comparison fields**: `vs_prev`, `vs_org`, `vs_50th`, `vs_75th`, and `vs_90th` are deltas against the previous snapshot, the organization, and benchmark percentiles.
@@ -30,6 +32,9 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
 - Lead with the strongest 2-4 signals: DXI baseline and movement, biggest strengths to preserve, biggest risks to investigate, and meaningful changes since the prior snapshot.
 - Use driver votes/comments to identify top friction points. Mention heatmap-style patterns when a driver appears organization-wide versus team-specific.
 - Convert drivers, CSAT, KPIs, and comments into concrete discussion prompts for the next team conversation. Prefer "ask the team about..." over unsupported root-cause claims.
+- Use workflow scores to quantify the friction behind low drivers (e.g. a low "Deep work" driver alongside a high interruption-frequency workflow). Lead with workflows where the team is worse than the `p_50` benchmark or where the distribution is heavily skewed toward the worst options.
+- Filter workflow scores with `--snapshot-team-ids` for the manager's team. Treat `hidden` or low `total_respondents` workflows as inconclusive and do not compare them to the org.
+- Turn workflow results into concrete asks: "the team reports X hours per week in meetings versus a p50 of Y; ask what could be cut".
 - Recommend up to three initiatives, each tied to a driver, CSAT item, or KPI, with an owner, next step, expected behavior change, and metric to revisit next Snapshot.
 - When triage is relevant, suggest statuses: `Keep monitoring` for healthy drivers, `Make improvements` for team-owned action, and `Needs support` for issues requiring leadership or cross-team help.
 - Separate team-local follow-ups from issues that likely need help from platform, DevEx, leadership, or another owning group.
@@ -44,6 +49,8 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
 - Use DXI to identify areas for improvement, validate tooling investments, and tell the story of DevEx impact in terms of time saved, quality improvements, or measurable outcomes.
 - Treat drivers (`item_type: "factor"`) as the broad developer-experience "why" signal. Review driver scores, trends, and comments, then cross-reference with CSAT to validate priorities.
 - Include KPI items when present, especially impact, speed, quality, adoption, or time-loss measures that sharpen prioritization.
+- Use workflow scores as the quantitative counterpart to drivers. Driver scores describe sentiment, while workflow scores represent time cost (build time, review wait time, local environment setup, time saved with AI).
+- Compare workflow scores against benchmark percentiles to size the opportunity, then slice by `--group-ids`, `--branch-ids`, or `--attribute-ids` to find where friction concentrates.
 - Group comments by platform domain, workflow, tool, or service when the data supports it. Call out whether a theme is broad, team-specific, or only weakly supported.
 - Translate findings into product/roadmap opportunities: likely owner, affected audience, expected impact, and the metric or comment theme to monitor in the next Snapshot.
 - Recommend Studies when the data shows a trend but not enough root-cause detail. Recommend PlatformX-style follow-up when the issue concerns tool adoption, POCs, usage, sentiment, or mid-cycle feedback.
@@ -86,14 +93,29 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
 
    Use the Snapshot Team `id` values from this response for `snapshot_team_ids` filters on score endpoints. Use `team_id` when you need to inspect the stable DX team with `dx teams info`.
 
-6. Interpret the snapshot info response:
+6. Fetch workflow scores:
+
+   ```bash
+   dx snapshots workflowScores list --id <snapshot_id> --json
+   dx snapshots workflowScores list --id <snapshot_id> --team-ids <team_id1>,<team_id2> --json
+   dx snapshots workflowScores list --id <snapshot_id> --snapshot-team-ids <snapshot_team_id1>,<snapshot_team_id2> --json
+   dx snapshots workflowScores list --id <snapshot_id> --group-ids <group_id> --json
+   dx snapshots workflowScores list --id <snapshot_id> --branch-ids <branch_id> --json
+   dx snapshots workflowScores list --id <snapshot_id> --attribute-ids <attribute_id1>,<attribute_id2> --json
+   ```
+
+   All filters take comma-separated IDs. Attribute value IDs come from step 3 and Snapshot Team IDs come from step 5. A person must match every filter type supplied, and within a filter type any one of the listed IDs. Attribute filters apply per attribute group: values from the same group match any one of them, and values from different groups must all match.
+
+   Skip results with `hidden: true`; their `score` is `null` because too few people responded. Compare `score` against `workflow.benchmark` using `workflow.lower_is_better`, and read `distribution[]` for how responses spread across the workflow's options. Each workflow has its own `unit`, so never sum or average scores across workflows. The `filters` object in the response echoes the names of the applied filters.
+
+7. Interpret the snapshot info response:
    - Read score rows from `snapshot.team_scores`.
    - Read item metadata from `snapshot.snapshot_items`, which contains `factors`, `csat`, and `kpis` arrays.
    - Build an item lookup keyed by item ID so each score row can be labeled from `team_scores[].item_id` and `team_scores[].item_type`.
    - Treat `factor` as the API name for a snapshot driver. In user-facing analysis, call these "drivers" unless you are naming the raw API value.
    - `team_scores[].item_type` is always one of `factor`, `csat`, or `kpi`. Do not invent other item types. Note that `snapshot_items` uses plural collection keys (`factors`, `kpis`) but `item_type` uses singular enum values (`factor`, `kpi`).
 
-7. Fetch all driver comments using pagination:
+8. Fetch all driver comments using pagination:
 
    ```bash
    dx snapshots driverComments list --id <snapshot_id> --limit 100 --json
@@ -102,7 +124,7 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
 
    Continue until `response_metadata.next_cursor` is absent or null.
 
-8. Fetch all CSAT comments using pagination:
+9. Fetch all CSAT comments using pagination:
 
    ```bash
    dx snapshots csatComments list --id <snapshot_id> --limit 100 --json
@@ -111,15 +133,19 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
 
    Continue until `response_metadata.next_cursor` is absent or null.
 
-9. Analyze the combined data. Prioritize:
-   - Lowest and highest team scores, especially with meaningful `response_count`.
-   - Large benchmark gaps: `vs_org`, `vs_50th`, `vs_75th`, `vs_90th`.
-   - Biggest changes from the prior snapshot using `vs_prev`.
-   - Snapshot drivers (`item_type: "factor"`) before CSAT items when other score signals are comparable.
-   - CSAT and KPI items that indicate tool satisfaction, workflow impact, speed, quality, adoption, or time loss.
-   - Repeated themes in driver comments and CSAT comments.
-   - Differences between quantitative scores and qualitative comments.
-   - Teams or items with low response counts that should be treated cautiously to respect privacy of individuals.
+10. Analyze the combined data. Prioritize:
+    - Lowest and highest team scores, especially with meaningful `response_count`.
+    - Large benchmark gaps: `vs_org`, `vs_50th`, `vs_75th`, `vs_90th`.
+    - Biggest changes from the prior snapshot using `vs_prev`.
+    - Snapshot drivers (`item_type: "factor"`) before CSAT items when other score signals are comparable.
+    - CSAT and KPI items that indicate tool satisfaction, workflow impact, speed, quality, adoption, or time loss.
+    - Workflows where `score` is on the wrong side of `benchmark.p_50` (respecting `lower_is_better`), ordered by distance from the benchmark.
+    - Workflows whose `distribution[]` is concentrated in the worst options, even when the score looks acceptable.
+    - Pairings between a low driver and the workflow that quantifies it (e.g. deep work and interruptions, release process and build or deploy time, code review and review wait time).
+    - Hidden workflows, or workflows with low `total_respondents` relative to `total_cohort`, treated cautiously.
+    - Repeated themes in driver comments and CSAT comments.
+    - Differences between quantitative scores and qualitative comments.
+    - Teams or items with low response counts that should be treated cautiously to respect privacy of individuals.
 
 ## Output
 
@@ -127,7 +153,7 @@ Return a concise report with these sections when supported by the data:
 
 - `Snapshot`: selected ID and basic timing/count context.
 - `Executive summary`: 3-5 bullets with the strongest signals.
-- `Score signals`: notable teams/items, scores, response counts, and benchmark gaps.
+- `Score signals`: notable teams/items, scores, response counts, benchmark gaps, and workflow scores versus benchmark.
 - `Comment themes`: recurring themes from driver and CSAT comments, grouped by theme.
 - `Outliers or cautions`: low response counts, missing data, or contradictory signals.
 - `Recommended follow-ups`: specific questions or slices worth investigating next.

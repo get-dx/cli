@@ -3,6 +3,7 @@ import { Command } from "commander";
 import {
   createExampleText,
   getContext,
+  parseCommaSeparatedValues,
   parsePositiveIntOption,
   wrapAction,
 } from "../commandHelpers.js";
@@ -230,6 +231,77 @@ export function snapshotsCommand(): Command {
 
   snapshots.addCommand(snapshotTeams);
 
+  const workflowScores = new Command()
+    .name("workflowScores")
+    .description("Work with snapshot workflow scores");
+
+  workflowScores
+    .command("list")
+    .description("List workflow scores and details for a snapshot")
+    .option("--id <id>", "The unique ID of the snapshot")
+    .option("--team-ids <ids>", "Comma-separated team IDs")
+    .option("--snapshot-team-ids <ids>", "Comma-separated snapshot team IDs")
+    .option("--group-ids <ids>", "Comma-separated group IDs")
+    .option("--branch-ids <ids>", "Comma-separated branch IDs")
+    .option("--attribute-ids <ids>", "Comma-separated attribute IDs")
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "List workflow scores for a snapshot",
+          command: "dx snapshots workflowScores list --id MjUyNbaY",
+        },
+        {
+          label: "List snapshot workflow scores as JSON",
+          command: "dx --json snapshots workflowScores list --id MjUyNbaY",
+        },
+        {
+          label: "Filter workflow scores by team IDs",
+          command:
+            "dx snapshots workflowScores list --id MjUyNbaY --team-ids MTExNDg5,MTExNDg4",
+        },
+        {
+          label: "Filter workflow scores by snapshot team IDs",
+          command:
+            "dx snapshots workflowScores list --id MjUyNbaY --snapshot-team-ids NTcxMDM",
+        },
+        {
+          label: "Filter workflow scores by group IDs",
+          command:
+            "dx snapshots workflowScores list --id MjUyNbaY --group-ids MzYyMjM",
+        },
+        {
+          label: "Filter workflow scores by attribute IDs",
+          command:
+            "dx snapshots workflowScores list --id MjUyNbaY --attribute-ids NzI4OA",
+        },
+        {
+          label: "Filter workflow scores by branch IDs",
+          command:
+            "dx snapshots workflowScores list --id MjUyNbaY --branch-ids MQ",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (options, command) => {
+        const snapshotId = parseRequiredTextOption(options.id, "--id");
+        const runtime = await buildRuntime(getContext(command));
+        const response = await listSnapshotWorkflowScores(
+          runtime,
+          snapshotId,
+          options,
+        );
+
+        if (runtime.context.json) {
+          renderJson(response);
+        } else {
+          renderSnapshotWorkflowScores(response, snapshotId, options, runtime);
+        }
+      }),
+    );
+
+  snapshots.addCommand(workflowScores);
+
   return snapshots;
 }
 
@@ -317,6 +389,78 @@ type ListSnapshotTeamsResponse = {
   snapshot_teams: SnapshotTeamWithManager[];
 };
 
+type SnapshotWorkflowScoreOption = {
+  label: string;
+  value: number;
+};
+
+type SnapshotWorkflowScoreBenchmark = {
+  name: string;
+  p_50: number;
+  p_75: number;
+  p_90: number;
+  year: number;
+};
+
+type SnapshotWorkflowScoreWorkflow = {
+  id: string;
+  name: string;
+  prompt: string;
+  options: SnapshotWorkflowScoreOption[];
+  unit: string;
+  lower_is_better: boolean;
+  benchmark: SnapshotWorkflowScoreBenchmark | null;
+};
+
+type SnapshotWorkflowScoreDistribution = {
+  label: string;
+  value: number;
+  count: number;
+};
+
+type SnapshotWorkflowScoresFilterItem = {
+  id: string;
+  name: string;
+};
+
+type SnapshotWorkflowScoresAttributeGroup = {
+  id: string;
+  name: string;
+  type: string;
+  attributes: SnapshotWorkflowScoresFilterItem[];
+};
+
+type SnapshotWorkflowScoreResult = {
+  workflow: SnapshotWorkflowScoreWorkflow;
+  // null when the workflow is hidden
+  score: number | null;
+  distribution: SnapshotWorkflowScoreDistribution[];
+  total_respondents: number;
+  total_cohort: number;
+  hidden: boolean;
+};
+
+type SnapshotWorkflowScoresFilters = {
+  snapshot: {
+    id: string;
+    scheduled_for: string;
+    completed_at: string;
+    completed_count: number;
+    total_count: number;
+  };
+  teams: SnapshotWorkflowScoresFilterItem[];
+  snapshot_teams: SnapshotWorkflowScoresFilterItem[];
+  groups: SnapshotWorkflowScoresFilterItem[];
+  branches: SnapshotWorkflowScoresFilterItem[];
+  attribute_groups: SnapshotWorkflowScoresAttributeGroup[];
+};
+
+type ListSnapshotWorkflowScoresResponse = {
+  ok: true;
+  filters: SnapshotWorkflowScoresFilters;
+  results: SnapshotWorkflowScoreResult[];
+};
+
 type SnapshotTeamScore = {
   contributor_count?: number | null;
   item_id?: string | null;
@@ -395,6 +539,96 @@ async function listSnapshotTeams(
   );
 
   return response.body;
+}
+
+async function listSnapshotWorkflowScores(
+  runtime: Runtime,
+  snapshotId: string,
+  options: SnapshotFilterOptions,
+): Promise<ListSnapshotWorkflowScoresResponse> {
+  const response = await request<ListSnapshotWorkflowScoresResponse>(
+    runtime,
+    "/snapshots.workflowScores.list",
+    {
+      method: "GET",
+      query: {
+        snapshot_id: snapshotId,
+        ...snapshotFilterQuery(options, "apiKey"),
+      },
+    },
+  );
+
+  return response.body;
+}
+
+type SnapshotFilterOptions = {
+  teamIds?: string;
+  snapshotTeamIds?: string;
+  groupIds?: string;
+  branchIds?: string;
+  attributeIds?: string;
+};
+
+// The web app names some filter params differently from the API. Attributes
+// have no webKey because the web app only accepts decoded tag IDs.
+const SNAPSHOT_FILTER_KEYS: {
+  option: keyof SnapshotFilterOptions;
+  apiKey: string;
+  webKey?: string;
+}[] = [
+  { option: "teamIds", apiKey: "team_ids", webKey: "team_ids" },
+  {
+    option: "snapshotTeamIds",
+    apiKey: "snapshot_team_ids",
+    webKey: "snapshot_team_ids",
+  },
+  { option: "groupIds", apiKey: "group_ids", webKey: "group_ids" },
+  { option: "branchIds", apiKey: "branch_ids", webKey: "branch" },
+  { option: "attributeIds", apiKey: "attribute_ids" },
+];
+
+// The web app can't combine groups with snapshot teams (selecting a group
+// clears snapshot teams) and only selects one branch at a time, so drop those
+// filters from the link and report which ones were left out
+function snapshotWebFilters(options: SnapshotFilterOptions): {
+  query: Record<string, string | undefined>;
+  omittedFlags: string[];
+} {
+  const webOptions = { ...options };
+  const omittedFlags: string[] = [];
+
+  if (
+    parseCommaSeparatedValues(options.groupIds) &&
+    parseCommaSeparatedValues(options.snapshotTeamIds)
+  ) {
+    webOptions.snapshotTeamIds = undefined;
+    omittedFlags.push("--snapshot-team-ids");
+  }
+
+  if ((parseCommaSeparatedValues(options.branchIds)?.length ?? 0) > 1) {
+    webOptions.branchIds = undefined;
+    omittedFlags.push("--branch-ids");
+  }
+
+  if (parseCommaSeparatedValues(options.attributeIds)) {
+    omittedFlags.push("--attribute-ids");
+  }
+
+  return { query: snapshotFilterQuery(webOptions, "webKey"), omittedFlags };
+}
+
+function snapshotFilterQuery(
+  options: SnapshotFilterOptions,
+  target: "apiKey" | "webKey",
+): Record<string, string | undefined> {
+  return Object.fromEntries(
+    SNAPSHOT_FILTER_KEYS.flatMap((keys) => {
+      const key = keys[target];
+      return key
+        ? [[key, parseCommaSeparatedValues(options[keys.option])?.join(",")]]
+        : [];
+    }),
+  );
 }
 
 async function getSnapshotInfo(
@@ -633,6 +867,125 @@ function renderSnapshotInfo(
   }
 
   renderRichText(blocks);
+}
+
+function renderSnapshotWorkflowScores(
+  response: ListSnapshotWorkflowScoresResponse,
+  snapshotId: string,
+  filterOptions: SnapshotFilterOptions,
+  runtime: Runtime,
+): void {
+  const { results } = response;
+  const filterDetails = workflowScoresFilterDetails(response.filters);
+  const webFilters = snapshotWebFilters(filterOptions);
+  const blocks: ui.Block[] = [ui.h1("Snapshot Workflow Scores")];
+
+  if (filterDetails.length > 0) {
+    blocks.push(ui.dl(filterDetails, { termWidth: 17 }));
+  }
+
+  blocks.push(
+    ui.p(
+      `Displaying ${ui.bold(results.length.toString())} ${results.length === 1 ? "workflow" : "workflows"}.`,
+    ),
+    ui.p(
+      ui.link(
+        // Sort the web view by workflow name, ascending (sb = sort by, sr = sort reversed)
+        snapshotWebLink(snapshotId, "workflow", runtime, {
+          sb: "name",
+          sr: "false",
+          ...webFilters.query,
+        }),
+      ),
+    ),
+  );
+
+  if (webFilters.omittedFlags.length > 0) {
+    blocks.push(
+      ui.p(
+        ui.dim(
+          `Web link omits ${webFilters.omittedFlags.join(" and ")}; the web app can't apply those filters.`,
+        ),
+      ),
+    );
+  }
+
+  if (results.length === 0) {
+    blocks.push(ui.p(ui.dim("(None)")));
+    renderRichText(blocks);
+    return;
+  }
+
+  for (const result of results) {
+    blocks.push(ui.h2(result.workflow.name));
+    blocks.push(ui.p(result.workflow.prompt));
+
+    if (result.hidden) {
+      blocks.push(ui.p(ui.dim("(Hidden)")));
+      continue;
+    }
+
+    const benchmark = result.workflow.benchmark;
+    const benchmarkValue = benchmark
+      ? `${benchmark.name} (${benchmark.year}) p50=${benchmark.p_50}, p75=${benchmark.p_75}, p90=${benchmark.p_90}`
+      : ui.dim("(None)");
+
+    blocks.push(
+      ui.dl(
+        [
+          ui.dli("Workflow ID", result.workflow.id),
+          ui.dli("Score", formatNumber(result.score)),
+          optionalDetail(
+            "Respondents",
+            formatNumber(result.total_respondents),
+            result.total_respondents,
+          ),
+          optionalDetail(
+            "Cohort size",
+            formatNumber(result.total_cohort),
+            result.total_cohort,
+          ),
+          ui.dli("Unit", formatText(result.workflow.unit)),
+          ui.dli(
+            "Lower is better",
+            result.workflow.lower_is_better ? "Yes" : "No",
+          ),
+          ui.dli("Benchmark", benchmarkValue),
+        ].filter((detail) => detail !== null),
+        { termWidth: 17 },
+      ),
+    );
+
+    blocks.push(ui.h3("Distribution"));
+    blocks.push(ui.p(formatWorkflowDistributionTable(result.distribution)));
+  }
+
+  renderRichText(blocks);
+}
+
+function workflowScoresFilterDetails(
+  filters: SnapshotWorkflowScoresFilters,
+): ReturnType<typeof ui.dli>[] {
+  const names = (items: SnapshotWorkflowScoresFilterItem[]) =>
+    items.map((item) => item.name).join(", ");
+  const attributes = filters.attribute_groups.flatMap((group) =>
+    group.attributes.map((attribute) => ({
+      id: attribute.id,
+      name: `${group.name}: ${attribute.name}`,
+    })),
+  );
+
+  return (
+    [
+      ["Teams", filters.teams],
+      ["Snapshot teams", filters.snapshot_teams],
+      ["Groups", filters.groups],
+      ["Branches", filters.branches],
+      ["Attributes", attributes],
+    ] as [string, SnapshotWorkflowScoresFilterItem[]][]
+  )
+    .filter(([, items]) => items.length > 0)
+    .map(([term, items]) => ui.dli(term, names(items)));
 }
 
 function renderSnapshots(snapshots: Snapshot[], runtime: Runtime): void {
@@ -883,6 +1236,32 @@ function formatBenchmarkTable(teamScore: SnapshotTeamScore): string {
     ["vs_90th", formatBenchmarkNumber(teamScore.vs_90th)],
   ];
   const columns = ["Benchmark", "Value"];
+  return buildTable(columns, rows);
+}
+
+function formatBenchmarkNumber(value: unknown): string {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value.toString()
+    : "(None)";
+}
+
+function formatWorkflowDistributionTable(
+  distribution: SnapshotWorkflowScoreDistribution[],
+): string {
+  if (distribution.length === 0) {
+    return ui.dim("(None)");
+  }
+
+  const rows = distribution.map((item) => [
+    item.label.trim(),
+    item.value.toString(),
+    item.count.toString(),
+  ]);
+  const columns = ["Label", "Value", "Count"];
+  return buildTable(columns, rows);
+}
+
+function buildTable(columns: string[], rows: string[][]): string {
   const widths = columns.map((column, index) =>
     Math.max(column.length, ...rows.map((row) => row[index].length)),
   );
@@ -897,18 +1276,24 @@ function formatBenchmarkTable(teamScore: SnapshotTeamScore): string {
   return [border, header, border, ...body, border].join("\n");
 }
 
-function formatBenchmarkNumber(value: unknown): string {
-  return typeof value === "number" && Number.isFinite(value)
-    ? value.toString()
-    : "(None)";
-}
-
 function snapshotWebLink(
   snapshotId: string,
-  section: "drivers" | "drivers/comments" | "csat/comments",
+  section: "drivers" | "drivers/comments" | "csat/comments" | "workflow",
   runtime: Runtime,
+  queryParams: Record<string, string | undefined> = {},
 ): string {
-  return ui.webLink(`/snapshots/${snapshotId}/${section}`, runtime);
+  let urlPath = `/snapshots/${snapshotId}/${section}`;
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(queryParams)) {
+    if (value !== undefined) {
+      params.set(key, value);
+    }
+  }
+  if (params.size > 0) {
+    urlPath += `?${params.toString()}`;
+  }
+
+  return ui.webLink(urlPath, runtime);
 }
 
 function parseRequiredTextOption(value: unknown, flag: string): string {

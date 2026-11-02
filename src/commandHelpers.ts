@@ -147,6 +147,21 @@ export function parsePositiveIntOption(value: string, flag: string): number {
   return n;
 }
 
+export function parseCommaSeparatedValues(
+  value?: string,
+): string[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  return parsed.length > 0 ? parsed : undefined;
+}
+
 type Example = {
   label: string;
   command: string;

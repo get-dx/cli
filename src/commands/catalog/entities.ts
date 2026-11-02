@@ -3,6 +3,7 @@ import { Command } from "commander";
 import {
   createExampleText,
   getContext,
+  parseCommaSeparatedValues,
   parsePositiveIntOption,
   wrapAction,
 } from "../../commandHelpers.js";
@@ -1235,19 +1236,6 @@ function getEntityMutationOptionValues(options: {
     owner_user_emails: parseCommaSeparatedValues(options.ownerUserEmails),
     owner_user_ids: parseCommaSeparatedValues(options.ownerUserIds),
   };
-}
-
-function parseCommaSeparatedValues(value?: string): string[] | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  const parsed = value
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
-
-  return parsed.length > 0 ? parsed : undefined;
 }
 
 function buildEntityMutationBody(

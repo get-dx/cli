@@ -184,7 +184,7 @@ describe("catalog relations commands", () => {
       await run(["node", "dx", "catalog", "relations", "create", ...args]);
 
       expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
-      expect(stderrWrites.join("")).toContain(`${flag} is required`);
+      expect(stderrWrites.join("")).toContain(`required option '${flag}`);
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
@@ -417,8 +417,8 @@ describe("catalog relations commands", () => {
       expect(out).toContain("Runtime deps");
     });
 
-    it("sends the request even when no fields are provided", async () => {
-      captureStdout();
+    it("errors when neither --type nor --description is provided", async () => {
+      const { stderrWrites, exitSpy } = captureStderrAndExit();
       const fetchMock = mockApi({ ok: true, relation: MOCK_RELATION });
 
       const { run } = await import("../../cli.js");
@@ -431,9 +431,11 @@ describe("catalog relations commands", () => {
         "service-depends-on-service",
       ]);
 
-      expect(requestBody(fetchMock)).toEqual({
-        identifier: "service-depends-on-service",
-      });
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+      expect(stderrWrites.join("")).toContain(
+        "Provide at least one of --type or --description to update",
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it("returns JSON with --json flag", async () => {
