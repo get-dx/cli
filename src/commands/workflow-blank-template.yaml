@@ -34,7 +34,7 @@ trigger_type: ANY
 # timeout: how long a run can stay in progress before it times out. Only
 # applies when execution_type is EVENT_DRIVEN (ignored for SIMPLE). One of
 # ONE_HOUR, SIX_HOURS, TWELVE_HOURS, ONE_DAY, THREE_DAYS, SEVEN_DAYS,
-# FOURTEEN_DAYS or THIRTY_DAYS. Optional.
+# FOURTEEN_DAYS or THIRTY_DAYS. Optional; if not set, a default of 1 hour is used.
 # timeout: ONE_DAY
 
 # Which entities the workflow can run against (only used when scope is ENTITY).
