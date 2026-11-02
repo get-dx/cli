@@ -292,6 +292,16 @@ export type WorkflowParameter = {
   definition: null | { options: string[] };
 };
 
+export type WorkflowTimeout =
+  | "ONE_HOUR"
+  | "SIX_HOURS"
+  | "TWELVE_HOURS"
+  | "ONE_DAY"
+  | "THREE_DAYS"
+  | "SEVEN_DAYS"
+  | "FOURTEEN_DAYS"
+  | "THIRTY_DAYS";
+
 export type WorkflowSummary = {
   identifier: string;
   name: string;
@@ -304,6 +314,7 @@ export type WorkflowSummary = {
   entity_filter_type_identifiers: string[] | null;
   execution_type: "SIMPLE" | "EVENT_DRIVEN";
   trigger_type: "ANY" | "APPROVAL" | "RUNNERS" | "ENTITY";
+  timeout?: WorkflowTimeout | null;
   parameters: WorkflowParameter[];
 };
 

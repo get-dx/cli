@@ -31,6 +31,12 @@ trigger_type: ANY
 #   - squad_id: "<team id>"                 # user_id or squad_id
 #     squad_linkage_id: null                # optional
 
+# timeout: how long a run can stay in progress before it times out. Only
+# applies when execution_type is EVENT_DRIVEN (ignored for SIMPLE). One of
+# ONE_HOUR, SIX_HOURS, TWELVE_HOURS, ONE_DAY, THREE_DAYS, SEVEN_DAYS,
+# FOURTEEN_DAYS or THIRTY_DAYS. Optional.
+# timeout: ONE_DAY
+
 # Which entities the workflow can run against (only used when scope is ENTITY).
 # entity_filter_type: "ENTITY_TYPES" or "SQL"
 entity_filter_type: ENTITY_TYPES
