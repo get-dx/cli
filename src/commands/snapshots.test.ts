@@ -137,6 +137,106 @@ describe("snapshots command", () => {
     },
   };
 
+  const snapshotTeamsResponse = {
+    ok: true as const,
+    snapshot_teams: [
+      {
+        id: "root-team",
+        name: "Platform",
+        team_id: "team-root",
+        is_parent: true,
+        parent_id: null,
+        manager: {
+          id: "user-1",
+          name: "Jane Manager",
+          email: "jane@example.com",
+        },
+      },
+      {
+        id: "child-team",
+        name: "Application Services",
+        team_id: "team-child",
+        is_parent: false,
+        parent_id: "root-team",
+        manager: null,
+      },
+      {
+        id: "sibling-team",
+        name: "Data Platform",
+        team_id: "team-sibling",
+        is_parent: false,
+        parent_id: "root-team",
+        manager: null,
+      },
+    ],
+  };
+
+  const workflowScoresResponse = {
+    ok: true as const,
+    filters: {
+      snapshot: {
+        id: "MjUyNbaY",
+        scheduled_for: "2024-06-16",
+        completed_at: "2024-07-01T14:01:51.027Z",
+        completed_count: 3077,
+        total_count: 3686,
+      },
+      teams: [],
+      snapshot_teams: [],
+      groups: [],
+      branches: [],
+      attribute_groups: [],
+    },
+    results: [],
+  };
+
+  const workflowScoresWithResultsResponse = {
+    ...workflowScoresResponse,
+    results: [
+      {
+        workflow: {
+          id: "wf-build",
+          name: "Build time",
+          prompt: "How long do builds take?",
+          options: [],
+          unit: "minutes",
+          lower_is_better: true,
+          benchmark: {
+            name: "Industry",
+            p_50: 12,
+            p_75: 8,
+            p_90: 5,
+            year: 2024,
+          },
+        },
+        score: 10.5,
+        distribution: [
+          { label: "Under 5 minutes", value: 5, count: 42 },
+          { label: " 5-15 minutes", value: 10, count: 17 },
+        ],
+        total_respondents: 59,
+        total_cohort: 80,
+        hidden: false,
+      },
+      {
+        workflow: {
+          id: "wf-review",
+          name: "Review wait time",
+          prompt: "How long do you wait for review?",
+          options: [],
+          unit: "hours",
+          lower_is_better: true,
+          benchmark: null,
+        },
+        score: null,
+        distribution: [],
+        total_respondents: 2,
+        total_cohort: 3,
+        hidden: true,
+      },
+    ],
+  };
+
   it("lists snapshot CSAT comments in human-readable output", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
     process.env.DX_WEB_BASE_URL = "https://app.example.com";
@@ -556,6 +656,323 @@ describe("snapshots command", () => {
 
     expect(stdoutWrites.join("")).toContain("Build speed");
     expect(stdoutWrites.join("")).toContain("Tests could be faster.");
+  });
+
+  it("lists snapshot teams in tree order in human-readable output", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(snapshotTeamsResponse), {
+          status: 200,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "snapshotTeams",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.snapshotTeams.list?snapshot_id=MjUyNbaY",
+      expect.objectContaining({ method: "GET" }),
+    );
+    const output = stdoutWrites.join("");
+    expect(output).toContain("Snapshot Teams");
+    expect(output).toContain("Displaying 3 teams.");
+    expect(output).toContain("snapshot_team_ids");
+    expect(output).toContain("Platform");
+    expect(output).toContain("Application Services");
+    expect(output).toContain("Data Platform");
+    expect(output).toContain("Snapshot Team ID");
+    expect(output).toContain("child-team");
+    expect(output).toContain("team-child");
+    expect(output).toContain("Jane Manager <jane@example.com> (user-1)");
+    expect(output).toContain("(None)");
+    expect(output.indexOf("Platform")).toBeLessThan(
+      output.indexOf("Application Services"),
+    );
+    expect(output.indexOf("Application Services")).toBeLessThan(
+      output.indexOf("Data Platform"),
+    );
+  });
+
+  it("prints the snapshots teams API response with --json", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(snapshotTeamsResponse), {
+          status: 200,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "--json",
+      "snapshots",
+      "snapshotTeams",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(JSON.parse(stdoutWrites.join(""))).toEqual(snapshotTeamsResponse);
+  });
+
+  it("lists snapshot workflow scores in human-readable output", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(workflowScoresResponse), {
+          status: 200,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "workflowScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.workflowScores.list?snapshot_id=MjUyNbaY",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(stdoutWrites.join("")).toContain("Snapshot Workflow Scores");
+    expect(stdoutWrites.join("")).toContain("Displaying 0 workflows.");
+    expect(stdoutWrites.join("")).toContain(
+      "https://app.example.com/snapshots/MjUyNbaY/workflow?sb=name&sr=false",
+    );
+  });
+
+  it("renders visible and hidden workflow scores", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(workflowScoresWithResultsResponse), {
+          status: 200,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "workflowScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    const [visible, hidden] = stdoutWrites.join("").split("Review wait time");
+    expect(visible).toContain("Displaying 2 workflows.");
+    expect(visible).toContain("Build time");
+    expect(visible).toContain("10.5");
+    expect(visible).toContain("Industry (2024) p50=12, p75=8, p90=5");
+    expect(visible).toContain("Under 5 minutes");
+    expect(visible).toContain("42");
+    expect(visible).toContain("| 5-15 minutes    |");
+    expect(visible).toContain("Lower is better: Yes");
+    expect(visible).not.toContain("(Hidden)");
+    expect(hidden).toContain("(Hidden)");
+    expect(hidden).not.toContain("wf-review");
+    expect(hidden).not.toContain("Distribution");
+  });
+
+  it("renders a single workflow and the empty distribution", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com";
+    getToken.mockReturnValue("token-123");
+
+    const [visibleResult] = workflowScoresWithResultsResponse.results;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ...workflowScoresResponse,
+            results: [{ ...visibleResult, distribution: [] }],
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "workflowScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    const [, distribution] = stdoutWrites.join("").split("Distribution");
+    expect(stdoutWrites.join("")).toContain("Displaying 1 workflow.");
+    expect(distribution).toContain("(None)");
+  });
+
+  it("passes workflow scores filter options to the API", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(workflowScoresResponse), {
+          status: 200,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "--json",
+      "snapshots",
+      "workflowScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+      "--team-ids",
+      "team-1, team-2",
+      "--snapshot-team-ids",
+      "snapshot-team-1",
+      "--group-ids",
+      "group-1",
+      "--branch-ids",
+      "branch-1,branch-2",
+      "--attribute-ids",
+      "attribute-1,attribute-2",
+    ]);
+
+    const url = new URL(vi.mocked(fetch).mock.calls[0][0] as string);
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      snapshot_id: "MjUyNbaY",
+      team_ids: "team-1,team-2",
+      snapshot_team_ids: "snapshot-team-1",
+      group_ids: "group-1",
+      branch_ids: "branch-1,branch-2",
+      attribute_ids: "attribute-1,attribute-2",
+    });
+  });
+
+  it("prints the snapshots workflow scores API response with --json", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(workflowScoresResponse), {
+          status: 200,
+        }),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "--json",
+      "snapshots",
+      "workflowScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(JSON.parse(stdoutWrites.join(""))).toEqual(workflowScoresResponse);
+  });
+
+  it("surfaces workflow scores invalid argument details when the API rejects the request", async () => {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error: "invalid_arguments",
+            error_details: {
+              snapshot_id: "Must be a valid snapshot id",
+            },
+          }),
+          { status: 400 },
+        ),
+      ),
+    );
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "workflowScores",
+      "list",
+      "--id",
+      "not-a-real-id",
+    ]);
+
+    expect(stderrWrites.join("")).toContain(
+      "status code 400: invalid_arguments",
+    );
+    expect(stderrWrites.join("")).toContain(
+      '"snapshot_id": "Must be a valid snapshot id"',
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("errors when snapshot teams are missing --id", async () => {
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+
+    const { run } = await import("../cli.js");
+    await run(["node", "dx", "snapshots", "snapshotTeams", "list"]);
+
+    expect(stderrWrites.join("")).toContain("--id is required");
+    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
   });
 
   it("errors when snapshot driver comments are missing --id", async () => {

@@ -16,6 +16,7 @@ Run `dx --help` to see all top-level commands. Run `dx <subcommand> --help` to s
 
 ```
 dx --help
+dx attributeGroups --help
 dx auth --help
 dx catalog --help
 dx catalog entities --help
@@ -74,6 +75,12 @@ Use this for any question about DX itself rather than the user's own data: produ
 
 **Exemption** — A time-bound approved pass on a failing check for a specific entity. A check result with a non-null `exemption_expires_at` is exempted: it may still be failing, but is not counted against the entity until the exemption expires.
 
+### Snapshot terms
+
+**Attribute group** — A user attribute used to segment snapshot reporting, such as location, tenure band, or coding activity level. Groups are either DX managed (maintained by DX, such as tenure band and coding activity level), admin managed (imported from the users CSV), or self-reported (custom questions answered during a snapshot). Use `dx attributeGroups list` to retrieve attribute group IDs and the attribute value IDs nested inside them. `position` is display order only, and most attribute groups have none; attribute groups and values without a position sort last. Hidden and privileged attribute groups are flagged in the output.
+
+**Attribute value** — A selectable value within an attribute group, such as "5+ years" within tenure band. Attribute value IDs feed the `attribute_ids` filter when querying snapshot scores by attribute.
+
 ### Data Studio terms
 
 **Report** — A saved collection of tiles (see `dx studio reports`), organized on a dedicated page for dashboards and sharing.
@@ -89,4 +96,20 @@ Use this for any question about DX itself rather than the user's own data: produ
 - [Report creation](./references/report-creation.md) — Studio reports: initializing YAML, creating reports, and updating existing reports.
 - [Scorecards management](./references/scorecards-management.md) — Scorecards and checks: listing, inspecting, creating, updating, and deleting via YAML.
 - [Failing checks](./references/failing-checks.md) — Review and resolve an entity's failing scorecard checks: triage, diagnosis, fixes, and re-evaluation.
-- [Snapshot analysis](./references/snapshot-analysis.md) — Analyze snapshot scores, driver comments, and CSAT comments.
+- [Snapshot analysis](./references/snapshot-analysis.md) — Analyze snapshot scores, teams, workflow scores, driver comments, and CSAT comments.
+
+## Snapshot teams
+
+Use `dx snapshots snapshotTeams list --id <snapshot_id>` to list the teams captured in a snapshot.
+
+- `id` is the Snapshot Team ID. It is only valid within that snapshot and is what DX score endpoints expect in the `snapshot_team_ids` filter.
+- `team_id` is the stable DX team ID. It can be used with `dx teams info --team-id <team_id>` to inspect the current DX team record.
+- Use `--json` to return the raw API response unchanged.
+
+## Snapshot workflow scores
+
+Use `dx snapshots workflowScores list --id <snapshot_id>` to list workflow scores (e.g. build time, review wait time) with benchmarks and response distributions.
+
+- Filter with comma-separated `--team-ids`, `--snapshot-team-ids`, `--group-ids`, `--branch-ids`, and `--attribute-ids`.
+- Workflows with `hidden: true` are below the reporting threshold; their `score` is `null`.
+- The printed web link carries the same filters, except where the web app can't represent them (attributes, groups with snapshot teams, or multiple branches); the output notes which were omitted. Use `--json` to return the raw API response unchanged.

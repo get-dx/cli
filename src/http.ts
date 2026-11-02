@@ -1,4 +1,4 @@
-import { HttpError } from "./errors.js";
+import { CliError, HttpError } from "./errors.js";
 import type { RequestOptions, Runtime } from "./types.js";
 
 export type RequestResponse<T extends Record<string, unknown>> = {
@@ -13,6 +13,7 @@ export async function request<T extends Record<string, unknown>>(
 ): Promise<RequestResponse<T>> {
   const method = options.method || "GET";
   const headers = new Headers({
+    ...options.headers,
     Accept: "application/json",
     "X-Client-Type": "dx-cli",
     "X-Client-Version": runtime.version,
@@ -61,9 +62,12 @@ export async function request<T extends Record<string, unknown>>(
       method,
       headers,
       body: requestBody,
+      signal: options.signal,
     });
   } catch (error) {
-    throw new HttpError(`Request failed: ${(error as Error).message}`);
+    throw new HttpError(
+      `Could not reach ${url}: ${describeFetchFailure(error)}`,
+    );
   }
 
   const responseBodyText = await response.text();
@@ -88,12 +92,80 @@ export async function request<T extends Record<string, unknown>>(
     typeof parsedResponseBody === "string" &&
     parsedResponseBody === responseBodyText
   ) {
-    throw new HttpError("Invalid JSON response: Unexpected token");
+    // A 2xx that isn't JSON usually means something other than the API answered
+    // e.g. a proxy block page, a captive portal, etc. Pass the status
+    // and the raw text along so the user can see what actually came back.
+    throw new HttpError(
+      responseBodyText
+        ? `Invalid JSON response from ${url}`
+        : `Empty response body from ${url}`,
+      response.status,
+      responseBodyText,
+    );
   }
 
   const retryAfterMs = parseRetryAfterMs(response.headers);
   const body = parsedResponseBody as T;
   return retryAfterMs === undefined ? { body } : { body, retryAfterMs };
+}
+
+export async function requestWithMessages<T extends Record<string, unknown>>(
+  runtime: Runtime,
+  route: string,
+  options: RequestOptions,
+  messages: Record<string, string>,
+): Promise<T> {
+  try {
+    const response = await request<T>(runtime, route, options);
+    return response.body;
+  } catch (error) {
+    throw runtime.context.json ? error : readableError(error, messages);
+  }
+}
+
+function readableError(
+  error: unknown,
+  messages: Record<string, string>,
+): unknown {
+  if (!(error instanceof HttpError)) {
+    return error;
+  }
+
+  const code = (error.body as { error?: unknown } | null | undefined)?.error;
+  return typeof code === "string" && Object.hasOwn(messages, code)
+    ? new CliError(messages[code], error.exitCode)
+    : error;
+}
+
+/**
+ * Flatten an error thrown by `fetch` into a single readable message.
+ *
+ * Node reports every DNS, proxy, and TLS failure as `TypeError: fetch failed`
+ * and hangs the real reason off `cause`, so the top-level message alone can't
+ * distinguish an untrusted corporate root certificate from an unreachable host.
+ */
+export function describeFetchFailure(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return String(error);
+  }
+
+  const parts: string[] = [];
+  let current: unknown = error;
+  while (current instanceof Error) {
+    const { code } = current as NodeJS.ErrnoException;
+    const part = code ? `${current.message} (${code})` : current.message;
+    if (!parts.includes(part)) {
+      parts.push(part);
+    }
+    current = current.cause;
+  }
+
+  // "fetch failed" carries no information once a cause is available.
+  const informative = parts.filter(
+    (part) => parts.length === 1 || part !== "fetch failed",
+  );
+
+  return informative.join(": ");
 }
 
 export function parseRetryAfterMs(headers: Headers): number | undefined {

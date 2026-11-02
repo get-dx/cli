@@ -29,14 +29,16 @@ export function reportsCommand() {
 
   reports
     .command("create")
-    .description("Create a Data Studio report from a YAML file or stdin")
+    .description(
+      "Create a Data Studio report from a YAML or JSON file or stdin",
+    )
     .option(
       "--from-file <path>",
-      "Read a YAML file and create a report from its contents",
+      "Read a YAML or JSON file and create a report from its contents",
     )
     .option(
       "--from-stdin",
-      "Read YAML from stdin and create a report from its contents",
+      "Read YAML or JSON from stdin and create a report from its contents",
     )
     .addHelpText("afterAll", createNoteText(VARIABLES_NOTE_TEXT))
     .addHelpText(
@@ -248,16 +250,16 @@ export function reportsCommand() {
   reports
     .command("update")
     .description(
-      "Update a Data Studio report from a YAML file or stdin. The `init` command can be used to initialize the report file.",
+      "Update a Data Studio report from a YAML or JSON file or stdin. The `init` command can be used to initialize the report file.",
     )
     .argument("<id>", "Studio report ID")
     .option(
       "--from-file <path>",
-      "Read a YAML file and update the report with its contents",
+      "Read a YAML or JSON file and update the report with its contents",
     )
     .option(
       "--from-stdin",
-      "Read YAML from stdin and update the report with its contents",
+      "Read YAML or JSON from stdin and update the report with its contents",
     )
     .addHelpText("afterAll", createNoteText(VARIABLES_NOTE_TEXT))
     .addHelpText(
@@ -321,6 +323,15 @@ type StudioReportTile = {
   sql: string | null;
   chart_type: string;
   chart_config: Record<string, unknown>;
+  section_id?: number | null;
+  width?: string;
+  height?: string;
+};
+
+type StudioReportSection = {
+  id: string;
+  name: string;
+  description: string | null;
 };
 
 type StudioReportOwner = {
@@ -335,10 +346,13 @@ type StudioReport = {
   description: string | null;
   markdown_notes: string | null;
   view_access_type: string;
+  viewer_emails: string[];
   edit_access_type: string;
+  editor_emails: string[];
   owner: StudioReportOwner | null;
   url: string;
   tiles: StudioReportTile[];
+  sections: StudioReportSection[];
   created_at: string;
   updated_at: string;
 };
@@ -349,6 +363,15 @@ type StudioReportTilePayload = {
   sql: string | null;
   chart_type: string;
   chart_config: Record<string, unknown>;
+  section_id?: number | null;
+  width?: string;
+  height?: string;
+};
+
+type StudioReportSectionPayload = {
+  id?: string;
+  name: string;
+  description: string | null;
 };
 
 type ResponseMetadata = {
@@ -365,6 +388,7 @@ type CreateStudioReportPayload = {
   viewer_emails?: string[];
   editor_emails?: string[];
   tiles?: StudioReportTilePayload[];
+  sections?: StudioReportSectionPayload[];
 };
 
 type UpdateStudioReportPayload = CreateStudioReportPayload & {
@@ -641,15 +665,23 @@ function studioReportToYaml(report: StudioReport): string {
     description: report.description ?? "",
     markdown_notes: report.markdown_notes ?? "",
     view_access_type: report.view_access_type,
-    viewer_emails: [],
+    viewer_emails: report.viewer_emails ?? [],
     edit_access_type: report.edit_access_type,
-    editor_emails: [],
+    editor_emails: report.editor_emails ?? [],
+    sections: report.sections?.map((section) => ({
+      id: section.id,
+      name: section.name,
+      description: section.description,
+    })),
     tiles: report.tiles.map((tile) => ({
       id: tile.id,
       title: tile.title,
       sql: tile.sql,
       chart_type: tile.chart_type,
       chart_config: tile.chart_config,
+      section_id: tile.section_id,
+      width: tile.width,
+      height: tile.height,
     })),
   };
 

@@ -10,6 +10,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added Data Cloud schema references to the `dx-cli` skill, covering 551 tables and 800 relationships with SQL join guidance and source-specific caveats.
+- `dx reports create/update`: Added support for managing sections and tile sizes in a report.
+- `dx snapshots workflowScores list`: Add support for listing the workflow scores for a snapshot.
+- `dx catalog relations create/delete/info/list/update`: Manage relation definitions between entity types in the Software Catalog.
+
+### Updated
+
+- the dx-cli skill snapshot guidance to explain using filters with the `workflowScores` command.
+
+## 0.9.0 - 2026-10-19
+
+### Added
+
+- `dx doctor`: Diagnose problems with your CLI instance's installation, configuration, networking, and authentication in a shareable report.
+- `dx snapshots snapshotTeams list`: Add support for listing the teams in a snapshot, including Snapshot Team IDs for `snapshot_team_ids` score filters.
+- `dx attributeGroups list` to fetch snapshot attribute groups and attribute IDs, with human-readable and `--json` output.
+
+### Updated
+
+- the dx-cli skill snapshot guidance to explain using attribute value IDs with the `attribute_ids` snapshot filter.
+
+### Fixed
+
+- `dx auth login`: Recognize `DX_WEB_BASE_URL=https://app.getdx.com` (with a scheme or trailing slash) as the cloud deployment instead of requiring `DX_API_BASE_URL`.
+
+## 0.8.0 - 2026-10-15
+
+### Added
+
+- `dx workflows create`: Add support for creating Self-service workflows from a YAML or JSON file or stdin.
+- `dx workflows init`: Add support for writing a blank workflow YAML template.
+
+### Updated
+
+- `dx scorecards create`, `dx scorecards update`, `dx studio reports create`, `dx studio reports update`, `dx catalog entityTypes create`, `dx catalog entityTypes update`: Clarify in the help text that `--from-file` and `--from-stdin` accept JSON as well as YAML.
+
+## 0.7.0 - 2026-10-05
+
+### Added
+
+- `dx users linkableAccounts list`: Add support for searching the accounts DX has imported from a source.
+- `dx users links list`, `dx users links create`, `dx users links delete`, `dx users links set`: Add support for listing and managing the accounts linked to a DX user.
+- `dx users linkableAccounts list`, `dx users links`: Show a readable message for known API error codes.
+
+## 0.6.2 - 2026-08-13
+
+### Updated
+
+- Improvements to error reporting including for fetch failures.
+
+## 0.6.1 - 2026-07-28
+
+### Updated
+
+- Made improvements to prevent creation of corrupted config files and gracefully handle the re-creation of corrupted config files.
+
+### Fixed
+
+- Write the viewer_emails/editor_emails values when initializing studio reports so the values can be carried over/edited from current state on updates.
 
 ## 0.6.0 - 2026-07-21
 

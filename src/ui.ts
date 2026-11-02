@@ -14,7 +14,11 @@ import {
   UnorderedListBlock,
   DescriptionListBlockOptions,
   CodeBlock,
+  StatusListBlock,
+  StatusListBlockOptions,
+  StatusListRow,
 } from "./ui/blocks.js";
+export type { StatusListRow, StatusListStatus } from "./ui/blocks.js";
 
 dayjs.extend(relativeTimePlugin);
 
@@ -81,6 +85,18 @@ export function dli(
   } else {
     return new DescriptionListItemContainer(term, detailItems);
   }
+}
+
+/**
+ * Create a titled list of `[ OK ]` / `[WARN]` / `[FAIL]` / `[SKIP]` rows, as
+ * used by `dx doctor`.
+ */
+export function statusList(
+  title: string,
+  rows: StatusListRow[],
+  options: StatusListBlockOptions,
+): Block {
+  return new StatusListBlock(title, rows, options);
 }
 
 export function codeBlock(text: string): Block {

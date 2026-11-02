@@ -134,3 +134,70 @@ export class JsonBlock extends AbstractBlock {
     return pc.cyan(JSON.stringify(this.value, null, 2)) + "\n";
   }
 }
+
+export type StatusListStatus = "ok" | "warn" | "fail" | "skip";
+
+export type StatusListRow = {
+  status: StatusListStatus;
+  label: string;
+  detail: string;
+  /** Shown on an indented line below the row. */
+  hint?: string | null;
+};
+
+export type StatusListBlockOptions = {
+  labelWidth: number;
+};
+
+function statusMarker(status: StatusListStatus): string {
+  switch (status) {
+    case "ok":
+      return pc.green("[ OK ]");
+    case "warn":
+      return pc.yellow("[WARN]");
+    case "fail":
+      return pc.red("[FAIL]");
+    case "skip":
+      return pc.dim("[SKIP]");
+  }
+}
+
+/**
+ * A titled list of `[ OK ]` / `[WARN]` / `[FAIL]` / `[SKIP]` rows, e.g.:
+ *
+ * ```
+ * Network
+ *   [ OK ] DNS              resolved to 104.18.20.33
+ *   [FAIL] TLS handshake    connection reset by peer
+ *          → A firewall or proxy is likely interrupting HTTPS traffic.
+ * ```
+ */
+export class StatusListBlock extends AbstractBlock {
+  private readonly title: string;
+  private readonly rows: StatusListRow[];
+  private readonly options: StatusListBlockOptions;
+  constructor(
+    title: string,
+    rows: StatusListRow[],
+    options: StatusListBlockOptions,
+  ) {
+    super();
+    this.title = title;
+    this.rows = rows;
+    this.options = options;
+  }
+
+  render(): string {
+    const lines = [pc.bold(this.title)];
+    for (const row of this.rows) {
+      const label = padEnd(row.label, this.options.labelWidth);
+      lines.push(`  ${statusMarker(row.status)} ${label}${row.detail}`);
+      if (row.hint) {
+        const [first, ...rest] = row.hint.split("\n");
+        lines.push(`         → ${first}`);
+        lines.push(...rest.map((line) => `           ${line}`));
+      }
+    }
+    return lines.join("\n") + "\n";
+  }
+}

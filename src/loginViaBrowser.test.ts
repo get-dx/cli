@@ -166,6 +166,29 @@ describe("loginViaBrowser", () => {
     );
   });
 
+  it("throws CliError when token exchange returns an ok status with an invalid body", async () => {
+    let capturedState = "";
+    mockOpen.mockImplementation(async (url: string) => {
+      capturedState = new URL(url).searchParams.get("state") ?? "";
+    });
+
+    mockListenForCode.mockImplementation(
+      async (callback: (state: string, code: string) => Promise<unknown>) => {
+        return callback(capturedState, "auth-code-xyz");
+      },
+    );
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("", { status: 200 })),
+    );
+
+    const { loginViaBrowser } = await import("./loginViaBrowser.js");
+    await expect(loginViaBrowser("https://app.example.com")).rejects.toThrow(
+      "Authentication failed: token exchange returned an invalid response",
+    );
+  });
+
   it("prints a fallback URL when the browser cannot be opened", async () => {
     const writes: string[] = [];
     vi.spyOn(process.stdout, "write").mockImplementation(((

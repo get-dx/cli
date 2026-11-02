@@ -1,12 +1,15 @@
 import { Command, Option } from "commander";
 
+import { attributeGroupsCommand } from "./commands/attributeGroups.js";
 import { authCommand } from "./commands/auth.js";
 import { catalogCommand } from "./commands/catalog.js";
+import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
 import { scorecardsCommand } from "./commands/scorecards.js";
 import { snapshotsCommand } from "./commands/snapshots.js";
 import { studioCommand } from "./commands/studio.js";
 import { teamsCommand } from "./commands/teams.js";
+import { usersCommand } from "./commands/users.js";
 import { workflowRunsCommand } from "./commands/workflowRuns.js";
 import { workflowsCommand } from "./commands/workflows.js";
 import { handleError } from "./commandHelpers.js";
@@ -73,13 +76,16 @@ function createProgram(): Command {
       ),
     );
 
+  program.addCommand(attributeGroupsCommand());
   program.addCommand(authCommand());
   program.addCommand(catalogCommand());
+  program.addCommand(doctorCommand());
   program.addCommand(initCommand());
   program.addCommand(scorecardsCommand());
   program.addCommand(snapshotsCommand());
   program.addCommand(studioCommand());
   program.addCommand(teamsCommand());
+  program.addCommand(usersCommand());
   program.addCommand(workflowRunsCommand());
   program.addCommand(workflowsCommand());
 

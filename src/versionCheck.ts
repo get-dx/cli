@@ -11,7 +11,12 @@ import { request } from "./http.js";
 import { renderRichText } from "./renderers.js";
 import { buildRuntimeSafe } from "./runtime.js";
 import { isSkillInstalled } from "./skill.js";
-import type { Runtime, StoredConfig, VersionPromptSelection } from "./types.js";
+import type {
+  RequestOptions,
+  Runtime,
+  StoredConfig,
+  VersionPromptSelection,
+} from "./types.js";
 import * as ui from "./ui.js";
 
 import cliPackage from "../package.json" with { type: "json" };
@@ -19,7 +24,7 @@ import cliPackage from "../package.json" with { type: "json" };
 const VERSION_CHECK_INTERVAL_HOURS = 24;
 const SNOOZE_DAYS = 7;
 
-const SKIP_COMMANDS = new Set(["auth", "init"]);
+const SKIP_COMMANDS = new Set(["auth", "doctor", "init"]);
 const SKIP_OPTIONS = new Set(["-h", "--help", "-v", "--version"]);
 
 export interface VersionCheckResult {
@@ -88,13 +93,44 @@ export function shouldShowVersionPrompt(
   return true;
 }
 
-async function fetchLatestVersion(runtime: Runtime): Promise<string> {
+export async function fetchLatestVersion(
+  runtime: Runtime,
+  options?: Pick<RequestOptions, "headers" | "signal">,
+): Promise<string> {
   const response = await request<CurrentVersionResponse>(
     runtime,
     "/cli.currentVersion",
-    { method: "GET" },
+    { ...options, method: "GET" },
   );
   return response.body.versions.cli;
+}
+
+const NPM_LATEST_URL = `https://registry.npmjs.org/${cliPackage.name}/latest`;
+
+/**
+ * Fetch the latest published version from the npm registry. Unlike
+ * `fetchLatestVersion`, this does not need a DX API token.
+ */
+export async function fetchLatestVersionFromNpm(options?: {
+  signal?: AbortSignal;
+}): Promise<string> {
+  const response = await fetch(NPM_LATEST_URL, {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": `dx-cli/${cliPackage.version}`,
+    },
+    signal: options?.signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`npm registry returned HTTP ${response.status}`);
+  }
+
+  const body = (await response.json()) as { version?: unknown };
+  if (typeof body.version !== "string") {
+    throw new Error("npm registry response did not include a version");
+  }
+  return body.version;
 }
 
 /**

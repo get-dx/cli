@@ -86,12 +86,18 @@ view_access_type: owner_and_direct_url_only
 viewer_emails: []
 edit_access_type: read_only
 editor_emails: []
+sections:
+  - name: "Top section"
+    description: "An optional description for the section"
 tiles:
   - title: "Table"
     sql: |-
       SELECT 1 AS value
     chart_type: table
     chart_config: {}
+    section_name: "Top section"
+    width: full
+    height: "1/2"
 ```
 
 ### Access settings
@@ -118,6 +124,12 @@ Provide `editor_emails` only when `edit_access_type` is `specific_users`.
 Supported tile `chart_type` values are `line`, `pie`, `stacked_bar`, `scatter`, and `table`.
 
 `line`, `stacked_bar`, and `scatter` chart configs require `xAxis` and `yAxes`; `pie` chart configs require `labelColumn` and `valueColumn`; `table` chart configs can be `{}`.
+
+Tiles `width` and `height` fields may set to one of the following values: "1/4", "1/3", "1/2", "2/3", "3/4", or "full".
+
+### Sections
+
+A report can be split into multiple sections, listed in the report's `sections` field. Each section should have a unique `name` field, and can have an optional `description`. Tiles can be assigned to a section that has yet to be created by setting the tile's `section_name` field to the `name` of the section, or they may be assigned to an existing section by setting the tile's `section_id` field to the `id` of the section.
 
 ---
 

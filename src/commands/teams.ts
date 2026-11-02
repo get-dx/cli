@@ -135,7 +135,7 @@ export type Team = {
   reference_id?: string | null;
 };
 
-type TeamMember = {
+export type TeamMember = {
   id: string;
   name: string;
   email: string;
@@ -391,7 +391,9 @@ function formatTeamHeading(team: TeamInfo): string | null {
   return null;
 }
 
-function formatTeamMember(member: TeamMember | null | undefined): string {
+export function formatTeamMember(
+  member: TeamMember | null | undefined,
+): string {
   if (!member) {
     return ui.dim("(None)");
   }

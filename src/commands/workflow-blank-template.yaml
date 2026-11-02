@@ -1,0 +1,78 @@
+# Self-service workflow configuration
+#
+# Edit this file, then run:
+#
+# ```
+# dx workflows create --from-file <path>
+# ```
+
+# Unique per account. Letters, numbers, ".", "_" and "-" only; "new" is reserved.
+identifier: ""
+name: ""
+description: ""
+# icon: globe
+color: "#38bdf8"
+
+# scope: "GLOBAL" (not tied to a catalog entity) or "ENTITY" (run against an entity)
+scope: GLOBAL
+
+# execution_type: "SIMPLE" or "EVENT_DRIVEN"
+execution_type: SIMPLE
+
+# Who can trigger a run:
+#   ANY       - all users, no approval
+#   APPROVAL  - all users, but an approver must accept (set approver_user_ids)
+#   RUNNERS   - only selected users and teams (set runners)
+#   ENTITY    - only owners of the entity (requires scope: ENTITY)
+trigger_type: ANY
+# approver_user_ids: ["<active user id>"]   # at least one when APPROVAL
+# runners:                                  # at least one when RUNNERS
+#   - user_id: "<user id>"                  # each runner sets exactly one of
+#   - squad_id: "<team id>"                 # user_id or squad_id
+#     squad_linkage_id: null                # optional
+
+# Which entities the workflow can run against (only used when scope is ENTITY).
+# entity_filter_type: "ENTITY_TYPES" or "SQL"
+entity_filter_type: ENTITY_TYPES
+# Entity type identifiers (when entity_filter_type is "ENTITY_TYPES"; at least
+# one is required when scope is ENTITY)
+entity_filter_type_identifiers: []
+# SQL filter expression (required when scope is ENTITY and entity_filter_type is "SQL")
+# entity_filter_sql: ""
+
+# The HTTP request sent when the workflow runs.
+# The url, body, header values and form_data values can use variables:
+#   {{run.id}}, {{workflow.identifier}}, {{workflow.name}},
+#   {{triggered_by_user.id}}, {{triggered_by_user.name}}, {{triggered_by_user.email}},
+#   {{triggered_by_user.team_id}}, {{triggered_by_user.team_name}},
+#   {{entity.identifier}}, {{entity.name}} (scope: ENTITY only),
+#   {{data.<parameter identifier>}}, {{secret.<name>}}
+http_request:
+  # method: GET, POST, PUT, PATCH or DELETE
+  method: POST
+  url: "https://example.com/hooks/my-workflow"
+  headers:
+    Content-Type: application/json
+  # A string or null. Must be null when form_data is used.
+  body: |-
+    {"run_id": "{{run.id}}"}
+  # form_data:
+  #   - key: example
+  #     value: "{{data.example}}"
+
+# Inputs collected from the user when triggering a run. Each parameter needs an
+# identifier (letters, numbers, underscores), a name, a type and is_required.
+parameters: []
+# parameters:
+#   - identifier: environment
+#     name: Environment
+#     description: ""
+#     # type: STRING, INTEGER, FLOAT, BOOLEAN, SELECT, USER, TEAM, EMAIL or COMPUTED
+#     type: SELECT
+#     is_required: true
+#     default_value: staging
+#     # SELECT: {options: [...]}   COMPUTED: {sql: "..."}   other types: omit
+#     definition:
+#       options:
+#         - staging
+#         - production

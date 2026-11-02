@@ -74,7 +74,9 @@ describe("studio reports command", () => {
     description: "Deployment trends by week",
     markdown_notes: null,
     view_access_type: "everyone",
+    viewer_emails: [],
     edit_access_type: "specific_users",
+    editor_emails: ["editor@example.com"],
     owner: {
       id: "usr_abc",
       name: "Alice Example",
@@ -91,6 +93,7 @@ describe("studio reports command", () => {
           xAxis: "week_start",
           yAxes: ["deploys"],
         },
+        section_id: "section_one",
       },
       {
         id: "tile_table",
@@ -98,6 +101,13 @@ describe("studio reports command", () => {
         sql: "SELECT * FROM deployments LIMIT 10",
         chart_type: "table",
         chart_config: {},
+      },
+    ],
+    sections: [
+      {
+        id: "section_one",
+        name: "A section",
+        description: "Optional section description",
       },
     ],
     created_at: "2026-04-13T20:10:05Z",
@@ -546,6 +556,7 @@ describe("studio reports command", () => {
       expect(yaml).toContain('owner_email: ""');
       expect(yaml).toContain("view_access_type: everyone");
       expect(yaml).toContain("edit_access_type: specific_users");
+      expect(yaml).toContain("editor_emails:\n  - editor@example.com");
       expect(yaml).toContain("title: Weekly deploys");
       expect(yaml).toContain("chart_type: line");
 
@@ -555,6 +566,47 @@ describe("studio reports command", () => {
       expect(output).toContain(
         "dx studio reports create --from-file ./my-report.yaml",
       );
+    });
+
+    it("--id carries over the report's specific-people viewer list", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              report: {
+                ...report,
+                view_access_type: "specific_users",
+                viewer_emails: ["viewer@example.com"],
+              },
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+      const writeFileSyncSpy = vi
+        .spyOn(fs, "writeFileSync")
+        .mockImplementation(() => undefined);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "init",
+        "./my-report.yaml",
+        "--id",
+        "rpt_new",
+      ]);
+
+      const yaml = writeFileSyncSpy.mock.calls[0]?.[1] as string;
+      expect(yaml).toContain("view_access_type: specific_users");
+      expect(yaml).toContain("viewer_emails:\n  - viewer@example.com");
     });
 
     it("--id omits read-only fields from the written YAML", async () => {
@@ -633,6 +685,52 @@ describe("studio reports command", () => {
         "tile_line",
         "tile_table",
       ]);
+    });
+
+    it("--id scaffolds each section with its id and each tile with its section_id", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValueOnce(
+          new Response(JSON.stringify(infoResponse), {
+            status: 200,
+          }),
+        ),
+      );
+      const writeFileSyncSpy = vi
+        .spyOn(fs, "writeFileSync")
+        .mockImplementation(() => undefined);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "init",
+        "./my-report.yaml",
+        "--id",
+        "rpt_new",
+      ]);
+
+      const yaml = writeFileSyncSpy.mock.calls[0]?.[1] as string;
+      expect(yaml).toContain("id: section_one");
+
+      // The scaffolded YAML round-trips into an update payload that keeps IDs.
+      const parsed = parseYaml(yaml) as {
+        tiles: { section_id: string | null }[];
+        sections: { id: string; name: string; description?: string }[];
+      };
+      expect(parsed.tiles.map((tile) => tile.section_id)).toEqual([
+        "section_one",
+        undefined,
+      ]);
+      const section = parsed.sections[0];
+      expect(section.id).toEqual("section_one");
+      expect(section.name).toEqual("A section");
+      expect(section.description).toEqual("Optional section description");
     });
 
     it("--id returns JSON with --json flag", async () => {

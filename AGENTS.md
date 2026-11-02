@@ -28,6 +28,7 @@ After making changes, run `make format` to auto-format code before verifying or 
 
 ## Conventions
 
+- The README.md file should be kept EXTREMELY minimal. Most new code changes should not update it. Instead, the docs site article should be updated ([URL](https://docs.getdx.com/cli/), [source code](https://github.com/get-dx/docs/blob/master/src/content/docs/using-dx/use-dx-with-agents/cli.md)).
 - Commands within a file should be defined in alphabetical order (e.g. `create`, `delete`, `info`, `list`, `update`).
 
 ## Source Layout

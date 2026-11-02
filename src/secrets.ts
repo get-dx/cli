@@ -6,7 +6,14 @@ import { CliError } from "./errors.js";
 const SERVICE = "dx-cli";
 
 interface SecretStore {
+  /** Human-readable name of the backing store, e.g. "macOS Keychain". */
+  name: string;
   get(baseUrl: string): Promise<string | null>;
+  /**
+   * Like `get`, but distinguishes a missing token from a store that could not
+   * be read (e.g. `secret-tool` not installed, or no Secret Service running).
+   */
+  probe(baseUrl: string): Promise<SecretStoreProbeResult>;
   set(baseUrl: string, token: string): Promise<void>;
   delete(baseUrl: string): Promise<void>;
 }
@@ -17,6 +24,50 @@ export async function getToken(baseUrl: string): Promise<string | null> {
   }
 
   return await getSecretStore().get(baseUrl);
+}
+
+type SecretStoreProbeResult =
+  | { status: "found"; token: string }
+  | { status: "missing" }
+  | { status: "error"; error: string };
+
+export type TokenLookup =
+  | { source: "env"; token: string }
+  | { source: "keychain"; token: string; storeName: string }
+  | { source: "none"; storeName: string }
+  | { source: "error"; storeName: string | null; error: string };
+
+/**
+ * Like `getToken`, but reports where the token came from, and surfaces errors
+ * reading the OS secret store instead of treating them as a missing token.
+ */
+export async function getTokenWithSource(
+  baseUrl: string,
+): Promise<TokenLookup> {
+  if (process.env.DX_API_TOKEN) {
+    return { source: "env", token: process.env.DX_API_TOKEN };
+  }
+
+  let store: SecretStore;
+  try {
+    store = getSecretStore();
+  } catch (error) {
+    return {
+      source: "error",
+      storeName: null,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  const result = await store.probe(baseUrl);
+  switch (result.status) {
+    case "found":
+      return { source: "keychain", token: result.token, storeName: store.name };
+    case "missing":
+      return { source: "none", storeName: store.name };
+    case "error":
+      return { source: "error", storeName: store.name, error: result.error };
+  }
 }
 
 export async function setToken(baseUrl: string, token: string): Promise<void> {
@@ -45,9 +96,17 @@ function getSecretStore(platform = process.platform): SecretStore {
   );
 }
 
+// `security` exits with this code when no matching keychain item exists.
+const MACOS_ITEM_NOT_FOUND_EXIT_CODE = 44;
+
 function macosSecretStore(): SecretStore {
   return {
+    name: "macOS Keychain",
     async get(baseUrl) {
+      const result = await this.probe(baseUrl);
+      return result.status === "found" ? result.token : null;
+    },
+    async probe(baseUrl) {
       try {
         const result = await execa("security", [
           "find-generic-password",
@@ -58,9 +117,16 @@ function macosSecretStore(): SecretStore {
           "-w",
         ]);
 
-        return result.stdout?.trim() ?? null;
-      } catch {
-        return null;
+        const token = result.stdout?.trim();
+        return token ? { status: "found", token } : { status: "missing" };
+      } catch (error) {
+        if (
+          isRecord(error) &&
+          error.exitCode === MACOS_ITEM_NOT_FOUND_EXIT_CODE
+        ) {
+          return { status: "missing" };
+        }
+        return { status: "error", error: describeStoreError(error) };
       }
     },
     async set(baseUrl, token) {
@@ -106,7 +172,12 @@ function macosSecretStore(): SecretStore {
 
 function linuxSecretStore(): SecretStore {
   return {
+    name: "Linux Secret Service (secret-tool)",
     async get(baseUrl) {
+      const result = await this.probe(baseUrl);
+      return result.status === "found" ? result.token : null;
+    },
+    async probe(baseUrl) {
       try {
         const result = await execa("secret-tool", [
           "lookup",
@@ -116,9 +187,22 @@ function linuxSecretStore(): SecretStore {
           baseUrl,
         ]);
 
-        return result.stdout?.trim() ?? null;
-      } catch {
-        return null;
+        const token = result.stdout?.trim();
+        return token ? { status: "found", token } : { status: "missing" };
+      } catch (error) {
+        if (hasErrorCode(error, "ENOENT")) {
+          return { status: "error", error: "`secret-tool` is not installed" };
+        }
+        // `secret-tool lookup` exits 1 without output when nothing matches.
+        if (
+          isRecord(error) &&
+          error.exitCode === 1 &&
+          !errorStderr(error) &&
+          !isLinuxSecretServiceUnavailable(error)
+        ) {
+          return { status: "missing" };
+        }
+        return { status: "error", error: describeStoreError(error) };
       }
     },
     async set(baseUrl, token) {
@@ -142,14 +226,20 @@ function linuxSecretStore(): SecretStore {
 
 function windowsSecretStore(): SecretStore {
   return {
+    name: "Windows Credential Manager",
     async get(baseUrl) {
+      const result = await this.probe(baseUrl);
+      return result.status === "found" ? result.token : null;
+    },
+    async probe(baseUrl) {
       try {
-        return await crossKeychain.getPassword(
+        const token = await crossKeychain.getPassword(
           SERVICE,
           encodeAccountName(baseUrl),
         );
-      } catch {
-        return null;
+        return token ? { status: "found", token } : { status: "missing" };
+      } catch (error) {
+        return { status: "error", error: describeStoreError(error) };
       }
     },
     async set(baseUrl, token) {
@@ -236,6 +326,23 @@ function isLinuxSecretServiceUnavailable(error: unknown): boolean {
     "Cannot autolaunch D-Bus",
     "No such secret service",
   ].some((message) => text.includes(message));
+}
+
+function errorStderr(error: Record<string, unknown>): string {
+  return typeof error.stderr === "string" ? error.stderr.trim() : "";
+}
+
+function describeStoreError(error: unknown): string {
+  if (isRecord(error)) {
+    const stderr = errorStderr(error);
+    if (stderr) {
+      return stderr;
+    }
+    if (typeof error.shortMessage === "string") {
+      return error.shortMessage;
+    }
+  }
+  return error instanceof Error ? error.message : String(error);
 }
 
 function formatErrorDetails(error: unknown): string | null {

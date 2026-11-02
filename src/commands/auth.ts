@@ -22,7 +22,7 @@ import { CliError } from "../errors.js";
 import { request } from "../http.js";
 import { loginViaBrowser } from "../loginViaBrowser.js";
 import { buildRuntime } from "../runtime.js";
-import type { Runtime } from "../types.js";
+import type { RequestOptions, Runtime } from "../types.js";
 import { maskToken } from "../ui.js";
 
 export function authCommand(): Command {
@@ -224,8 +224,12 @@ export type AuthInfoResponse = {
 };
 
 // TODO: should we move this somewhere more central, since `init` needs it?
-export async function getAuthInfo(runtime: Runtime): Promise<AuthInfoResponse> {
+export async function getAuthInfo(
+  runtime: Runtime,
+  options?: Pick<RequestOptions, "headers" | "signal">,
+): Promise<AuthInfoResponse> {
   const response = await request<AuthInfoResponse>(runtime, "/auth.info", {
+    ...options,
     method: "GET",
   });
 
