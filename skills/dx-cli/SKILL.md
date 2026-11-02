@@ -53,6 +53,37 @@ Use this for any question about DX itself rather than the user's own data: produ
 2. Fetch the relevant page's `.md` URL directly, not the HTML page, e.g. `https://docs.getdx.com/onboarding/github-backfill.md`.
 3. Answer from the fetched Markdown, not from memory. If the page contains a numbered or sequential procedure, follow those steps in the given order — don't skip ahead, reorder, or paraphrase a step away, whether you're relaying them to the user or executing them yourself.
 
+## Answering Data Cloud Schema Questions
+
+Use this for questions about Data Cloud tables, relationships, SQL joins, identity attribution, unified tables, source predicates, and API endpoint tables. Static schema guidance comes from the public DX software CDN and does not require DX authentication or the `datacloud:query` scope.
+
+The mutable manifest URL is:
+
+`https://software.getdx.net/datacloud/schema/v1/latest.json`
+
+For each question:
+
+1. Fetch `latest.json` first. Read its `base_url` and `entrypoint`, then use that immutable `base_url` for every other reference fetched for the question. Do not switch versions midway through an answer.
+2. Fetch the manifest's entrypoint at `base_url + entrypoint`.
+3. Follow the entrypoint's routing instructions. Fetch only the relevant source reference and any cross-cutting references needed for the question; one or two source files should be sufficient for most questions. Do not fetch every source file.
+4. Construct every reference URL relative to `base_url`. For example, fetch the GitHub reference from `base_url + "references/github.md"`.
+5. Answer only from the fetched references. Do not answer joins from memory or infer joins from column names.
+
+If the manifest or a required reference cannot be fetched, say that verified schema guidance is unavailable. Do not invent a join or silently fall back to GitHub raw URLs. If a table is missing from the published references, describe it as absent from the published snapshot, not as proof that the table does not exist.
+
+When the question is broad or depends on which tables contain data in the user's account, check `dx auth status --json`. Only if the available token has the `datacloud:query` scope, narrow the guidance with:
+
+```bash
+dx studio query "SELECT relname, n_live_tup FROM pg_stat_user_tables"
+```
+
+Use that result to distinguish available, populated tables from published schema possibilities. If the scope is unavailable, do not run the live check; continue with the static CDN guidance and note that it was not narrowed to the account. Do not ask the user to authenticate merely to access the static guidance.
+
+Always preserve these caveats when relevant:
+
+- Unified tables such as `issues`, `pull_requests`, `pull_request_reviews`, and `repos` require the documented `source` predicate when joining through polymorphic `source_table_id` values. Fetch `references/source-predicate.md` and use its literal; never guess it from the vendor name.
+- For identity attribution, fetch `references/identities.md` and check whether the activity table has its own `dx_user_id` before using `identities`. A direct `dx_user_id` join can be the correct route; adding `identities` can drop or multiply rows. Never infer the identity route or `identities.source` literal from table names.
+
 ## Glossary
 
 ### Software Catalog terms
@@ -92,7 +123,6 @@ Use this for any question about DX itself rather than the user's own data: produ
 ## Reference Docs
 
 - [Catalog management](./references/catalog-management.md) — Entities and entity types: listing, inspecting, creating, updating, and deleting.
-- [Data Cloud schema joins](./references/schema-joins.md) — Start here for Data Cloud tables, relationships, SQL joins, identity attribution, source versus unified tables, and API endpoint tables.
 - [Report creation](./references/report-creation.md) — Studio reports: initializing YAML, creating reports, and updating existing reports.
 - [Scorecards management](./references/scorecards-management.md) — Scorecards and checks: listing, inspecting, creating, updating, and deleting via YAML.
 - [Failing checks](./references/failing-checks.md) — Review and resolve an entity's failing scorecard checks: triage, diagnosis, fixes, and re-evaluation.
