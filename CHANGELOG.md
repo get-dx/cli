@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added Data Cloud schema references to the `dx-cli` skill, covering 551 tables and 800 relationships with SQL join guidance and source-specific caveats.
+
 ## 0.6.0 - 2026-07-21
 
 ### Added

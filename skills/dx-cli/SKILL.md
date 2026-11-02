@@ -1,6 +1,6 @@
 ---
 name: dx-cli
-description: Interact with the DX (getdx.com) APIs to get and manage information about the Software Catalog, manage Scorecards to track system health, analyze Snapshot survey results, and perform data analysis on Engineering productivity. Also answers questions about DX itself — product concepts, setup/admin procedures (SSO, connectors, backfills), and troubleshooting — by fetching DX's own documentation.
+description: Interact with the DX (getdx.com) APIs to manage the Software Catalog and Scorecards, analyze Snapshot survey results and engineering productivity, and query Data Studio. Also answers DX product questions from DX documentation and Data Cloud schema questions about table relationships, joins, identities, unified tables, and source predicates.
 user-invocable: false
 compatibility: Requires access to the internet
 allowed-tools: Bash(dx:*)
@@ -85,6 +85,7 @@ Use this for any question about DX itself rather than the user's own data: produ
 ## Reference Docs
 
 - [Catalog management](./references/catalog-management.md) — Entities and entity types: listing, inspecting, creating, updating, and deleting.
+- [Data Cloud schema joins](./references/schema-joins.md) — Start here for Data Cloud tables, relationships, SQL joins, identity attribution, source versus unified tables, and API endpoint tables.
 - [Report creation](./references/report-creation.md) — Studio reports: initializing YAML, creating reports, and updating existing reports.
 - [Scorecards management](./references/scorecards-management.md) — Scorecards and checks: listing, inspecting, creating, updating, and deleting via YAML.
 - [Failing checks](./references/failing-checks.md) — Review and resolve an entity's failing scorecard checks: triage, diagnosis, fixes, and re-evaluation.
