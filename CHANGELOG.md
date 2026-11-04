@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `dx reports create/update`: Added support for managing sections and tile sizes in a report.
 - `dx snapshots workflowScores list`: Add support for listing the workflow scores for a snapshot.
 - `dx workflows create`: Support the `timeout` field (event-driven workflows only), and show it in workflow output.
+- `dx users update`: Set whether a user is a developer with `--developer`.
 
 ### Updated
 
