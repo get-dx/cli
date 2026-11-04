@@ -104,6 +104,9 @@ function coreContent(workflow: WorkflowSummary): ui.Block[] {
           "Who can run",
           `${workflowTriggerTypeLabel(workflow.trigger_type)}  ${ui.dim(workflowTriggerTypeDescription(workflow.trigger_type))}`,
         ),
+        ...(workflow.timeout
+          ? [ui.dli("Timeout", ui.code(workflow.timeout))]
+          : []),
       ],
       { termWidth: 16 },
     ),
