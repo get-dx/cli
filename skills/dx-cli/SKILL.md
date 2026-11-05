@@ -23,6 +23,7 @@ dx catalog entities --help
 dx catalog entityTypes --help
 dx scorecards --help
 dx studio --help
+dx users --help
 ```
 
 All commands accept `--json` to return machine-readable JSON instead of human-readable output.
