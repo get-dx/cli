@@ -211,6 +211,7 @@ export function updateCommand(): Command {
                 `${ui.success(ui.GLYPHS.CHECK)} Updated user ${ui.code(response.user.email)}.`,
               ),
               ui.dl(
+                // The API only returns protected when the account has protected_user_ic_metrics_disabled on.
                 PROPERTIES.filter(
                   ({ key }) =>
                     key !== "protected" ||
