@@ -52,6 +52,21 @@ function stubFetch(body: Record<string, unknown>, status = 200) {
   );
 }
 
+async function runUpdate(...args: string[]) {
+  const { run } = await import("../../cli.js");
+  await run(["node", "dx", "users", "update", "ada@example.com", ...args]);
+}
+
+function expectRequestBody(body: Record<string, unknown>) {
+  expect(fetch).toHaveBeenCalledWith(
+    "https://api.example.com/users.update",
+    expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ email: "ada@example.com", ...body }),
+    }),
+  );
+}
+
 describe("users update", () => {
   it("sets the developer flag in human-readable output", async () => {
     stubFetch({
@@ -59,24 +74,9 @@ describe("users update", () => {
       user: { email: "ada@example.com", developer: true },
     });
 
-    const { run } = await import("../../cli.js");
-    await run([
-      "node",
-      "dx",
-      "users",
-      "update",
-      "ada@example.com",
-      "--developer",
-      "true",
-    ]);
+    await runUpdate("--developer", "true");
 
-    expect(fetch).toHaveBeenCalledWith(
-      "https://api.example.com/users.update",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ email: "ada@example.com", developer: true }),
-      }),
-    );
+    expectRequestBody({ developer: true });
     const out = stdoutWrites.join("");
     expect(out).toContain("Updated user");
     expect(out).toContain("ada@example.com");
@@ -89,47 +89,131 @@ describe("users update", () => {
       user: { email: "ada@example.com", developer: false },
     });
 
-    const { run } = await import("../../cli.js");
-    await run([
-      "node",
-      "dx",
-      "users",
-      "update",
-      "ada@example.com",
-      "--developer",
-      "false",
-    ]);
+    await runUpdate("--developer", "false");
 
-    expect(fetch).toHaveBeenCalledWith(
-      "https://api.example.com/users.update",
-      expect.objectContaining({
-        body: JSON.stringify({ email: "ada@example.com", developer: false }),
-      }),
-    );
+    expectRequestBody({ developer: false });
     expect(stdoutWrites.join("")).toContain("false");
   });
 
   it("sends null to clear the flag and shows it as unset", async () => {
     stubFetch({ ok: true, user: { email: "ada@example.com" } });
 
-    const { run } = await import("../../cli.js");
-    await run([
-      "node",
-      "dx",
-      "users",
-      "update",
-      "ada@example.com",
-      "--developer",
-      "null",
-    ]);
+    await runUpdate("--developer", "null");
 
-    expect(fetch).toHaveBeenCalledWith(
-      "https://api.example.com/users.update",
-      expect.objectContaining({
-        body: JSON.stringify({ email: "ada@example.com", developer: null }),
-      }),
-    );
+    expectRequestBody({ developer: null });
     expect(stdoutWrites.join("")).toContain("unset");
+  });
+
+  it("sends every property the API accepts in one request", async () => {
+    stubFetch({ ok: true, user: { email: "ada@example.com" } });
+
+    await runUpdate(
+      "--start-date",
+      "2024-10-07",
+      "--github-username",
+      "ada-lovelace",
+      "--additional-github-username",
+      "ada-work",
+      "--gitlab-username",
+      "ada.lovelace",
+      "--ai-light-adoption-date",
+      "2025-01-15",
+      "--ai-moderate-adoption-date",
+      "2025-03-01",
+      "--ai-heavy-adoption-date",
+      "2025-06-30",
+      "--sso-email",
+      "ada@sso.example.com",
+      "--additional-emails",
+      "ada@old.example.com, ada@alias.example.com",
+      "--protected",
+      "true",
+      "--exclude-from-snapshots",
+      "false",
+      "--developer",
+      "true",
+    );
+
+    expectRequestBody({
+      start_date: "2024-10-07",
+      github_username: "ada-lovelace",
+      additional_github_username: "ada-work",
+      gitlab_username: "ada.lovelace",
+      ai_light_adoption_date: "2025-01-15",
+      ai_moderate_adoption_date: "2025-03-01",
+      ai_heavy_adoption_date: "2025-06-30",
+      sso_email: "ada@sso.example.com",
+      additional_emails: ["ada@old.example.com", "ada@alias.example.com"],
+      protected: true,
+      exclude_from_snapshots: false,
+      developer: true,
+    });
+  });
+
+  it("sends null to clear text, date, and list properties", async () => {
+    stubFetch({ ok: true, user: { email: "ada@example.com" } });
+
+    await runUpdate(
+      "--start-date",
+      "null",
+      "--github-username",
+      "null",
+      "--sso-email",
+      "null",
+      "--additional-emails",
+      "null",
+    );
+
+    expectRequestBody({
+      start_date: null,
+      github_username: null,
+      sso_email: null,
+      additional_emails: null,
+    });
+  });
+
+  it("leaves out properties that were not passed", async () => {
+    stubFetch({ ok: true, user: { email: "ada@example.com" } });
+
+    await runUpdate("--gitlab-username", "ada.lovelace");
+
+    expectRequestBody({ gitlab_username: "ada.lovelace" });
+  });
+
+  it("lists every property in the output and marks missing ones unset", async () => {
+    stubFetch({
+      ok: true,
+      user: {
+        email: "ada@example.com",
+        start_date: "2024-10-07",
+        exclude_from_snapshots: false,
+        github_username: "ada-lovelace",
+        additional_emails: ["ada@old.example.com", "ada@alias.example.com"],
+      },
+    });
+
+    await runUpdate("--start-date", "2024-10-07");
+
+    const out = stdoutWrites.join("");
+    expect(out).toContain("Start date");
+    expect(out).toContain("2024-10-07");
+    expect(out).toContain("Additional GitHub username");
+    expect(out).toContain("AI moderate adoption date");
+    expect(out).toContain("ada@old.example.com, ada@alias.example.com");
+    expect(out).toContain("unset");
+    expect(out).not.toContain("Protected");
+  });
+
+  it("shows the protected property when the API returns it", async () => {
+    stubFetch({
+      ok: true,
+      user: { email: "ada@example.com", protected: true },
+    });
+
+    await runUpdate("--protected", "true");
+
+    expectRequestBody({ protected: true });
+    expect(stdoutWrites.join("")).toContain("Protected");
   });
 
   it("prints the API response with --json", async () => {
@@ -154,61 +238,65 @@ describe("users update", () => {
     expect(JSON.parse(stdoutWrites.join(""))).toEqual(response);
   });
 
-  it("rejects a --developer value that is not true, false, or null", async () => {
-    stubFetch({ ok: true });
-    const exitSpy = vi
-      .spyOn(process, "exit")
-      .mockImplementation(() => undefined as never);
+  describe("argument validation", () => {
+    async function expectArgumentError(args: string[], message: string) {
+      stubFetch({ ok: true });
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
 
-    const { run } = await import("../../cli.js");
-    await run([
-      "node",
-      "dx",
-      "users",
-      "update",
-      "ada@example.com",
-      "--developer",
-      "yes",
-    ]);
+      await runUpdate(...args);
 
-    expect(stderrWrites.join("")).toContain(
-      "--developer must be true, false, or null",
+      expect(stderrWrites.join("")).toContain(message);
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+      expect(fetch).not.toHaveBeenCalled();
+    }
+
+    it("rejects a --developer value that is not true, false, or null", async () => {
+      await expectArgumentError(
+        ["--developer", "yes"],
+        "--developer must be true, false, or null",
+      );
+    });
+
+    it.each(["--protected", "--exclude-from-snapshots"])(
+      "rejects null for %s",
+      async (flag) => {
+        await expectArgumentError(
+          [flag, "null"],
+          `${flag} must be true or false`,
+        );
+      },
     );
-    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
-    expect(fetch).not.toHaveBeenCalled();
-  });
 
-  it("errors when there is nothing to update", async () => {
-    stubFetch({ ok: true });
-    const exitSpy = vi
-      .spyOn(process, "exit")
-      .mockImplementation(() => undefined as never);
+    it.each(["next week", "2024-2-3", "2024-02-30", "2024-13-45"])(
+      "rejects the date %s",
+      async (date) => {
+        await expectArgumentError(
+          ["--ai-heavy-adoption-date", date],
+          "--ai-heavy-adoption-date must be a date formatted as YYYY-MM-DD",
+        );
+      },
+    );
 
-    const { run } = await import("../../cli.js");
-    await run(["node", "dx", "users", "update", "ada@example.com"]);
+    it("rejects an empty --additional-emails list", async () => {
+      await expectArgumentError(
+        ["--additional-emails", " , "],
+        "--additional-emails needs at least one email address",
+      );
+    });
 
-    expect(stderrWrites.join("")).toContain("Nothing to update");
-    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
-    expect(fetch).not.toHaveBeenCalled();
+    it("errors when there is nothing to update", async () => {
+      await expectArgumentError([], "Nothing to update");
+    });
   });
 
   describe("error messages", () => {
-    const args = [
-      "node",
-      "dx",
-      "users",
-      "update",
-      "ada@example.com",
-      "--developer",
-      "null",
-    ];
-
     it("explains an unknown user", async () => {
       stubFetch({ ok: false, error: "User not found" }, 404);
       vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
 
-      const { run } = await import("../../cli.js");
-      await run(args);
+      await runUpdate("--developer", "null");
 
       expect(stderrWrites.join("")).toContain(
         "No active DX user has that email address",
@@ -219,11 +307,24 @@ describe("users update", () => {
       stubFetch({ ok: false, error: "Developer must be true or false" }, 422);
       vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
 
-      const { run } = await import("../../cli.js");
-      await run(args);
+      await runUpdate("--developer", "null");
 
       expect(stderrWrites.join("")).toContain(
         "Only accounts that manage developer classification manually",
+      );
+    });
+
+    it("shows the API message for a GitHub username that is taken", async () => {
+      stubFetch(
+        { ok: false, error: "GitHub username 'ada' is already taken" },
+        409,
+      );
+      vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+
+      await runUpdate("--github-username", "ada");
+
+      expect(stderrWrites.join("")).toContain(
+        "GitHub username 'ada' is already taken",
       );
     });
 
@@ -232,7 +333,16 @@ describe("users update", () => {
       vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
 
       const { run } = await import("../../cli.js");
-      await run([args[0], args[1], "--json", ...args.slice(2)]);
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "users",
+        "update",
+        "ada@example.com",
+        "--developer",
+        "null",
+      ]);
 
       expect(JSON.parse(stdoutWrites.join(""))).toEqual({
         ok: false,
