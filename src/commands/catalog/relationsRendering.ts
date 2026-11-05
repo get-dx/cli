@@ -42,6 +42,7 @@ function relationContent(relation: Relation): ui.Block[] {
   return [
     ui.dl(
       [
+        ui.dli("Public ID", ui.code(relation.public_id)),
         ui.dli("Identifier", ui.code(relation.identifier)),
         ui.dli(
           "Relation",
