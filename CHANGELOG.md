@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Updated
 
+- the dx-cli skill Data Cloud query guidance to use the live schema reference, including per-table Markdown with foreign-key and polymorphic relationship metadata.
 - the dx-cli skill snapshot guidance to explain using filters with the `workflowScores` command.
 
 ## 0.9.0 - 2026-10-19

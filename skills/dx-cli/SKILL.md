@@ -53,6 +53,12 @@ Use this for any question about DX itself rather than the user's own data: produ
 2. Fetch the relevant page's `.md` URL directly, not the HTML page, e.g. `https://docs.getdx.com/onboarding/github-backfill.md`.
 3. Answer from the fetched Markdown, not from memory. If the page contains a numbered or sequential procedure, follow those steps in the given order — don't skip ahead, reorder, or paraphrase a step away, whether you're relaying them to the user or executing them yourself.
 
+## Data Cloud Schema Reference
+
+When writing or running Data Cloud SQL with `dx studio query`, consult the [Data Cloud Schema Reference](https://docs.getdx.com/schema/) instead of guessing table or column names. The index lists the tables Data Cloud can provide, grouped by source. Open the relevant table pages to confirm columns and types, primary and foreign keys, and join paths, including polymorphic relationships, before constructing or correcting a query.
+
+Every table page is also available as Markdown at `https://docs.getdx.com/schema/{table_name}.md`; fetch this version directly when an agent-readable schema is useful. For example, [pull_requests.md](https://docs.getdx.com/schema/pull_requests.md) includes a `References` column that links ordinary foreign keys to their target tables and maps polymorphic relationships to different target tables based on the source value.
+
 ## Glossary
 
 ### Software Catalog terms
