@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Updated
 
 - `dx catalog relations info/list`: Show each relation's `public_id` in the output.
+- `dx users update`: Update a user's start date, GitHub, GitLab and SSO identities, AI adoption dates, additional emails, and the protected, exclude-from-snapshots and developer flags.
 
 ## 0.10.0 - 2026-11-05
 
