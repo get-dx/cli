@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `dx scorecards create/update`: Support the `default_display_entity_type_identifier` and `default_display_grouping` fields to set a scorecard's default view, and include them in scorecard output.
+
+### Updated
+
+- `dx catalog relations info/list`: Show each relation's `public_id` in the output.
+
 ## 0.10.0 - 2026-11-05
 
 ### Added
