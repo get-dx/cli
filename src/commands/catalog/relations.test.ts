@@ -29,6 +29,7 @@ afterEach(() => {
 });
 
 const MOCK_RELATION: Relation = {
+  public_id: "r4k9d2x7m1qa",
   identifier: "service-depends-on-service",
   type: "depends on",
   inverse_type: "dependency of",
