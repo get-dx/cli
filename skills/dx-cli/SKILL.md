@@ -103,6 +103,11 @@ Every table page is also available as Markdown at `https://docs.getdx.com/schema
 - [Scorecards management](./references/scorecards-management.md) — Scorecards and checks: listing, inspecting, creating, updating, and deleting via YAML.
 - [Failing checks](./references/failing-checks.md) — Review and resolve an entity's failing scorecard checks: triage, diagnosis, fixes, and re-evaluation.
 - [Snapshot analysis](./references/snapshot-analysis.md) — Analyze snapshot scores, teams, workflow scores, driver comments, and CSAT comments.
+- [Snapshot settings](./references/snapshot-settings.md) — Discover and mutate account snapshot survey settings via `snapshots.settings.*` (requires `snapshots:admin`).
+
+## Snapshot settings
+
+Use `dx snapshots settings …` to manage the account's current snapshot survey settings through the public Web API (not the database). Prefer `--json`. See [Snapshot settings](./references/snapshot-settings.md).
 
 ## Snapshot teams
 
