@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { describeFetchFailure, parseRetryAfterMs, request } from "./http.js";
+import {
+  describeFetchFailure,
+  parseRetryAfterMs,
+  request,
+  requestText,
+} from "./http.js";
 import { HttpError } from "./errors.js";
 import { createLogger } from "./logger.js";
 import type { Runtime } from "./types.js";
@@ -86,6 +91,65 @@ describe("request", () => {
     ).resolves.toEqual({
       body: { ok: true, value: 1 },
     });
+  });
+
+  it("sends PUT requests with a JSON body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+        }),
+      ),
+    );
+
+    await expect(
+      request<{ ok: true }>(runtime, "/snapshots.settings.drivers", {
+        method: "PUT",
+        body: { driver_id: "DRV1", name: "Docs" },
+      }),
+    ).resolves.toEqual({ body: { ok: true } });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.settings.drivers",
+      expect.objectContaining({ method: "PUT" }),
+    );
+    const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({
+      driver_id: "DRV1",
+      name: "Docs",
+    });
+  });
+});
+
+describe("requestText", () => {
+  it("returns raw text for CSV responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("Section,Content\n", {
+          status: 200,
+          headers: { "content-type": "text/csv" },
+        }),
+      ),
+    );
+
+    await expect(
+      requestText(runtime, "/snapshots.settings.manifest", {
+        method: "GET",
+        accept: "text/csv",
+        query: { locale: "en" },
+      }),
+    ).resolves.toEqual({
+      text: "Section,Content\n",
+      contentType: "text/csv",
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.settings.manifest?locale=en",
+      expect.objectContaining({ method: "GET" }),
+    );
   });
 });
 
