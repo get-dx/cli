@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.11.0 - 2026-11-06
+
 ### Added
 
 - `dx scorecards create/update`: Support the `default_display_entity_type_identifier` and `default_display_grouping` fields to set a scorecard's default view, and include them in scorecard output.
