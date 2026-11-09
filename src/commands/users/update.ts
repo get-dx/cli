@@ -15,6 +15,7 @@ import * as ui from "../../ui.js";
 
 type UserProperties = {
   start_date?: string;
+  timezone?: string;
   github_username?: string;
   additional_github_username?: string;
   gitlab_username?: string;
@@ -52,6 +53,14 @@ const PROPERTIES: Property[] = [
     valueName: "date",
     description: "Start date as YYYY-MM-DD, or null to clear it",
     parse: parseDate,
+  },
+  {
+    key: "timezone",
+    label: "Timezone",
+    valueName: "timezone",
+    description:
+      "Timezone such as America/Chicago, or null to clear it. Rejected when Slack or Microsoft Teams provides the user's timezone",
+    parse: parseText,
   },
   {
     key: "github_username",
