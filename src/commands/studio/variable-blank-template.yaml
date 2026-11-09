@@ -1,0 +1,36 @@
+# Data Studio variable configuration
+#
+# Edit this file, then run:
+#
+# ```
+# dx studio variables create --from-file <path>
+# ```
+
+# name: a unique name used to reference the variable in SQL
+name: ""
+# label: a readable label to display in the UI
+label: ""
+
+# variable_type: "select" or "text"
+#   "select": (Dropdown menu) Provides a dropdown with options populated from a SQL query
+#   "text": (Text field) Provides a freeform text input
+variable_type: "select"
+
+# single_select: If true, limits users to selecting only a single option from the dropdown
+#   otherwise, multiple selections are passed to the SQL as a comma-separated list
+#   (Only applicable when variable_type is "select")
+single_select: false
+
+# source_sql: The SQL query used to populate options for the dropdown
+#   Query is expected to return a "label" and a "value" column,
+#   where the "label" is displayed for each option in the dropdown, and the "value" is passed to the tile SQL.
+#   (Only applicable when variable_type is "select")
+source_sql: |-
+  SELECT 'One' AS label, 1 AS value
+
+# quote_values: Whether quotes will be included around values when passing to the tile SQL.
+#   Optional. If not initially provided, a value will be automatically determined based on the source_sql.
+quote_values: true
+
+# public: Whether the variable is shared to be available for other users to add to reports. (Defaults to true)
+public: true

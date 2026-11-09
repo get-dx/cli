@@ -1,7 +1,7 @@
 import fs from "fs";
 
 import { Command } from "commander";
-import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+import { stringify as stringifyYaml } from "yaml";
 
 import {
   createExampleText,
@@ -16,10 +16,16 @@ import { renderJson, renderRichText } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
+import {
+  readYamlFile,
+  readYamlStdin,
+  parseYamlObject,
+} from "../../utils/yaml.js";
 
 const VARIABLES_NOTE_TEXT = [
-  "Tile SQL can reference report variables using `$variable_name` syntax. Built-in variables — $service_ids, $team_ids, $tag_ids, $user_ids, $repo_ids, $start_date, $end_date — filter by service, team, attribute, user, repo, and date range, respectively. Custom variables are account-defined dropdown filters backed by a SQL query.",
-  "Variables cannot be created, updated, enabled, or disabled via this CLI or the API. Built-in variables must be toggled, and custom variables must be added, edited, or removed, from the report's settings in the Data Studio UI. Once a variable is enabled on a report, its `$variable_name` can be used in any tile's SQL via --from-file/--from-stdin.",
+  "Variables can be enabled or disabled for a given report via the report's `enabled_variables` property. Once enabled, any tile's SQL can reference the variable using the `$variable_name` syntax.",
+  "Built-in variables — $service_ids, $team_ids, $tag_ids, $user_ids, $repo_ids, $start_date, $end_date — filter by service, team, attribute, user, repo, and date range, respectively.",
+  "Custom variables are account-defined, and can be created and updated via the `dx studio variables` commands.",
 ];
 
 export function reportsCommand() {
@@ -584,40 +590,6 @@ function parseLimitOption(value: string, flag: string): number {
   return limit;
 }
 
-function readYamlFile(filePath: string): unknown {
-  let content: string;
-  try {
-    content = fs.readFileSync(filePath, "utf8");
-  } catch (err) {
-    throw new CliError(
-      `Could not read file "${filePath}": ${(err as Error).message}`,
-      EXIT_CODES.ARGUMENT_ERROR,
-    );
-  }
-  return parseYaml(content);
-}
-
-async function readYamlStdin(): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk));
-    process.stdin.on("end", () => {
-      const content = Buffer.concat(chunks).toString("utf8");
-      try {
-        resolve(parseYaml(content));
-      } catch (err) {
-        reject(
-          new CliError(
-            `Could not parse YAML from stdin: ${(err as Error).message}`,
-            EXIT_CODES.ARGUMENT_ERROR,
-          ),
-        );
-      }
-    });
-    process.stdin.on("error", reject);
-  });
-}
-
 function buildCreateReportPayload(raw: unknown): CreateStudioReportPayload {
   const { id: _id, tiles, ...rest } = parseYamlObject(raw);
   const payload = rest as CreateStudioReportPayload;
@@ -640,17 +612,6 @@ function buildUpdateReportPayload(
   raw: unknown,
 ): UpdateStudioReportPayload {
   return { ...parseYamlObject(raw), id } as UpdateStudioReportPayload;
-}
-
-function parseYamlObject(raw: unknown): Record<string, unknown> {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new CliError(
-      "YAML content must be an object",
-      EXIT_CODES.ARGUMENT_ERROR,
-    );
-  }
-
-  return raw as Record<string, unknown>;
 }
 
 const STUDIO_REPORT_BLANK_TEMPLATE_YAML = fs.readFileSync(
