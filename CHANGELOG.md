@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Updated
+
+- `dx users update`: Support the `--timezone` option to set or clear a user's timezone.
+
 ## 0.11.0 - 2026-11-06
 
 ### Added
