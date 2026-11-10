@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `dx snapshots settings`: Discover branches, library, configuration and CSV manifest; create/update custom definitions, replace selections with `set`, and set account-wide CSAT ordering. Uses public POST action routes with JSON/YAML input and machine-readable API responses.
+
 - `dx users update`: Update a user's start date, GitHub, GitLab and SSO identities, AI adoption dates, additional emails, and the protected, exclude-from-snapshots and developer flags.
 
 ## 0.10.0 - 2026-11-05

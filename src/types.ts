@@ -17,7 +17,7 @@ export interface CliContext {
 }
 
 export interface RequestOptions {
-  method?: "GET" | "POST" | "PUT";
+  method?: "GET" | "POST";
   query?: Record<string, string | number | boolean | undefined>;
   body?: unknown;
   /** Extra headers to send. These cannot override the CLI's own headers. */

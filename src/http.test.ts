@@ -93,7 +93,7 @@ describe("request", () => {
     });
   });
 
-  it("sends PUT requests with a JSON body", async () => {
+  it("sends POST requests with a JSON body", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -104,15 +104,15 @@ describe("request", () => {
     );
 
     await expect(
-      request<{ ok: true }>(runtime, "/snapshots.settings.drivers", {
-        method: "PUT",
+      request<{ ok: true }>(runtime, "/snapshots.settings.drivers.update", {
+        method: "POST",
         body: { driver_id: "DRV1", name: "Docs" },
       }),
     ).resolves.toEqual({ body: { ok: true } });
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://api.example.com/snapshots.settings.drivers",
-      expect.objectContaining({ method: "PUT" }),
+      "https://api.example.com/snapshots.settings.drivers.update",
+      expect.objectContaining({ method: "POST" }),
     );
     const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock
       .calls[0] as [string, RequestInit];

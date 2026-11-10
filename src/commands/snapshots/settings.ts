@@ -19,8 +19,8 @@ import * as ui from "../../ui.js";
 const SETTINGS_AUTH_NOTES = [
   "Requires a token with the snapshots:admin scope (not snapshots:read). The account must have the Snapshots product capability.",
   "Write endpoints refuse changes while a snapshot is live (HTTP 409 snapshot_live).",
-  "Call `dx snapshots settings branches` first. When branching_enabled is false, omit branch_id on selection (and usually on create). When true, selection requires an encoded branch_id from that response.",
-  "Selection endpoints replace membership with the complete desired set — they are not diffs.",
+  "Call `dx snapshots settings branches list` first. When branching_enabled is false, omit branch_id on selection; create always rejects branch_id. When true, selection requires an encoded branch_id from that response.",
+  "Selection endpoints replace selected IDs with the complete desired set — they are not diffs.",
 ];
 
 /**
@@ -38,6 +38,7 @@ export function settingsCommand(): Command {
   settings.addCommand(branchesCommand());
   settings.addCommand(configurationCommand());
   settings.addCommand(csatItemsCommand());
+  settings.addCommand(csatOrderCommand());
   settings.addCommand(csatSelectionCommand());
   settings.addCommand(driverSelectionCommand());
   settings.addCommand(driversCommand());
@@ -222,7 +223,7 @@ function manifestCommand(): Command {
           renderJson({
             ok: true,
             path: outputPath,
-            bytes: response.text.length,
+            bytes: Buffer.byteLength(response.text, "utf8"),
           });
           return;
         }
@@ -245,9 +246,8 @@ function driversCommand(): Command {
 
   addJsonBodyCommand(drivers, {
     name: "create",
-    description: "POST /snapshots.settings.drivers",
-    method: "POST",
-    route: "/snapshots.settings.drivers",
+    description: "POST /snapshots.settings.drivers.create",
+    route: "/snapshots.settings.drivers.create",
     examples: [
       {
         label: "Create a custom driver from a JSON file",
@@ -263,9 +263,8 @@ function driversCommand(): Command {
 
   addJsonBodyCommand(drivers, {
     name: "update",
-    description: "PUT /snapshots.settings.drivers",
-    method: "PUT",
-    route: "/snapshots.settings.drivers",
+    description: "POST /snapshots.settings.drivers.update",
+    route: "/snapshots.settings.drivers.update",
     examples: [
       {
         label: "Update a custom driver",
@@ -281,25 +280,22 @@ function driversCommand(): Command {
 function driverSelectionCommand(): Command {
   const driverSelection = new Command()
     .name("driverSelection")
-    .description(
-      "Replace driver membership and enablement for a branch (complete set)",
-    );
+    .description("Replace selected driver IDs for a branch (complete set)");
 
   addJsonBodyCommand(driverSelection, {
-    name: "update",
-    description: "PUT /snapshots.settings.driverSelection",
-    method: "PUT",
-    route: "/snapshots.settings.driverSelection",
+    name: "set",
+    description: "POST /snapshots.settings.driverSelection.set",
+    route: "/snapshots.settings.driverSelection.set",
     examples: [
       {
         label: "Set driver selection from a JSON file",
         command:
-          "dx snapshots settings driverSelection update --from-file drivers-selection.json",
+          "dx snapshots settings driverSelection set --from-file drivers-selection.json",
       },
       {
         label: "Set driver selection from stdin",
         command:
-          'echo \'{"drivers":[{"id":"DRV...","enabled":true}]}\' | dx --json snapshots settings driverSelection update --from-stdin',
+          'echo \'{"driver_ids":["<encoded_driver_id>"]}\' | dx --json snapshots settings driverSelection set --from-stdin',
       },
     ],
   });
@@ -310,13 +306,20 @@ function driverSelectionCommand(): Command {
 function workflowsCommand(): Command {
   const workflows = new Command()
     .name("workflows")
-    .description("Create or update custom snapshot workflows");
+    .description(
+      "Internal workflow authoring; requires dx_staff_approved: true",
+    )
+    .addHelpText(
+      "afterAll",
+      createNoteText([
+        "Create/update require literal dx_staff_approved: true as a caller acknowledgment, not verified staff identity. Updates cannot change options. Scoring changes can reinterpret historical results.",
+      ]),
+    );
 
   addJsonBodyCommand(workflows, {
     name: "create",
-    description: "POST /snapshots.settings.workflows",
-    method: "POST",
-    route: "/snapshots.settings.workflows",
+    description: "POST /snapshots.settings.workflows.create",
+    route: "/snapshots.settings.workflows.create",
     examples: [
       {
         label: "Create a custom workflow from a JSON file",
@@ -328,9 +331,8 @@ function workflowsCommand(): Command {
 
   addJsonBodyCommand(workflows, {
     name: "update",
-    description: "PUT /snapshots.settings.workflows",
-    method: "PUT",
-    route: "/snapshots.settings.workflows",
+    description: "POST /snapshots.settings.workflows.update",
+    route: "/snapshots.settings.workflows.update",
     examples: [
       {
         label: "Update a custom workflow",
@@ -346,20 +348,17 @@ function workflowsCommand(): Command {
 function workflowSelectionCommand(): Command {
   const workflowSelection = new Command()
     .name("workflowSelection")
-    .description(
-      "Replace workflow membership and enablement for a branch (complete set)",
-    );
+    .description("Replace selected workflow IDs for a branch (complete set)");
 
   addJsonBodyCommand(workflowSelection, {
-    name: "update",
-    description: "PUT /snapshots.settings.workflowSelection",
-    method: "PUT",
-    route: "/snapshots.settings.workflowSelection",
+    name: "set",
+    description: "POST /snapshots.settings.workflowSelection.set",
+    route: "/snapshots.settings.workflowSelection.set",
     examples: [
       {
         label: "Set workflow selection from a JSON file",
         command:
-          "dx snapshots settings workflowSelection update --from-file workflows-selection.json",
+          "dx snapshots settings workflowSelection set --from-file workflows-selection.json",
       },
     ],
   });
@@ -374,9 +373,8 @@ function csatItemsCommand(): Command {
 
   addJsonBodyCommand(csatItems, {
     name: "create",
-    description: "POST /snapshots.settings.csatItems",
-    method: "POST",
-    route: "/snapshots.settings.csatItems",
+    description: "POST /snapshots.settings.csatItems.create",
+    route: "/snapshots.settings.csatItems.create",
     examples: [
       {
         label: "Create a CSAT item from a JSON file",
@@ -387,9 +385,8 @@ function csatItemsCommand(): Command {
 
   addJsonBodyCommand(csatItems, {
     name: "update",
-    description: "PUT /snapshots.settings.csatItems",
-    method: "PUT",
-    route: "/snapshots.settings.csatItems",
+    description: "POST /snapshots.settings.csatItems.update",
+    route: "/snapshots.settings.csatItems.update",
     examples: [
       {
         label: "Update a CSAT item",
@@ -402,23 +399,41 @@ function csatItemsCommand(): Command {
   return csatItems;
 }
 
+function csatOrderCommand(): Command {
+  const order = new Command()
+    .name("csatOrder")
+    .description(
+      "Set account-wide CSAT item/group order, independently of selection",
+    );
+  addJsonBodyCommand(order, {
+    name: "set",
+    description: "POST /snapshots.settings.csatOrder.set",
+    route: "/snapshots.settings.csatOrder.set",
+    examples: [
+      {
+        label: "Set complete item and/or group order",
+        command:
+          "dx --json snapshots settings csatOrder set --from-file csat-order.json",
+      },
+    ],
+  });
+  return order;
+}
+
 function csatSelectionCommand(): Command {
   const csatSelection = new Command()
     .name("csatSelection")
-    .description(
-      "Replace CSAT membership, enablement, and order for a branch (complete set)",
-    );
+    .description("Replace selected CSAT IDs for a branch (complete set)");
 
   addJsonBodyCommand(csatSelection, {
-    name: "update",
-    description: "PUT /snapshots.settings.csatSelection",
-    method: "PUT",
-    route: "/snapshots.settings.csatSelection",
+    name: "set",
+    description: "POST /snapshots.settings.csatSelection.set",
+    route: "/snapshots.settings.csatSelection.set",
     examples: [
       {
         label: "Set CSAT selection from a JSON file",
         command:
-          "dx snapshots settings csatSelection update --from-file csat-selection.json",
+          "dx snapshots settings csatSelection set --from-file csat-selection.json",
       },
     ],
   });
@@ -429,7 +444,6 @@ function csatSelectionCommand(): Command {
 type JsonBodyCommandOptions = {
   name: string;
   description: string;
-  method: "POST" | "PUT";
   route: string;
   examples: Array<{ label: string; command: string }>;
 };
@@ -474,12 +488,7 @@ function addJsonBodyCommand(
           ? readYamlFile(commandOptions.fromFile as string)
           : await readYamlStdin();
         const body = parsePayloadObject(raw);
-        const response = await sendSettingsJson(
-          runtime,
-          options.route,
-          options.method,
-          body,
-        );
+        const response = await sendSettingsJson(runtime, options.route, body);
         renderSettingsResponse(runtime, response, options.description);
       }),
     );
@@ -498,11 +507,10 @@ async function getSettingsJson(
 async function sendSettingsJson(
   runtime: Runtime,
   route: string,
-  method: "POST" | "PUT",
   body: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   const response = await request<Record<string, unknown>>(runtime, route, {
-    method,
+    method: "POST",
     body,
   });
   return response.body;

@@ -54,9 +54,9 @@ describe("snapshots settings commands", () => {
 
     const libraryResponse = {
       ok: true,
-      drivers: { branches: [], library: [{ id: "DRV1", name: "Docs" }] },
-      workflows: { branches: [], library: [] },
-      csat: { branches: [], library: [] },
+      drivers: { selections: [], library: [{ id: "DRV1", name: "Docs" }] },
+      workflows: { selections: [], library: [] },
+      csat: { selections: [], library: [] },
     };
 
     vi.stubGlobal(
@@ -93,7 +93,7 @@ describe("snapshots settings commands", () => {
     const branchesResponse = {
       ok: true,
       branching_enabled: false,
-      branches: [{ id: "single", name: "Default" }],
+      branches: [],
     };
 
     vi.stubGlobal(
@@ -130,7 +130,7 @@ describe("snapshots settings commands", () => {
     const configurationResponse = {
       ok: true,
       configuration: {
-        editability: { locked: false, survey_changes_allowed: true },
+        settings_locked: false,
       },
     };
 
@@ -225,8 +225,6 @@ describe("snapshots settings commands", () => {
     const createResponse = {
       ok: true,
       driver: { id: "DRV123", name: "Docs" },
-      library: [],
-      branches: [],
     };
 
     vi.stubGlobal(
@@ -269,7 +267,7 @@ describe("snapshots settings commands", () => {
     ]);
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://api.example.com/snapshots.settings.drivers",
+      "https://api.example.com/snapshots.settings.drivers.create",
       expect.objectContaining({ method: "POST" }),
     );
     const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock
@@ -282,11 +280,17 @@ describe("snapshots settings commands", () => {
     expect(JSON.parse(stdoutWrites.join(""))).toEqual(createResponse);
   });
 
-  it("updates driver selection with a PUT body from a file", async () => {
+  it("updates driver selection with a POST body from a file", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
-    const updateResponse = { ok: true, library: [], branches: [] };
+    const updateResponse = {
+      ok: true,
+      selection: {
+        branch_id: null,
+        drivers: [{ driver_id: "DRV1", prompt: "Docs" }],
+      },
+    };
     vi.stubGlobal(
       "fetch",
       vi
@@ -303,7 +307,7 @@ describe("snapshots settings commands", () => {
     fs.writeFileSync(
       filePath,
       JSON.stringify({
-        drivers: [{ id: "DRV1", enabled: true }],
+        driver_ids: ["DRV1"],
       }),
       "utf8",
     );
@@ -317,19 +321,19 @@ describe("snapshots settings commands", () => {
         "snapshots",
         "settings",
         "driverSelection",
-        "update",
+        "set",
         "--from-file",
         filePath,
       ]);
 
       expect(fetch).toHaveBeenCalledWith(
-        "https://api.example.com/snapshots.settings.driverSelection",
-        expect.objectContaining({ method: "PUT" }),
+        "https://api.example.com/snapshots.settings.driverSelection.set",
+        expect.objectContaining({ method: "POST" }),
       );
       const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock
         .calls[0] as [string, RequestInit];
       expect(JSON.parse(String(init.body))).toEqual({
-        drivers: [{ id: "DRV1", enabled: true }],
+        driver_ids: ["DRV1"],
       });
       expect(JSON.parse(stdoutWrites.join(""))).toEqual(updateResponse);
     } finally {
@@ -371,6 +375,7 @@ describe("snapshots settings commands", () => {
     fs.writeFileSync(
       workflowPath,
       JSON.stringify({
+        dx_staff_approved: true,
         name: "Coverage",
         prompt: "Coverage?",
         target_role: "dev",
@@ -408,7 +413,7 @@ describe("snapshots settings commands", () => {
 
       expect(exitSpy).not.toHaveBeenCalled();
       expect(fetch).toHaveBeenCalledWith(
-        "https://api.example.com/snapshots.settings.workflows",
+        "https://api.example.com/snapshots.settings.workflows.create",
         expect.objectContaining({ method: "POST" }),
       );
     } finally {
@@ -416,7 +421,7 @@ describe("snapshots settings commands", () => {
     }
   });
 
-  it("updates CSAT selection from a file via PUT", async () => {
+  it("updates CSAT selection from a file via POST", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");
 
@@ -435,7 +440,7 @@ describe("snapshots settings commands", () => {
     );
     fs.writeFileSync(
       csatSelectionPath,
-      JSON.stringify({ csat: [{ id: "CSAT1", enabled: true }] }),
+      JSON.stringify({ csat_ids: ["CSAT1"] }),
       "utf8",
     );
 
@@ -448,17 +453,161 @@ describe("snapshots settings commands", () => {
         "snapshots",
         "settings",
         "csatSelection",
-        "update",
+        "set",
         "--from-file",
         csatSelectionPath,
       ]);
 
       expect(fetch).toHaveBeenCalledWith(
-        "https://api.example.com/snapshots.settings.csatSelection",
-        expect.objectContaining({ method: "PUT" }),
+        "https://api.example.com/snapshots.settings.csatSelection.set",
+        expect.objectContaining({ method: "POST" }),
       );
     } finally {
       fs.rmSync(csatSelectionPath, { force: true });
     }
   });
+});
+
+describe("current settings write contracts", () => {
+  const operations = [
+    [
+      "drivers",
+      "create",
+      { name: "Docs", prompt: "Useful docs", target_role: "all" },
+      "driver",
+    ],
+    [
+      "drivers",
+      "update",
+      { driver_id: "MTcwMA", ranking_item: null },
+      "driver",
+    ],
+    [
+      "driverSelection",
+      "set",
+      { branch_id: "MTEw", driver_ids: ["MTcwMA"] },
+      "selection",
+    ],
+    [
+      "workflows",
+      "create",
+      {
+        dx_staff_approved: true,
+        name: "Builds",
+        prompt: "Wait time?",
+        target_role: "dev",
+        target_position: 0,
+        target_direction: "u",
+        options: [
+          { label: "Fast", value: 1 },
+          { label: "Slow", value: 10 },
+        ],
+      },
+      "workflow",
+    ],
+    [
+      "workflows",
+      "update",
+      { dx_staff_approved: true, workflow_id: "MTU5Mw", target_label: null },
+      "workflow",
+    ],
+    ["workflowSelection", "set", { workflow_ids: ["MTU5Mw"] }, "selection"],
+    [
+      "csatItems",
+      "create",
+      {
+        name: "Tools",
+        prompt: "Satisfied?",
+        audience_filters: {
+          type: "configured",
+          configured: { target_role: "all", team_ids: [], attribute_ids: [] },
+          custom: null,
+          active_users: null,
+        },
+      },
+      "csat",
+    ],
+    ["csatItems", "update", { csat_id: "MjcxMjE", group_id: null }, "csat"],
+    ["csatSelection", "set", { csat_ids: [] }, "selection"],
+    ["csatOrder", "set", { csat_ids: ["MjcxMjE"], group_ids: [] }, "csat_ids"],
+  ] as const;
+
+  it.each(operations)(
+    "%s %s uses POST action route and preserves payload/response",
+    async (group, action, body, resource) => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+      const response = {
+        ok: true,
+        [resource]:
+          resource === "csat_ids"
+            ? ["MjcxMjE"]
+            : { id: "encoded", translations: {} },
+      };
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(new Response(JSON.stringify(response))),
+      );
+      const { run } = await import("../../cli.js");
+      vi.spyOn(fs, "readFileSync").mockReturnValue(JSON.stringify(body));
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "snapshots",
+        "settings",
+        group,
+        action,
+        "--from-file",
+        "payload.json",
+      ]);
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetch).toHaveBeenCalledWith(
+        `https://api.example.com/snapshots.settings.${group}.${action}`,
+        expect.objectContaining({ method: "POST", body: JSON.stringify(body) }),
+      );
+      expect(JSON.parse(stdoutWrites.join(""))).toEqual(response);
+    },
+  );
+
+  it.each([409, 422])(
+    "preserves HTTP %s error details and never retries",
+    async (status) => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+      const body = {
+        ok: false,
+        error: status === 409 ? "snapshot_live" : "validation_error",
+        error_details: "Settings rejected",
+      };
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(new Response(JSON.stringify(body), { status })),
+      );
+      const { run } = await import("../../cli.js");
+      vi.spyOn(fs, "readFileSync").mockReturnValue('{"csat_ids":[]}');
+      const exit = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "snapshots",
+        "settings",
+        "csatSelection",
+        "set",
+        "--from-file",
+        "payload.json",
+      ]);
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(exit).toHaveBeenCalledWith(1);
+      expect(JSON.parse(stdoutWrites.join(""))).toMatchObject({
+        http_status: status,
+        body,
+      });
+    },
+  );
 });

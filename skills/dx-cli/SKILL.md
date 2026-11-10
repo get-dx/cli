@@ -107,7 +107,7 @@ Every table page is also available as Markdown at `https://docs.getdx.com/schema
 
 ## Snapshot settings
 
-Use `dx snapshots settings …` to manage the account's current snapshot survey settings through the public Web API (not the database). Prefer `--json`. See [Snapshot settings](./references/snapshot-settings.md).
+Use `dx snapshots settings …` to manage the account's current snapshot survey settings through the public Web API (not the database). Prefer `--json`. Read branches, library and configuration before writes; stop on `settings_locked` / `409 snapshot_live`. Creates are unselected, updates are partial, and selection `set` commands send complete ID arrays. CSAT ordering is a separate account-wide operation. See [Snapshot settings](./references/snapshot-settings.md).
 
 ## Snapshot teams
 
