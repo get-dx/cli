@@ -256,7 +256,7 @@ function driversCommand(): Command {
       {
         label: "Create a driver from stdin as JSON",
         command:
-          'echo \'{"name":"Docs","prompt":"Docs are easy to find.","target_role":"all"}\' | dx --json snapshots settings drivers create --from-stdin',
+          'echo \'{"name":"Docs","prompt":"Docs are easy to find.","ranking_item":"Finding docs","target_role":"all"}\' | dx --json snapshots settings drivers create --from-stdin',
       },
     ],
   });

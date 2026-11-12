@@ -57,13 +57,13 @@ Manifest defaults to a local CSV file in human mode; `--json` returns `{ok,csv}`
 Creation always leaves resources unselected and rejects `branch_id`. On branching accounts, unassigned definitions appear in the UI's Add existing picker, not the branch's selected list. Select separately. No delete/archive endpoints exist.
 
 ```bash
-printf '%s\n' '{"name":"AI Upskilling","prompt":"I have support to learn AI tools.","target_role":"dev"}' \
+printf '%s\n' '{"name":"AI Upskilling","prompt":"I have support to learn AI tools.","ranking_item":"Learning AI tools","target_role":"dev"}' \
   | dx --json snapshots settings drivers create --from-stdin
 printf '%s\n' '{"driver_id":"<encoded_driver_id>","prompt":"I have practical training and time to learn AI tools.","ranking_item":null}' \
   | dx --json snapshots settings drivers update --from-stdin
 ```
 
-Driver creation requires name, prompt and target_role (`dev`, `nondev`, `all`); ranking_item is optional/nullable. Updates preserve omitted fields. Built-in resources are not editable through these commands. `custom`, IDs and `scale_points` are read-only.
+Driver creation requires nonblank name, prompt and ranking_item, plus target_role (`dev`, `nondev`, `all`). Updates preserve omitted fields. Built-in resources are not editable through these commands. `custom`, IDs and `scale_points` are read-only.
 
 Question translations merge by locale/field, explicit translated-field null clears, and base-text changes preserve existing stale-translation cleanup. Only account-enabled locales are writable; multilingual support must be available. Drivers support name/prompt/ranking_item; workflows and CSAT support name/prompt. Unsupported fields/types are rejected, not discarded.
 

@@ -247,6 +247,7 @@ describe("snapshots settings commands", () => {
           JSON.stringify({
             name: "Docs",
             prompt: "Docs are easy to find.",
+            ranking_item: "Finding docs",
             target_role: "all",
           }),
         ),
@@ -275,6 +276,7 @@ describe("snapshots settings commands", () => {
     expect(JSON.parse(String(init.body))).toEqual({
       name: "Docs",
       prompt: "Docs are easy to find.",
+      ranking_item: "Finding docs",
       target_role: "all",
     });
     expect(JSON.parse(stdoutWrites.join(""))).toEqual(createResponse);
@@ -473,7 +475,12 @@ describe("current settings write contracts", () => {
     [
       "drivers",
       "create",
-      { name: "Docs", prompt: "Useful docs", target_role: "all" },
+      {
+        name: "Docs",
+        prompt: "Useful docs",
+        ranking_item: "Finding docs",
+        target_role: "all",
+      },
       "driver",
     ],
     [
