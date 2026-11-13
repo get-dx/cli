@@ -10,11 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `dx snapshots settings`: Read survey settings, create/update custom items, replace selections, and order CSAT items.
+- `dx snapshots allocationPercentages/csatScores/driverScores/dxiScores/impactScores list`: List filtered snapshot scores with the same filters as `workflowScores`.
 
 ### Updated
 
 - `dx users update`: Support the `--timezone` option to set or clear a user's timezone.
-- `dx snapshots workflowScores` drops the invalid `.list` command.
+- `dx snapshots workflowScores list`: Fix the API endpoint path (`snapshots.workflowScores`, not `snapshots.workflowScores.list`).
+- Snapshot score web links now default to `branch=ALL`.
 
 ## 0.11.0 - 2026-11-06
 
