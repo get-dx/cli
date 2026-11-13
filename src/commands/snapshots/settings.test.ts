@@ -1,7 +1,5 @@
 import { EventEmitter } from "events";
 import fs from "fs";
-import os from "os";
-import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EXIT_CODES } from "../../errors.js";
@@ -48,193 +46,43 @@ afterEach(() => {
 });
 
 describe("snapshots settings commands", () => {
-  it("gets the settings library as JSON", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
-    getToken.mockReturnValue("token-123");
-
-    const libraryResponse = {
-      ok: true,
-      drivers: {
-        library: [
-          {
-            id: "DRV1",
-            name: "Docs",
-            prompt: "Account wording",
-            translations: {},
-          },
-        ],
-        selections: [
-          {
-            branch_id: "BR1",
-            minimum_drivers: 1,
-            maximum_drivers: 14,
-            drivers: [{ id: "DRV1", name: "Docs", prompt: "Branch wording" }],
-          },
-        ],
-      },
-      workflows: {
-        library: [
-          {
-            id: "WF1",
-            name: "Build time",
-            prompt: "How long do builds take?",
-            translations: { es: { name: "Tiempo de compilacion" } },
-            options: [
-              { label: "Fast", value: 1, translations: {} },
-              { label: "Slow", value: 10, translations: {} },
-            ],
-          },
-        ],
-        selections: [
-          {
-            branch_id: "BR1",
-            workflows: [
-              {
-                id: "WF1",
-                name: "Build time",
-                prompt: "How long do builds take?",
-              },
-            ],
-          },
-        ],
-      },
-      csat: {
-        library: [
-          {
-            id: "CSAT1",
-            name: "Portal",
-            prompt: "Satisfied with the portal?",
-            group_id: null,
-            translations: {},
-            audience_filters: {
-              type: "configured",
-              configured: {
-                target_role: "dev",
-                teams: [{ id: "TEAM1", name: "Platform" }],
-                attributes: [{ id: "ATTR1", name: "Engineering" }],
-              },
-              custom: null,
-              active_users: null,
-            },
-          },
-        ],
-        selections: [
-          {
-            branch_id: "BR1",
-            csat: [
-              {
-                id: "CSAT1",
-                name: "Portal",
-                prompt: "Satisfied with the portal?",
-              },
-            ],
-          },
-        ],
-        groups: null,
-      },
-    };
-
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify(libraryResponse), { status: 200 }),
-        ),
-    );
-
-    const { run } = await import("../../cli.js");
-    await run([
-      "node",
-      "dx",
-      "--json",
-      "snapshots",
-      "settings",
-      "library",
-      "get",
-    ]);
-
-    expect(fetch).toHaveBeenCalledWith(
-      "https://api.example.com/snapshots.settings.library",
-      expect.objectContaining({ method: "GET" }),
-    );
-    expect(JSON.parse(stdoutWrites.join(""))).toEqual(libraryResponse);
-  });
-
-  it("lists settings branches as JSON", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
-    getToken.mockReturnValue("token-123");
-
-    const branchesResponse = {
-      ok: true,
-      branching_enabled: false,
-      branches: [],
-    };
-
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify(branchesResponse), { status: 200 }),
-        ),
-    );
-
-    const { run } = await import("../../cli.js");
-    await run([
-      "node",
-      "dx",
-      "--json",
-      "snapshots",
-      "settings",
-      "branches",
-      "list",
-    ]);
-
-    expect(fetch).toHaveBeenCalledWith(
-      "https://api.example.com/snapshots.settings.branches",
-      expect.objectContaining({ method: "GET" }),
-    );
-    expect(JSON.parse(stdoutWrites.join(""))).toEqual(branchesResponse);
-  });
-
-  it("gets settings configuration as JSON", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
-    getToken.mockReturnValue("token-123");
-
-    const configurationResponse = {
-      ok: true,
-      configuration: {
-        settings_locked: false,
-      },
-    };
-
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify(configurationResponse), { status: 200 }),
-        ),
-    );
-
-    const { run } = await import("../../cli.js");
-    await run([
-      "node",
-      "dx",
-      "--json",
-      "snapshots",
-      "settings",
+  it.each([
+    ["branches", "list", { ok: true, branching_enabled: false, branches: [] }],
+    [
       "configuration",
       "get",
-    ]);
+      { ok: true, configuration: { settings_locked: false } },
+    ],
+    ["library", "get", { ok: true, drivers: { library: [], selections: [] } }],
+  ])(
+    "%s %s uses GET and preserves the JSON response",
+    async (group, action, response) => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(new Response(JSON.stringify(response))),
+      );
 
-    expect(fetch).toHaveBeenCalledWith(
-      "https://api.example.com/snapshots.settings.configuration",
-      expect.objectContaining({ method: "GET" }),
-    );
-    expect(JSON.parse(stdoutWrites.join(""))).toEqual(configurationResponse);
-  });
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "snapshots",
+        "settings",
+        group,
+        action,
+      ]);
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetch).toHaveBeenCalledWith(
+        `https://api.example.com/snapshots.settings.${group}`,
+        expect.objectContaining({ method: "GET" }),
+      );
+      expect(JSON.parse(stdoutWrites.join(""))).toEqual(response);
+    },
+  );
 
   it("creates a driver from stdin with a POST body", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
@@ -300,67 +148,6 @@ describe("snapshots settings commands", () => {
     expect(JSON.parse(stdoutWrites.join(""))).toEqual(createResponse);
   });
 
-  it("updates driver selection with a POST body from a file", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
-    getToken.mockReturnValue("token-123");
-
-    const updateResponse = {
-      ok: true,
-      selection: {
-        branch_id: null,
-        drivers: [{ id: "DRV1", name: "Docs", prompt: "Docs" }],
-      },
-    };
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify(updateResponse), { status: 200 }),
-        ),
-    );
-
-    const filePath = path.join(
-      os.tmpdir(),
-      `dx-driver-selection-${Date.now()}.json`,
-    );
-    fs.writeFileSync(
-      filePath,
-      JSON.stringify({
-        driver_ids: ["DRV1"],
-      }),
-      "utf8",
-    );
-
-    try {
-      const { run } = await import("../../cli.js");
-      await run([
-        "node",
-        "dx",
-        "--json",
-        "snapshots",
-        "settings",
-        "driverSelection",
-        "set",
-        "--from-file",
-        filePath,
-      ]);
-
-      expect(fetch).toHaveBeenCalledWith(
-        "https://api.example.com/snapshots.settings.driverSelection.set",
-        expect.objectContaining({ method: "POST" }),
-      );
-      const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock
-        .calls[0] as [string, RequestInit];
-      expect(JSON.parse(String(init.body))).toEqual({
-        driver_ids: ["DRV1"],
-      });
-      expect(JSON.parse(stdoutWrites.join(""))).toEqual(updateResponse);
-    } finally {
-      fs.rmSync(filePath, { force: true });
-    }
-  });
-
   it("requires --from-file or --from-stdin for writes", async () => {
     const exitSpy = vi
       .spyOn(process, "exit")
@@ -373,118 +160,6 @@ describe("snapshots settings commands", () => {
       "One of --from-file or --from-stdin is required",
     );
     expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
-  });
-
-  it("creates a settings workflow from a file via POST", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
-    getToken.mockReturnValue("token-123");
-
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify({ ok: true }), { status: 200 }),
-        ),
-    );
-
-    const workflowPath = path.join(
-      os.tmpdir(),
-      `dx-workflow-${Date.now()}.json`,
-    );
-    fs.writeFileSync(
-      workflowPath,
-      JSON.stringify({
-        dx_staff_approved: true,
-        name: "Coverage",
-        prompt: "Coverage?",
-        target_role: "dev",
-        target_direction: "d",
-        target_position: 0,
-        options: [
-          { label: "Low", value: 1 },
-          { label: "High", value: 2 },
-        ],
-      }),
-      "utf8",
-    );
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((
-      code?: number,
-    ) => {
-      throw new Error(
-        `unexpected exit ${code}: stdout=${stdoutWrites.join("")} stderr=${stderrWrites.join("")}`,
-      );
-    }) as never);
-
-    try {
-      const { run } = await import("../../cli.js");
-      await run([
-        "node",
-        "dx",
-        "--json",
-        "snapshots",
-        "settings",
-        "workflows",
-        "create",
-        "--from-file",
-        workflowPath,
-      ]);
-
-      expect(exitSpy).not.toHaveBeenCalled();
-      expect(fetch).toHaveBeenCalledWith(
-        "https://api.example.com/snapshots.settings.workflows.create",
-        expect.objectContaining({ method: "POST" }),
-      );
-    } finally {
-      fs.rmSync(workflowPath, { force: true });
-    }
-  });
-
-  it("updates CSAT selection from a file via POST", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
-    getToken.mockReturnValue("token-123");
-
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify({ ok: true }), { status: 200 }),
-        ),
-    );
-
-    const csatSelectionPath = path.join(
-      os.tmpdir(),
-      `dx-csat-selection-${Date.now()}.json`,
-    );
-    fs.writeFileSync(
-      csatSelectionPath,
-      JSON.stringify({ csat_ids: ["CSAT1"] }),
-      "utf8",
-    );
-
-    try {
-      const { run } = await import("../../cli.js");
-      await run([
-        "node",
-        "dx",
-        "--json",
-        "snapshots",
-        "settings",
-        "csatSelection",
-        "set",
-        "--from-file",
-        csatSelectionPath,
-      ]);
-
-      expect(fetch).toHaveBeenCalledWith(
-        "https://api.example.com/snapshots.settings.csatSelection.set",
-        expect.objectContaining({ method: "POST" }),
-      );
-    } finally {
-      fs.rmSync(csatSelectionPath, { force: true });
-    }
   });
 });
 
@@ -562,33 +237,13 @@ describe("current settings write contracts", () => {
     async (group, action, body, resource) => {
       process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
-      const selectedQuestion = {
-        id: "encoded",
-        name: "Docs",
-        prompt: "Branch wording",
+      const response = {
+        ok: true,
+        [resource]:
+          resource === "csat_ids"
+            ? ["MjcxMjE"]
+            : { id: "encoded", name: "Docs" },
       };
-      const selections: Record<string, unknown> = {
-        driverSelection: {
-          branch_id: "MTEw",
-          minimum_drivers: 1,
-          maximum_drivers: 14,
-          drivers: [selectedQuestion],
-        },
-        workflowSelection: { branch_id: null, workflows: [selectedQuestion] },
-        csatSelection: { branch_id: null, csat: [] },
-      };
-      const response =
-        resource === "csat_ids"
-          ? { ok: true, csat_ids: ["MjcxMjE"], group_ids: [] }
-          : {
-              ok: true,
-              [resource]: selections[group] ?? {
-                id: "encoded",
-                name: "Docs",
-                prompt: "Account wording",
-                translations: {},
-              },
-            };
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValue(new Response(JSON.stringify(response))),
