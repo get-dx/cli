@@ -33,7 +33,7 @@ Commands below follow `dx --json snapshots settings`. Every write uses POST.
 | `csatSelection set`     | `csatSelection.set`     | `{ok, selection}`                       |
 | `csatOrder set`         | `csatOrder.set`         | `{ok, csat_ids, group_ids}`             |
 
-Internal workflow authoring adds `workflows create` and `workflows update` (POST `workflows.create` / `workflows.update`). See [internal workflow authoring](../internal/snapshot-workflow-authoring.md); these are not customer authoring APIs. Workflow selection is public.
+Internal workflow authoring adds `workflows create` and `workflows update` (POST `workflows.create` / `workflows.update`). See [internal workflow contract](https://github.com/get-dx/app/blob/master/docs/internal/api/snapshots.settings.workflows.md); these are not customer authoring APIs. Workflow selection is public.
 
 ## Discovery and response interpretation
 
@@ -141,4 +141,4 @@ Supply at least one array. Each supplied array must be a permutation of its enti
 
 No public writes exist for branch CRUD, schedule/configuration/lifecycle/nudges, group CRUD, built-in wording overrides, or deleting/archiving drivers/workflows/CSAT. Do not substitute private UI controllers or database writes.
 
-Canonical contracts: get-dx/app `docs/api/snapshots.settings.*.md`; internal workflow authoring: `docs/internal/api/snapshots.settings.workflows.md` (combined app PR #19463).
+Canonical contracts: get-dx/app `docs/api/snapshots.settings.*.md`; internal workflow authoring: `docs/internal/api/snapshots.settings.workflows.md` (merged in app PR #19463).
