@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `dx snapshots settings`: Discover branches, library and configuration; create/update custom definitions, replace selections with `set`, and set account-wide CSAT ordering. Uses public POST action routes with JSON/YAML input and machine-readable API responses.
+- `dx snapshots settings`: Read survey settings, create/update custom items, replace selections, and order CSAT items.
 
 ### Updated
 
