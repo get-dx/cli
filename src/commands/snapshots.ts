@@ -551,7 +551,7 @@ async function listSnapshotWorkflowScores(
 ): Promise<ListSnapshotWorkflowScoresResponse> {
   const response = await request<ListSnapshotWorkflowScoresResponse>(
     runtime,
-    "/snapshots.workflowScores.list",
+    "/snapshots.workflowScores",
     {
       method: "GET",
       query: {

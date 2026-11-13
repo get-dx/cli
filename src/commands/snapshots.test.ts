@@ -761,7 +761,7 @@ describe("snapshots command", () => {
     ]);
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://api.example.com/snapshots.workflowScores.list?snapshot_id=MjUyNbaY",
+      "https://api.example.com/snapshots.workflowScores?snapshot_id=MjUyNbaY",
       expect.objectContaining({ method: "GET" }),
     );
     expect(stdoutWrites.join("")).toContain("Snapshot Workflow Scores");
