@@ -54,9 +54,84 @@ describe("snapshots settings commands", () => {
 
     const libraryResponse = {
       ok: true,
-      drivers: { selections: [], library: [{ id: "DRV1", name: "Docs" }] },
-      workflows: { selections: [], library: [] },
-      csat: { selections: [], library: [] },
+      drivers: {
+        library: [
+          {
+            id: "DRV1",
+            name: "Docs",
+            prompt: "Account wording",
+            translations: {},
+          },
+        ],
+        selections: [
+          {
+            branch_id: "BR1",
+            minimum_drivers: 1,
+            maximum_drivers: 14,
+            drivers: [{ id: "DRV1", name: "Docs", prompt: "Branch wording" }],
+          },
+        ],
+      },
+      workflows: {
+        library: [
+          {
+            id: "WF1",
+            name: "Build time",
+            prompt: "How long do builds take?",
+            translations: { es: { name: "Tiempo de compilacion" } },
+            options: [
+              { label: "Fast", value: 1, translations: {} },
+              { label: "Slow", value: 10, translations: {} },
+            ],
+          },
+        ],
+        selections: [
+          {
+            branch_id: "BR1",
+            workflows: [
+              {
+                id: "WF1",
+                name: "Build time",
+                prompt: "How long do builds take?",
+              },
+            ],
+          },
+        ],
+      },
+      csat: {
+        library: [
+          {
+            id: "CSAT1",
+            name: "Portal",
+            prompt: "Satisfied with the portal?",
+            group_id: null,
+            translations: {},
+            audience_filters: {
+              type: "configured",
+              configured: {
+                target_role: "dev",
+                teams: [{ id: "TEAM1", name: "Platform" }],
+                attributes: [{ id: "ATTR1", name: "Engineering" }],
+              },
+              custom: null,
+              active_users: null,
+            },
+          },
+        ],
+        selections: [
+          {
+            branch_id: "BR1",
+            csat: [
+              {
+                id: "CSAT1",
+                name: "Portal",
+                prompt: "Satisfied with the portal?",
+              },
+            ],
+          },
+        ],
+        groups: null,
+      },
     };
 
     vi.stubGlobal(
@@ -290,7 +365,7 @@ describe("snapshots settings commands", () => {
       ok: true,
       selection: {
         branch_id: null,
-        drivers: [{ driver_id: "DRV1", prompt: "Docs" }],
+        drivers: [{ id: "DRV1", name: "Docs", prompt: "Docs" }],
       },
     };
     vi.stubGlobal(
@@ -544,13 +619,33 @@ describe("current settings write contracts", () => {
     async (group, action, body, resource) => {
       process.env.DX_API_BASE_URL = "https://api.example.com";
       getToken.mockReturnValue("token-123");
-      const response = {
-        ok: true,
-        [resource]:
-          resource === "csat_ids"
-            ? ["MjcxMjE"]
-            : { id: "encoded", translations: {} },
+      const selectedQuestion = {
+        id: "encoded",
+        name: "Docs",
+        prompt: "Branch wording",
       };
+      const selections: Record<string, unknown> = {
+        driverSelection: {
+          branch_id: "MTEw",
+          minimum_drivers: 1,
+          maximum_drivers: 14,
+          drivers: [selectedQuestion],
+        },
+        workflowSelection: { branch_id: null, workflows: [selectedQuestion] },
+        csatSelection: { branch_id: null, csat: [] },
+      };
+      const response =
+        resource === "csat_ids"
+          ? { ok: true, csat_ids: ["MjcxMjE"], group_ids: [] }
+          : {
+              ok: true,
+              [resource]: selections[group] ?? {
+                id: "encoded",
+                name: "Docs",
+                prompt: "Account wording",
+                translations: {},
+              },
+            };
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValue(new Response(JSON.stringify(response))),

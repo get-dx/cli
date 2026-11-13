@@ -68,7 +68,7 @@ it. Changing targets can reinterpret historical scores.
 ## Response and errors
 
 Create/update return only `{ "ok": true, "workflow": {...} }`, using the public
-[library definition](../../api/snapshots.settings.library.md).
+[library definition](https://github.com/get-dx/app/blob/master/docs/api/snapshots.settings.library.md).
 
 Errors: `401 not_authed`, `403 not_authorized`, `404 not_found` for unknown/built-in/
 foreign/deleted workflow IDs, `409 snapshot_live`, or `422 validation_error` with

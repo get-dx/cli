@@ -46,7 +46,7 @@ dx snapshots settings manifest get --locale es --output manifest-es.csv
 
 Non-branching accounts return `branches: []` and selections with `branch_id: null`. Branching accounts return encoded IDs, name, respondent prompt, audience, position, main and translations.
 
-Each library section has `library` definitions and `selections`. Selections contain references (`driver_id`, `workflow_id`, `csat_id`) with effective branch wording, not assignment or enabled flags. Workflow references include `required`. CSAT includes ordered `groups`: null means grouping unavailable, [] means enabled but empty. Existing publishing behavior yields no CSAT items when grouping is enabled without any groups.
+Each library section has `library` definitions and `selections`. Selected drivers, workflows and CSAT items all use `{id, name, prompt}`. The prompt is effective branch wording; a library definition uses account wording. Selection writes still accept `driver_ids`, `workflow_ids` or `csat_ids`, not the returned objects. Workflow responses omit `required`; the API rejects selections that omit required core workflows. CSAT includes ordered `groups`: null means grouping unavailable, [] means enabled but empty. Existing publishing behavior yields no CSAT items when grouping is enabled without any groups.
 
 Configuration includes `settings_locked`, `eligible_participant_count`, `fallback_timezone`, nullable `live_snapshot`/`next_snapshot`, `languages`, `lifecycle_messages`, and `scheduled_nudges`. `scheduled_for` and respondent `launch_date` differ. Lifecycle messages expose source text, format and the shared sender. Nudges expose reference context, business-day dates, effective messages, ordered sender rules and estimated audiences; estimates are not guaranteed sends. Targeted-only nudges retain a disabled default sender with count zero. Reads do not send messages.
 
@@ -64,6 +64,8 @@ printf '%s\n' '{"driver_id":"<encoded_driver_id>","prompt":"I have practical tra
 ```
 
 Driver creation requires nonblank name, prompt and ranking_item, plus target_role (`dev`, `nondev`, `all`). Updates preserve omitted fields. Built-in resources are not editable through these commands. `custom`, IDs and `scale_points` are read-only.
+
+`translations` is always an object: `{}` when multilingual is disabled, otherwise only stored translations for enabled translation locales. This applies to definitions, branches, groups and workflow options.
 
 Question translations merge by locale/field, explicit translated-field null clears, and base-text changes preserve existing stale-translation cleanup. Only account-enabled locales are writable; multilingual support must be available. Drivers support name/prompt/ranking_item; workflows and CSAT support name/prompt. Unsupported fields/types are rejected, not discarded.
 
@@ -112,9 +114,9 @@ dx --json snapshots settings csatItems create --from-file csat.json
 dx --json snapshots settings csatItems update --from-file csat-update.json
 ```
 
-Updates identify `csat_id`; omitted filters/grouping are preserved. A supplied audience_filters replaces the complete filter configuration. `group_id` assigns an existing group; null clears it. Group writes require grouping availability.
+Updates identify `csat_id`; omitted filters/grouping are preserved. A supplied audience_filters replaces the complete filter configuration. `group_id` assigns an existing group; only explicit null clears it. Blank strings, booleans, arrays, objects and numbers are rejected without changes. Group writes require grouping availability.
 
-- Configured: role AND any chosen team/descendant AND any chosen attribute. Empty categories impose no restriction. Nudge attributes instead match AND across attribute groups, OR within each group.
+- Configured reads return `{target_role, teams: [{id, name}], attributes: [{id, name}]}`; writes use `team_ids` and `attribute_ids`. An unavailable reference can have a null name. Role AND any chosen team/descendant AND any chosen attribute. Empty categories impose no restriction. Nudge attributes instead match AND across attribute groups, OR within each group.
 - Custom writes: `{"type":"custom","configured":null,"custom":{"identifier_type":"email","identifiers":["person@example.com"]},"active_users":null}`. Use identifier_type `user_id` for encoded user IDs. Every identifier must resolve within the account or the entire request rejects. Reads return `custom.users: [{id,email}]` with current emails.
 - Active users: `{"type":"active_users","configured":null,"custom":null,"active_users":{"project_id":"<encoded_project_id>","lookback_months":3}}`. Supported lookbacks: 1, 3, 6 months.
 
