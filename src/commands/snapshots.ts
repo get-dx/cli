@@ -12,6 +12,7 @@ import { request } from "../http.js";
 import { renderJson, renderRichText } from "../renderers.js";
 import { buildRuntime } from "../runtime.js";
 import { formatTeamMember, type TeamMember } from "./teams.js";
+import { settingsCommand } from "./snapshots/settings.js";
 import type { Runtime } from "../types.js";
 import * as ui from "../ui.js";
 
@@ -193,6 +194,8 @@ export function snapshotsCommand(): Command {
         }
       }),
     );
+
+  snapshots.addCommand(settingsCommand());
 
   const snapshotTeams = new Command()
     .name("snapshotTeams")

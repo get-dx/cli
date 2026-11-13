@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `dx snapshots settings`: Read survey settings, create/update custom items, replace selections, and order CSAT items.
+
 ### Updated
 
 - `dx users update`: Support the `--timezone` option to set or clear a user's timezone.
