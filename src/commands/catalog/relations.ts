@@ -262,6 +262,7 @@ export function relationsCommand() {
 // --- API ---
 
 export type Relation = {
+  public_id: string;
   identifier: string;
   type: string;
   inverse_type: string;

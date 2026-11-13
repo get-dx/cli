@@ -110,6 +110,8 @@ describe("users update", () => {
     await runUpdate(
       "--start-date",
       "2024-10-07",
+      "--timezone",
+      "America/Chicago",
       "--github-username",
       "ada-lovelace",
       "--additional-github-username",
@@ -136,6 +138,7 @@ describe("users update", () => {
 
     expectRequestBody({
       start_date: "2024-10-07",
+      timezone: "America/Chicago",
       github_username: "ada-lovelace",
       additional_github_username: "ada-work",
       gitlab_username: "ada.lovelace",
@@ -156,6 +159,8 @@ describe("users update", () => {
     await runUpdate(
       "--start-date",
       "null",
+      "--timezone",
+      "null",
       "--github-username",
       "null",
       "--sso-email",
@@ -166,6 +171,7 @@ describe("users update", () => {
 
     expectRequestBody({
       start_date: null,
+      timezone: null,
       github_username: null,
       sso_email: null,
       additional_emails: null,
@@ -187,6 +193,7 @@ describe("users update", () => {
         email: "ada@example.com",
         start_date: "2024-10-07",
         exclude_from_snapshots: false,
+        timezone: "America/Chicago",
         github_username: "ada-lovelace",
         additional_emails: ["ada@old.example.com", "ada@alias.example.com"],
       },
@@ -197,6 +204,8 @@ describe("users update", () => {
     const out = stdoutWrites.join("");
     expect(out).toContain("Start date");
     expect(out).toContain("2024-10-07");
+    expect(out).toContain("Timezone");
+    expect(out).toContain("America/Chicago");
     expect(out).toContain("Additional GitHub username");
     expect(out).toContain("AI moderate adoption date");
     expect(out).toContain("ada@old.example.com, ada@alias.example.com");
@@ -326,6 +335,15 @@ describe("users update", () => {
       expect(stderrWrites.join("")).toContain(
         "GitHub username 'ada' is already taken",
       );
+    });
+
+    it("shows the API message when Slack manages the timezone", async () => {
+      stubFetch({ ok: false, error: "Timezone is managed by Slack" }, 422);
+      vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+
+      await runUpdate("--timezone", "America/Chicago");
+
+      expect(stderrWrites.join("")).toContain("Timezone is managed by Slack");
     });
 
     it("keeps the API error unchanged with --json", async () => {

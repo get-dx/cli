@@ -28,6 +28,11 @@ entity_filter_type_identifiers:
 # SQL filter expression (when entity_filter_type is "sql")
 entity_filter_sql: ""
 
+# Optional: default view when looking at the scorecard's results. Set to null to clear.
+# default_display_entity_type_identifier: service
+# default_display_grouping: owner_team  # entity, owner_team, owner_leaf, or relation:<relation_id>
+#   (relation groupings require default_display_entity_type_identifier)
+
 # User IDs of editors
 editors: []
 

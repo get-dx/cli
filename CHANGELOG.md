@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `dx snapshots settings`: Discover branches, library, configuration and CSV manifest; create/update custom definitions, replace selections with `set`, and set account-wide CSAT ordering. Uses public POST action routes with JSON/YAML input and machine-readable API responses.
 
+### Updated
+
+- `dx users update`: Support the `--timezone` option to set or clear a user's timezone.
+
+## 0.11.0 - 2026-11-06
+
+### Added
+
+- `dx scorecards create/update`: Support the `default_display_entity_type_identifier` and `default_display_grouping` fields to set a scorecard's default view, and include them in scorecard output.
+
+### Updated
+
+- `dx catalog relations info/list`: Show each relation's `public_id` in the output.
 - `dx users update`: Update a user's start date, GitHub, GitLab and SSO identities, AI adoption dates, additional emails, and the protected, exclude-from-snapshots and developer flags.
 
 ## 0.10.0 - 2026-11-05

@@ -407,6 +407,8 @@ export type Scorecard = {
   entity_filter_type: string;
   entity_filter_sql: string | null;
   entity_filter_type_ids: string[];
+  default_display_entity_type_identifier?: string | null;
+  default_display_grouping?: string | null;
   tags: ScorecardTag[];
   editors: ScorecardUser[];
   admins: ScorecardUser[];
@@ -478,6 +480,8 @@ export type CreateScorecardPayload = {
   published?: boolean;
   entity_filter_type_identifiers?: string[];
   entity_filter_sql?: string;
+  default_display_entity_type_identifier?: string | null;
+  default_display_grouping?: string | null;
   tags?: ScorecardTag[];
   editors?: ScorecardUser[];
   checks?: ScorecardCheckDefinitionPayload[];
@@ -498,6 +502,8 @@ export type UpdateScorecardPayload = {
   entity_filter_type?: string;
   entity_filter_sql?: string | null;
   entity_filter_type_ids?: string[];
+  default_display_entity_type_identifier?: string | null;
+  default_display_grouping?: string | null;
   tags?: ScorecardTag[];
   editors?: ScorecardUser[];
   admins?: ScorecardUser[];
@@ -820,6 +826,8 @@ const SCORECARD_SECTION_KEYS: Record<
     "entity_filter_type",
     "entity_filter_sql",
     "entity_filter_type_ids",
+    "default_display_entity_type_identifier",
+    "default_display_grouping",
     "tags",
     "sql_errors",
     "levels",
