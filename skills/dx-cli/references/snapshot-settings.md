@@ -18,20 +18,19 @@ All writes accept one JSON or YAML object via exactly one of `--from-file path` 
 
 Commands below follow `dx --json snapshots settings`. Every write uses POST.
 
-| Command                 | API suffix              | Result                                  |
-| ----------------------- | ----------------------- | --------------------------------------- |
-| `branches list`         | `branches` (GET)        | `{ok, branching_enabled, branches}`     |
-| `library get`           | `library` (GET)         | `{ok, drivers, workflows, csat}`        |
-| `configuration get`     | `configuration` (GET)   | `{ok, configuration}`                   |
-| `manifest get`          | `manifest` (GET)        | CSV wrapped as `{ok, csv}` in JSON mode |
-| `drivers create`        | `drivers.create`        | `{ok, driver}`                          |
-| `drivers update`        | `drivers.update`        | `{ok, driver}`                          |
-| `driverSelection set`   | `driverSelection.set`   | `{ok, selection}`                       |
-| `workflowSelection set` | `workflowSelection.set` | `{ok, selection}`                       |
-| `csatItems create`      | `csatItems.create`      | `{ok, csat}`                            |
-| `csatItems update`      | `csatItems.update`      | `{ok, csat}`                            |
-| `csatSelection set`     | `csatSelection.set`     | `{ok, selection}`                       |
-| `csatOrder set`         | `csatOrder.set`         | `{ok, csat_ids, group_ids}`             |
+| Command                 | API suffix              | Result                              |
+| ----------------------- | ----------------------- | ----------------------------------- |
+| `branches list`         | `branches` (GET)        | `{ok, branching_enabled, branches}` |
+| `library get`           | `library` (GET)         | `{ok, drivers, workflows, csat}`    |
+| `configuration get`     | `configuration` (GET)   | `{ok, configuration}`               |
+| `drivers create`        | `drivers.create`        | `{ok, driver}`                      |
+| `drivers update`        | `drivers.update`        | `{ok, driver}`                      |
+| `driverSelection set`   | `driverSelection.set`   | `{ok, selection}`                   |
+| `workflowSelection set` | `workflowSelection.set` | `{ok, selection}`                   |
+| `csatItems create`      | `csatItems.create`      | `{ok, csat}`                        |
+| `csatItems update`      | `csatItems.update`      | `{ok, csat}`                        |
+| `csatSelection set`     | `csatSelection.set`     | `{ok, selection}`                   |
+| `csatOrder set`         | `csatOrder.set`         | `{ok, csat_ids, group_ids}`         |
 
 Internal workflow authoring adds `workflows create` and `workflows update` (POST `workflows.create` / `workflows.update`). See [internal workflow contract](https://github.com/get-dx/app/blob/master/docs/internal/api/snapshots.settings.workflows.md); these are not customer authoring APIs. Workflow selection is public.
 
@@ -41,7 +40,6 @@ Internal workflow authoring adds `workflows create` and `workflows update` (POST
 dx --json snapshots settings branches list
 dx --json snapshots settings library get > library.json
 dx --json snapshots settings configuration get
-dx snapshots settings manifest get --locale es --output manifest-es.csv
 ```
 
 Non-branching accounts return `branches: []` and selections with `branch_id: null`. Branching accounts return encoded IDs, name, respondent prompt, audience, position, main and translations.
@@ -49,8 +47,6 @@ Non-branching accounts return `branches: []` and selections with `branch_id: nul
 Each library section has `library` definitions and `selections`. Selected drivers, workflows and CSAT items all use `{id, name, prompt}`. The prompt is effective branch wording; a library definition uses account wording. Selection writes still accept `driver_ids`, `workflow_ids` or `csat_ids`, not the returned objects. Workflow responses omit `required`; the API rejects selections that omit required core workflows. CSAT includes ordered `groups`: null means grouping unavailable, [] means enabled but empty. Existing publishing behavior yields no CSAT items when grouping is enabled without any groups.
 
 Configuration includes `settings_locked`, `eligible_participant_count`, `fallback_timezone`, nullable `live_snapshot`/`next_snapshot`, `languages`, `lifecycle_messages`, and `scheduled_nudges`. `scheduled_for` and respondent `launch_date` differ. Lifecycle messages expose source text, format and the shared sender. Nudges expose reference context, business-day dates, effective messages, ordered sender rules and estimated audiences; estimates are not guaranteed sends. Targeted-only nudges retain a disabled default sender with count zero. Reads do not send messages.
-
-Manifest defaults to a local CSV file in human mode; `--json` returns `{ok,csv}` without writing a file. `--output` writes the file and returns path/byte count in JSON mode. Only manifest accepts `--locale`.
 
 ## Create and partially update
 

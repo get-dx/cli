@@ -236,63 +236,6 @@ describe("snapshots settings commands", () => {
     expect(JSON.parse(stdoutWrites.join(""))).toEqual(configurationResponse);
   });
 
-  it("downloads the CSV manifest with locale and output path", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
-    getToken.mockReturnValue("token-123");
-
-    const csv = "Section,Content\nDrivers,Ease of release\n";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(csv, {
-          status: 200,
-          headers: { "content-type": "text/csv" },
-        }),
-      ),
-    );
-
-    const outputPath = path.join(
-      os.tmpdir(),
-      `dx-settings-manifest-${Date.now()}.csv`,
-    );
-
-    try {
-      const { run } = await import("../../cli.js");
-      await run([
-        "node",
-        "dx",
-        "--json",
-        "snapshots",
-        "settings",
-        "manifest",
-        "get",
-        "--locale",
-        "es",
-        "--output",
-        outputPath,
-      ]);
-
-      expect(fetch).toHaveBeenCalledWith(
-        "https://api.example.com/snapshots.settings.manifest?locale=es",
-        expect.objectContaining({
-          method: "GET",
-          headers: expect.any(Headers),
-        }),
-      );
-      const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock
-        .calls[0] as [string, RequestInit];
-      expect((init.headers as Headers).get("Accept")).toBe("text/csv");
-      expect(fs.readFileSync(outputPath, "utf8")).toBe(csv);
-      expect(JSON.parse(stdoutWrites.join(""))).toEqual({
-        ok: true,
-        path: outputPath,
-        bytes: csv.length,
-      });
-    } finally {
-      fs.rmSync(outputPath, { force: true });
-    }
-  });
-
   it("creates a driver from stdin with a POST body", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
     getToken.mockReturnValue("token-123");

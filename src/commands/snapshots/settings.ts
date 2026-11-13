@@ -10,7 +10,7 @@ import {
   wrapAction,
 } from "../../commandHelpers.js";
 import { CliError, EXIT_CODES } from "../../errors.js";
-import { request, requestText } from "../../http.js";
+import { request } from "../../http.js";
 import { renderJson, renderRichText } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
@@ -43,7 +43,6 @@ export function settingsCommand(): Command {
   settings.addCommand(driverSelectionCommand());
   settings.addCommand(driversCommand());
   settings.addCommand(libraryCommand());
-  settings.addCommand(manifestCommand());
   settings.addCommand(workflowSelectionCommand());
   settings.addCommand(workflowsCommand());
 
@@ -161,82 +160,6 @@ function libraryCommand(): Command {
     );
 
   return library;
-}
-
-function manifestCommand(): Command {
-  const manifest = new Command()
-    .name("manifest")
-    .description("Download the snapshot settings CSV manifest");
-
-  manifest
-    .command("get")
-    .description("GET /snapshots.settings.manifest (text/csv)")
-    .option("--locale <locale>", "Survey locale such as en, es, or ja")
-    .option(
-      "--output <path>",
-      "Write CSV to a file instead of printing to stdout",
-    )
-    .addHelpText(
-      "afterAll",
-      createExampleText([
-        {
-          label: "Write the CSV manifest to the default filename",
-          command: "dx snapshots settings manifest get",
-        },
-        {
-          label: "Download a Spanish manifest to a file",
-          command:
-            "dx snapshots settings manifest get --locale es --output manifest-es.csv",
-        },
-        {
-          label: "Return CSV wrapped in JSON (no file written)",
-          command: "dx --json snapshots settings manifest get",
-        },
-      ]),
-    )
-    .action(
-      wrapAction(async (options, command) => {
-        const runtime = await buildRuntime(getContext(command));
-        const response = await requestText(
-          runtime,
-          "/snapshots.settings.manifest",
-          {
-            method: "GET",
-            accept: "text/csv",
-            query: {
-              locale: parseOptionalTrimmed(options.locale),
-            },
-          },
-        );
-
-        if (runtime.context.json && !parseOptionalTrimmed(options.output)) {
-          renderJson({ ok: true, csv: response.text });
-          return;
-        }
-
-        const outputPath =
-          parseOptionalTrimmed(options.output) ??
-          "snapshot-settings-manifest.csv";
-        fs.writeFileSync(outputPath, response.text, "utf8");
-
-        if (runtime.context.json) {
-          renderJson({
-            ok: true,
-            path: outputPath,
-            bytes: Buffer.byteLength(response.text, "utf8"),
-          });
-          return;
-        }
-
-        renderRichText([
-          ui.p(
-            `${ui.success(ui.GLYPHS.CHECK)} Wrote CSV manifest to ${ui.code(outputPath)}.`,
-          ),
-        ]);
-      }),
-    );
-
-  return manifest;
 }
 
 function driversCommand(): Command {
@@ -588,12 +511,4 @@ function parsePayloadObject(raw: unknown): Record<string, unknown> {
     );
   }
   return raw as Record<string, unknown>;
-}
-
-function parseOptionalTrimmed(value: unknown): string | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
 }
