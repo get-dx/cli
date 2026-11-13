@@ -237,6 +237,215 @@ describe("snapshots command", () => {
     ],
   };
 
+  const scoresFilters = workflowScoresResponse.filters;
+
+  const csatScoresResponse = {
+    ok: true as const,
+    filters: scoresFilters,
+    results: [
+      {
+        csat: {
+          id: "csat-ci",
+          name: "CI service",
+          prompt: "How satisfied are you with CI?",
+          target_role: null,
+        },
+        score: 40,
+        distribution: {
+          very_dissatisfied_count: 1,
+          dissatisfied_count: 1,
+          neutral_count: 1,
+          satisfied_count: 1,
+          very_satisfied_count: 1,
+          idk_na_count: 2,
+          not_applicable_count: 3,
+        },
+        hidden: false,
+      },
+      {
+        csat: {
+          id: "csat-docs",
+          name: "Docs portal",
+          prompt: "How satisfied are you with docs?",
+          target_role: null,
+        },
+        score: null,
+        distribution: null,
+        hidden: true,
+      },
+    ],
+  };
+
+  const driverScoresResponse = {
+    ok: true as const,
+    filters: scoresFilters,
+    results: [
+      {
+        driver: {
+          id: "drv-deep",
+          name: "Deep work",
+          prompt: "How often can you focus?",
+          target_role: "developer",
+          benchmark: {
+            name: "Industry",
+            p_50: 60,
+            p_75: 70,
+            p_90: 80,
+            year: 2024,
+          },
+        },
+        score: 65,
+        distribution: {
+          bad_count: 4,
+          so_so_count: 10,
+          good_count: 20,
+          idk_na_count: 1,
+        },
+        hidden: false,
+        total_votes: 12,
+      },
+      {
+        driver: {
+          id: "drv-review",
+          name: "Code review",
+          prompt: "How is code review?",
+          target_role: null,
+          benchmark: null,
+        },
+        score: null,
+        distribution: null,
+        hidden: true,
+        total_votes: null,
+      },
+    ],
+  };
+
+  const impactScoresResponse = {
+    ok: true as const,
+    filters: scoresFilters,
+    results: [
+      {
+        impact: {
+          id: "imp-speed",
+          name: "Speed",
+          prompt: "How fast do you ship?",
+          target_role: null,
+          benchmark: null,
+          options: [
+            { label: "Slow", value: 1 },
+            { label: "Fast", value: 2 },
+          ],
+          scoring_method: "average",
+          lower_is_better: false,
+        },
+        score: 3,
+        distribution: [
+          { label: "Slow", value: 1, count: 5 },
+          { label: "Fast", value: 2, count: 9 },
+          { label: "I don't know / N/A", value: null, count: 2 },
+        ],
+        hidden: false,
+      },
+      {
+        impact: {
+          id: "imp-quality",
+          name: "Quality",
+          prompt: "How is quality?",
+          target_role: null,
+          benchmark: null,
+          options: [],
+          scoring_method: "average",
+          lower_is_better: false,
+        },
+        score: null,
+        distribution: null,
+        hidden: true,
+      },
+    ],
+  };
+
+  const allocationPercentagesResponse = {
+    ok: true as const,
+    filters: scoresFilters,
+    results: [
+      {
+        question: {
+          id: "q-alloc",
+          prompt: "How is your time allocated?",
+          core: true,
+          custom: false,
+          target_role: null,
+        },
+        items: [
+          {
+            id: "item-features",
+            name: "New features",
+            description: null,
+            bucket: "features",
+            percentage: 62.5,
+          },
+          {
+            id: "item-ktlo",
+            name: "KTLO",
+            description: "Keep the lights on",
+            bucket: "ktlo",
+            percentage: 37.5,
+          },
+        ],
+        total_respondents: 40,
+        na_count: 3,
+        hidden: false,
+      },
+      {
+        question: {
+          id: "q-custom",
+          prompt: "Custom allocation question",
+          core: false,
+          custom: true,
+          target_role: null,
+        },
+        items: [],
+        total_respondents: 1,
+        na_count: 0,
+        hidden: true,
+      },
+    ],
+  };
+
+  const dxiScoresResponse = {
+    ok: true as const,
+    filters: scoresFilters,
+    results: [
+      {
+        is_five_point_scale: true,
+        score: 72,
+        hidden: false,
+        drivers: [
+          {
+            id: "drv-deep",
+            name: "Deep work",
+            prompt: "How often can you focus?",
+            target_role: null,
+            score: 65,
+            benchmark: {
+              name: "Industry",
+              p_50: 60,
+              p_75: 70,
+              p_90: 80,
+              year: 2024,
+            },
+          },
+        ],
+      },
+      {
+        is_five_point_scale: false,
+        score: null,
+        hidden: true,
+        drivers: [],
+      },
+    ],
+  };
+
   it("lists snapshot CSAT comments in human-readable output", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
     process.env.DX_WEB_BASE_URL = "https://app.example.com";
@@ -767,7 +976,7 @@ describe("snapshots command", () => {
     expect(stdoutWrites.join("")).toContain("Snapshot Workflow Scores");
     expect(stdoutWrites.join("")).toContain("Displaying 0 workflows.");
     expect(stdoutWrites.join("")).toContain(
-      "https://app.example.com/snapshots/MjUyNbaY/workflow?sb=name&sr=false",
+      "https://app.example.com/snapshots/MjUyNbaY/workflow?branch=ALL&sb=name&sr=false",
     );
   });
 
@@ -986,4 +1195,256 @@ describe("snapshots command", () => {
     expect(stderrWrites.join("")).toContain("--id is required");
     expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
   });
+
+  function stubScoresFetch(response: unknown): void {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    process.env.DX_WEB_BASE_URL = "https://app.example.com";
+    getToken.mockReturnValue("token-123");
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify(response), { status: 200 }),
+        ),
+    );
+  }
+
+  it("lists snapshot CSAT scores in human-readable output", async () => {
+    stubScoresFetch(csatScoresResponse);
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "csatScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.csatScores?snapshot_id=MjUyNbaY",
+      expect.objectContaining({ method: "GET" }),
+    );
+    const [visible, hidden] = stdoutWrites.join("").split("Docs portal");
+    expect(visible).toContain("Snapshot CSAT Scores");
+    expect(visible).toContain("Displaying 2 CSAT items.");
+    expect(visible).toContain(
+      "https://app.example.com/snapshots/MjUyNbaY/csat?branch=ALL&sb=score&sr=false",
+    );
+    expect(visible).toContain("CI service");
+    expect(visible).toMatch(/Score:\s+40%/);
+    expect(visible).toContain("| Very dissatisfied  | 1     |");
+    expect(visible).toContain("| I don't know / N/A | 2     |");
+    // Keys without a known label are still shown, after the labeled ones
+    expect(visible).toContain("| Not applicable     | 3     |");
+    expect(hidden).toContain("(Hidden)");
+    expect(hidden).not.toContain("csat-docs");
+  });
+
+  it("lists snapshot driver scores in human-readable output", async () => {
+    stubScoresFetch(driverScoresResponse);
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "driverScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+      "--branch-ids",
+      "MQ",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.driverScores?snapshot_id=MjUyNbaY&branch_ids=MQ",
+      expect.objectContaining({ method: "GET" }),
+    );
+    const [visible, hidden] = stdoutWrites.join("").split("Code review");
+    expect(visible).toContain("Snapshot Driver Scores");
+    expect(visible).toContain("Displaying 2 drivers.");
+    expect(visible).toContain(
+      "https://app.example.com/snapshots/MjUyNbaY/drivers?branch=MQ",
+    );
+    expect(visible).toContain("Deep work");
+    expect(visible).toMatch(/Score:\s+65/);
+    expect(visible).toMatch(/Votes:\s+12/);
+    expect(visible).toMatch(/Target role:\s+developer/);
+    expect(visible).toContain("Industry (2024) p50=60, p75=70, p90=80");
+    expect(visible).toContain("| So-so              | 10    |");
+    expect(visible).toContain("| I don't know / N/A | 1     |");
+    expect(hidden).toContain("(Hidden)");
+    expect(hidden).not.toContain("drv-review");
+  });
+
+  it("lists snapshot impact scores in human-readable output", async () => {
+    stubScoresFetch(impactScoresResponse);
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "impactScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.impactScores?snapshot_id=MjUyNbaY",
+      expect.objectContaining({ method: "GET" }),
+    );
+    const [visible, hidden] = stdoutWrites.join("").split("Quality");
+    expect(visible).toContain("Snapshot Impact Scores");
+    expect(visible).toContain("Displaying 2 impacts.");
+    expect(visible).toContain(
+      "https://app.example.com/snapshots/MjUyNbaY/impact?branch=ALL&metric=speed&data_type=drivers&adt=risk&aggregation=team",
+    );
+    expect(visible).toContain("Speed");
+    expect(visible).toMatch(/Score:\s+3\n/);
+    expect(visible).toMatch(/Scoring method:\s+average/);
+    expect(visible).toContain("Lower is better: No");
+    expect(visible).toContain("| Slow               | 1      | 5     |");
+    expect(visible).toContain("| I don't know / N/A | (None) | 2     |");
+    expect(hidden).toContain("(Hidden)");
+    expect(hidden).not.toContain("imp-quality");
+  });
+
+  it("lists snapshot allocation percentages in human-readable output", async () => {
+    stubScoresFetch(allocationPercentagesResponse);
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "allocationPercentages",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.allocationPercentages?snapshot_id=MjUyNbaY",
+      expect.objectContaining({ method: "GET" }),
+    );
+    const [visible, hidden] = stdoutWrites
+      .join("")
+      .split("Custom allocation question");
+    expect(visible).toContain("Snapshot Allocation Percentages");
+    expect(visible).toContain("Displaying 2 questions.");
+    expect(visible).toContain(
+      "https://app.example.com/snapshots/MjUyNbaY/allocation?branch=ALL&aggregation=team",
+    );
+    expect(visible).toContain("How is your time allocated?");
+    expect(visible).toMatch(/Core:\s+Yes/);
+    expect(visible).toMatch(/Respondents:\s+40/);
+    expect(visible).toMatch(/N\/A count:\s+3/);
+    expect(visible).toContain("| New features | features | 62.5%      |");
+    expect(visible).toContain("| KTLO         | ktlo     | 37.5%      |");
+    expect(visible).not.toContain("Keep the lights on");
+    expect(hidden).toContain("(Hidden)");
+    expect(hidden).not.toContain("q-custom");
+  });
+
+  it("lists snapshot DXI scores in human-readable output", async () => {
+    stubScoresFetch(dxiScoresResponse);
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "dxiScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.dxiScores?snapshot_id=MjUyNbaY",
+      expect.objectContaining({ method: "GET" }),
+    );
+    const [visible, hidden] = stdoutWrites
+      .join("")
+      .split("DXI (3-point scale)");
+    expect(visible).toContain("Snapshot DXI Scores");
+    expect(visible).not.toContain("Displaying");
+    expect(visible).toContain(
+      "https://app.example.com/snapshots/MjUyNbaY/drivers?branch=ALL&ddt=overview&dxi=true",
+    );
+    expect(visible).toContain("DXI (5-point scale)");
+    expect(visible).toMatch(/Score:\s+72/);
+    expect(visible).toContain(
+      "| Deep work | drv-deep  | 65    | 60  | 70  | 80  |",
+    );
+    expect(hidden).toContain("(Hidden)");
+    expect(hidden).not.toContain("Drivers");
+  });
+
+  it("renders the DXI scores empty state", async () => {
+    stubScoresFetch({ ...dxiScoresResponse, results: [] });
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "dxiScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(stdoutWrites.join("")).toContain("(None)");
+  });
+
+  const scoreCommands = [
+    ["allocationPercentages", allocationPercentagesResponse],
+    ["csatScores", csatScoresResponse],
+    ["driverScores", driverScoresResponse],
+    ["dxiScores", dxiScoresResponse],
+    ["impactScores", impactScoresResponse],
+  ] as const;
+
+  it.each(scoreCommands)(
+    "prints the snapshots %s API response with --json",
+    async (commandName, response) => {
+      stubScoresFetch(response);
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "snapshots",
+        commandName,
+        "list",
+        "--id",
+        "MjUyNbaY",
+      ]);
+
+      expect(JSON.parse(stdoutWrites.join(""))).toEqual(response);
+    },
+  );
+
+  it.each(scoreCommands)(
+    "errors when snapshot %s is missing --id",
+    async (commandName) => {
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "snapshots", commandName, "list"]);
+
+      expect(stderrWrites.join("")).toContain("--id is required");
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+    },
+  );
 });
