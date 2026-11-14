@@ -12,6 +12,7 @@ import { checkConfig } from "./config.js";
 import { checkEnvironment } from "./environment.js";
 import { checkNetwork } from "./network.js";
 import { defaultProbes, type NetworkProbes } from "./probes.js";
+import { detectProxy } from "./proxy.js";
 import { checkSkill } from "./skill.js";
 import type { CheckStatus, DoctorReport, Section } from "./types.js";
 
@@ -24,6 +25,9 @@ export type DoctorDependencies = {
   latestVersion: LatestVersionLookup;
   install: () => InstallInfo;
   now: () => Date;
+  /** The running Node version and flags, which decide proxy support. */
+  nodeVersion: string;
+  execArgv: readonly string[];
 };
 
 const defaultDependencies: DoctorDependencies = {
@@ -31,6 +35,8 @@ const defaultDependencies: DoctorDependencies = {
   latestVersion: defaultLatestVersionLookup,
   install: () => detectInstall(),
   now: () => new Date(),
+  nodeVersion: process.versions.node,
+  execArgv: process.execArgv,
 };
 
 /**
@@ -51,9 +57,14 @@ export async function runDoctor(
   const now = deps.now();
 
   onPhase("config");
-  const environment = checkEnvironment();
   const config = await checkConfig();
   const { apiBaseUrl, webBaseUrl, token } = config.facts;
+  const proxy = detectProxy({
+    apiBaseUrl,
+    nodeVersion: deps.nodeVersion,
+    execArgv: deps.execArgv,
+  });
+  const environment = checkEnvironment({ proxy });
 
   const runtime: Runtime | null = token
     ? {
@@ -72,6 +83,7 @@ export async function runDoctor(
     webBaseUrl,
     version: cliPackage.version,
     probes: deps.probes,
+    proxyActive: proxy.active,
   });
   const { apiReachable } = network.facts;
 
