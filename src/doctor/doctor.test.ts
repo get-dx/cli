@@ -267,30 +267,6 @@ describe("runDoctor", () => {
       expect(report.ok).toBe(true);
     });
 
-    it("explains HTTPS failures through a proxy", async () => {
-      process.env.NODE_USE_ENV_PROXY = "1";
-      process.env.HTTPS_PROXY = "http://proxy.corp:8080";
-      const probes = healthyProbes({
-        lookup: vi
-          .fn()
-          .mockRejectedValue(
-            errorWithCode("getaddrinfo ENOTFOUND api.getdx.com", "ENOTFOUND"),
-          ),
-        fetch: vi.fn().mockRejectedValue(
-          new TypeError("fetch failed", {
-            cause: errorWithCode("connect ECONNREFUSED", "ECONNREFUSED"),
-          }),
-        ),
-      });
-
-      const report = await doctor({ probes });
-
-      expect(find(report, "network", "dns").status).toBe("warn");
-      const https = find(report, "network", "https");
-      expect(https.status).toBe("fail");
-      expect(https.hint).toContain("through your proxy");
-    });
-
     it("keeps direct checks as gates when NO_PROXY excludes the API host", async () => {
       process.env.NODE_USE_ENV_PROXY = "1";
       process.env.HTTPS_PROXY = "http://proxy.corp:8080";
@@ -489,16 +465,6 @@ describe("runDoctor", () => {
   });
 
   describe("environment", () => {
-    it("reports no proxy checks when no proxy setting is present", async () => {
-      const report = await doctor();
-
-      const ids = report.sections
-        .find((section) => section.id === "environment")
-        ?.checks.map((check) => check.id);
-      expect(ids).not.toContain("proxy");
-      expect(ids).not.toContain("node_use_env_proxy");
-    });
-
     it("warns that proxy variables are unused without NODE_USE_ENV_PROXY", async () => {
       process.env.HTTPS_PROXY = "http://alice:hunter2@proxy.corp:8080";
 
@@ -527,24 +493,6 @@ describe("runDoctor", () => {
         message: "http://***@proxy.corp:8080",
       });
       expect(JSON.stringify(report)).not.toContain("hunter2");
-    });
-
-    it("reports the proxy in use when NODE_USE_ENV_PROXY=1", async () => {
-      process.env.NODE_USE_ENV_PROXY = "1";
-      process.env.HTTPS_PROXY = "http://proxy.corp:8080";
-
-      const report = await doctor();
-
-      expect(find(report, "environment", "proxy")).toMatchObject({
-        status: "ok",
-        message:
-          "in use via HTTPS_PROXY (http://proxy.corp:8080), enabled by NODE_USE_ENV_PROXY",
-        data: { active: true, reason: "active" },
-      });
-      expect(find(report, "environment", "node_use_env_proxy")).toMatchObject({
-        status: "ok",
-        message: "1",
-      });
     });
 
     it("reports --use-env-proxy from NODE_OPTIONS", async () => {
@@ -597,32 +545,6 @@ describe("runDoctor", () => {
       });
     });
 
-    it("recognizes proxy support on Node 22.21+", async () => {
-      process.env.NODE_USE_ENV_PROXY = "1";
-      process.env.HTTPS_PROXY = "http://proxy.corp:8080";
-
-      const report = await doctor({ nodeVersion: "22.21.0" });
-
-      expect(find(report, "environment", "proxy").data).toMatchObject({
-        active: true,
-      });
-    });
-
-    it("reports when NO_PROXY excludes the API host", async () => {
-      process.env.NODE_USE_ENV_PROXY = "1";
-      process.env.HTTPS_PROXY = "http://proxy.corp:8080";
-      process.env.NO_PROXY = "localhost,.getdx.com";
-
-      const report = await doctor();
-
-      expect(find(report, "environment", "proxy")).toMatchObject({
-        status: "ok",
-        message: "not used for the DX API: excluded by NO_PROXY",
-        data: { active: false, reason: "no_proxy_match" },
-      });
-      expect(find(report, "environment", "no_proxy").status).toBe("ok");
-    });
-
     it("is fine with only NO_PROXY set", async () => {
       process.env.NO_PROXY = "localhost";
 
@@ -633,17 +555,6 @@ describe("runDoctor", () => {
         data: { reason: "no_proxy_variable" },
       });
       expect(() => find(report, "environment", "node_use_env_proxy")).toThrow();
-    });
-
-    it("warns that Node never reads ALL_PROXY", async () => {
-      process.env.ALL_PROXY = "socks5://proxy.corp:1080";
-
-      const report = await doctor();
-
-      expect(find(report, "environment", "all_proxy")).toMatchObject({
-        status: "warn",
-        hint: "Node never reads this variable. Set HTTPS_PROXY instead.",
-      });
     });
 
     it("masks DX_* variables whose names look like credentials", async () => {

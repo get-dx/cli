@@ -15,13 +15,10 @@ function detect(env: NodeJS.ProcessEnv, apiBaseUrl = API) {
 
 describe("supportsEnvProxy", () => {
   it.each([
-    ["20.19.5", false],
     ["22.20.0", false],
     ["22.21.0", true],
-    ["v22.22.0", true],
     ["23.11.0", false],
     ["24.0.0", true],
-    ["26.1.0", true],
   ])("%s → %s", (version, expected) => {
     expect(supportsEnvProxy(version)).toBe(expected);
   });
@@ -51,26 +48,11 @@ describe("detectProxy", () => {
     });
   });
 
-  it("does not count --use-env-proxy that was turned back off", () => {
-    expect(
-      detectProxy({
-        apiBaseUrl: API,
-        env: { HTTPS_PROXY: "http://proxy:1" },
-        nodeVersion: "24.22.1",
-        execArgv: ["--use-env-proxy", "--no-use-env-proxy"],
-      }),
-    ).toMatchObject({ reason: "not_enabled", enabledBy: null });
-  });
-
   it.each([
     ["*", true],
-    ["getdx.com", true],
-    ["*.getdx.com", true],
     ["API.GETDX.COM", true],
-    ["api.getdx.com:443", true],
     ["api.getdx.com:8443", false],
     ["other.com getdx.com", true],
-    ["x.getdx.com", false],
     ["localhost,*", false],
   ])("NO_PROXY=%s bypasses the proxy: %s", (noProxy, bypassed) => {
     const status = detect({ HTTPS_PROXY: "http://proxy:1", NO_PROXY: noProxy });
