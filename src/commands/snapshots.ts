@@ -2,6 +2,7 @@ import { Command } from "commander";
 
 import {
   createExampleText,
+  createNoteText,
   getContext,
   parseCommaSeparatedValues,
   parsePositiveIntOption,
@@ -254,17 +255,23 @@ type SnapshotScoresCommandConfig<TResult extends { hidden: boolean }> = {
   // Plural noun used in help text, e.g. "workflow scores"
   noun: string;
   listDescription: string;
-  endpoint: string;
   title: string;
-  section: SnapshotWebSection;
-  // Section-specific web view params, appended after the filters
-  webQuery?: Record<string, string>;
+  // Command-specific help notes, shown after the shared notes
+  notes?: string[];
   // Singular and plural nouns for the count line; omit to skip the line
   countNouns?: [string, string];
   heading: (result: TResult) => ui.Block[];
-  details: (result: TResult) => (ReturnType<typeof ui.dli> | null)[];
+  details: (result: TResult) => ReturnType<typeof ui.dli>[];
   table: { heading: string; render: (result: TResult) => string };
 };
+
+const HIDDEN_REASON =
+  "too few responses to meet the account's minimum reporting threshold";
+
+const SCORES_NOTES = [
+  "Find snapshot IDs with `dx snapshots list`, then snapshot team IDs with `dx snapshots snapshotTeams list --id <snapshot_id>`. Team IDs come from `dx teams list`, attribute IDs from `dx attributeGroups list`, and branch IDs from `dx snapshots settings branches list` (requires the snapshots:admin scope). Group IDs come from the DX web app.",
+  `Results marked hidden have ${HIDDEN_REASON}, so their score and distribution are null.`,
+];
 
 // The snapshot score endpoints share the same filters and response envelope
 // and differ only in the shape of each result
@@ -285,6 +292,10 @@ function snapshotScoresCommand<TResult extends { hidden: boolean }>(
     .option("--group-ids <ids>", "Comma-separated group IDs")
     .option("--branch-ids <ids>", "Comma-separated branch IDs")
     .option("--attribute-ids <ids>", "Comma-separated attribute IDs")
+    .addHelpText(
+      "afterAll",
+      createNoteText([...SCORES_NOTES, ...(config.notes ?? [])]),
+    )
     .addHelpText(
       "afterAll",
       createExampleText([
@@ -324,7 +335,7 @@ function snapshotScoresCommand<TResult extends { hidden: boolean }>(
         const runtime = await buildRuntime(getContext(command));
         const response = await listSnapshotScores<TResult>(
           runtime,
-          config.endpoint,
+          `/snapshots.${config.name}`,
           snapshotId,
           options,
         );
@@ -332,7 +343,7 @@ function snapshotScoresCommand<TResult extends { hidden: boolean }>(
         if (runtime.context.json) {
           renderJson(response);
         } else {
-          renderSnapshotScores(config, response, snapshotId, options, runtime);
+          renderSnapshotScores(config, response, options);
         }
       }),
     );
@@ -429,12 +440,11 @@ type SnapshotWorkflowScoreOption = {
   value: number;
 };
 
-// Driver and DXI benchmarks may serialize percentiles as decimal strings
 type SnapshotScoreBenchmark = {
   name: string;
-  p_50: number | string;
-  p_75: number | string;
-  p_90: number | string;
+  p_50: number;
+  p_75: number;
+  p_90: number;
   year: number;
 };
 
@@ -454,9 +464,36 @@ type SnapshotScoreDistribution = {
   count: number;
 };
 
-// Response counts keyed by scale option, e.g. `good_count` or `idk_na_count`
-type SnapshotScoreCountDistribution = Record<string, number | string | null>;
+// Response counts keyed by scale option. Drivers use a 3-point or 5-point
+// scale, CSAT items a 5-point satisfaction scale.
+type SnapshotThreePointDistribution = {
+  bad_count: number;
+  so_so_count: number;
+  good_count: number;
+  idk_na_count: number;
+};
 
+type SnapshotFivePointDistribution = {
+  never_count: number;
+  rarely_count: number;
+  sometimes_count: number;
+  very_often_count: number;
+  always_count: number;
+  idk_na_count: number;
+};
+
+export type SnapshotDriverScoreDistribution =
+  | SnapshotThreePointDistribution
+  | SnapshotFivePointDistribution;
+
+export type SnapshotCsatScoreDistribution = {
+  very_dissatisfied_count: number;
+  dissatisfied_count: number;
+  neutral_count: number;
+  satisfied_count: number;
+  very_satisfied_count: number;
+  idk_na_count: number;
+};
 type SnapshotScoresFilterItem = {
   id: string;
   name: string;
@@ -469,7 +506,7 @@ type SnapshotScoresAttributeGroup = {
   attributes: SnapshotScoresFilterItem[];
 };
 
-type SnapshotWorkflowScoreResult = {
+export type SnapshotWorkflowScoreResult = {
   workflow: SnapshotWorkflowScoreWorkflow;
   // null when the workflow is hidden
   score: number | null;
@@ -486,11 +523,11 @@ type SnapshotScoreItem = {
   target_role: string | null;
 };
 
-type SnapshotCsatScoreResult = {
+export type SnapshotCsatScoreResult = {
   csat: SnapshotScoreItem;
   // Percent of non-N/A answers rated 4 or 5; null when hidden or all N/A
   score: number | null;
-  distribution: SnapshotScoreCountDistribution | null;
+  distribution: SnapshotCsatScoreDistribution | null;
   hidden: boolean;
 };
 
@@ -498,10 +535,10 @@ type SnapshotDriverScoreDriver = SnapshotScoreItem & {
   benchmark: SnapshotScoreBenchmark | null;
 };
 
-type SnapshotDriverScoreResult = {
+export type SnapshotDriverScoreResult = {
   driver: SnapshotDriverScoreDriver;
   score: number | null;
-  distribution: SnapshotScoreCountDistribution | null;
+  distribution: SnapshotDriverScoreDistribution | null;
   total_votes: number | null;
   hidden: boolean;
 };
@@ -512,7 +549,7 @@ type SnapshotImpactScoreImpact = SnapshotDriverScoreDriver & {
   lower_is_better: boolean;
 };
 
-type SnapshotImpactScoreResult = {
+export type SnapshotImpactScoreResult = {
   impact: SnapshotImpactScoreImpact;
   score: number | null;
   distribution: SnapshotScoreDistribution[] | null;
@@ -531,11 +568,11 @@ type SnapshotAllocationItem = {
   id: string;
   name: string;
   description: string | null;
-  bucket: string | null;
+  bucket: "innovation" | "ktlo" | null;
   percentage: number | null;
 };
 
-type SnapshotAllocationPercentagesResult = {
+export type SnapshotAllocationPercentagesResult = {
   question: SnapshotAllocationQuestion;
   items: SnapshotAllocationItem[];
   total_respondents: number;
@@ -548,7 +585,7 @@ type SnapshotDxiScoreDriver = SnapshotScoreItem & {
   benchmark: SnapshotScoreBenchmark | null;
 };
 
-type SnapshotDxiScoreResult = {
+export type SnapshotDxiScoreResult = {
   is_five_point_scale: boolean;
   score: number | null;
   hidden: boolean;
@@ -570,7 +607,7 @@ type SnapshotScoresFilters = {
   attribute_groups: SnapshotScoresAttributeGroup[];
 };
 
-type SnapshotScoresResponse<TResult> = {
+export type SnapshotScoresResponse<TResult> = {
   ok: true;
   filters: SnapshotScoresFilters;
   results: TResult[];
@@ -669,7 +706,7 @@ async function listSnapshotScores<TResult>(
       method: "GET",
       query: {
         snapshot_id: snapshotId,
-        ...snapshotFilterQuery(options, "apiKey"),
+        ...snapshotFilterQuery(options),
       },
     },
   );
@@ -685,77 +722,25 @@ type SnapshotFilterOptions = {
   attributeIds?: string;
 };
 
-// The web app names some filter params differently from the API. Attributes
-// have no webKey because the web app only accepts decoded tag IDs. The web
-// app needs a branch, so links fall back to every branch when none is given.
-const SNAPSHOT_FILTER_KEYS: {
-  option: keyof SnapshotFilterOptions;
-  apiKey: string;
-  webKey?: string;
-  webDefault?: string;
-}[] = [
-  {
-    option: "branchIds",
-    apiKey: "branch_ids",
-    webKey: "branch",
-    webDefault: "ALL",
-  },
-  { option: "teamIds", apiKey: "team_ids", webKey: "team_ids" },
-  {
-    option: "snapshotTeamIds",
-    apiKey: "snapshot_team_ids",
-    webKey: "snapshot_team_ids",
-  },
-  { option: "groupIds", apiKey: "group_ids", webKey: "group_ids" },
-  { option: "attributeIds", apiKey: "attribute_ids" },
-];
-
-// The web app can't combine groups with snapshot teams (selecting a group
-// clears snapshot teams) and only selects one branch at a time, so drop those
-// filters from the link and report which ones were left out
-function snapshotWebFilters(options: SnapshotFilterOptions): {
-  query: Record<string, string | undefined>;
-  omittedFlags: string[];
-} {
-  const webOptions = { ...options };
-  const omittedFlags: string[] = [];
-
-  if (
-    parseCommaSeparatedValues(options.groupIds) &&
-    parseCommaSeparatedValues(options.snapshotTeamIds)
-  ) {
-    webOptions.snapshotTeamIds = undefined;
-    omittedFlags.push("--snapshot-team-ids");
-  }
-
-  if ((parseCommaSeparatedValues(options.branchIds)?.length ?? 0) > 1) {
-    webOptions.branchIds = undefined;
-    omittedFlags.push("--branch-ids");
-  }
-
-  if (parseCommaSeparatedValues(options.attributeIds)) {
-    omittedFlags.push("--attribute-ids");
-  }
-
-  return { query: snapshotFilterQuery(webOptions, "webKey"), omittedFlags };
-}
+// CLI option name to API query param
+const SNAPSHOT_FILTER_KEYS: Record<keyof SnapshotFilterOptions, string> = {
+  branchIds: "branch_ids",
+  teamIds: "team_ids",
+  snapshotTeamIds: "snapshot_team_ids",
+  groupIds: "group_ids",
+  attributeIds: "attribute_ids",
+};
 
 function snapshotFilterQuery(
   options: SnapshotFilterOptions,
-  target: "apiKey" | "webKey",
 ): Record<string, string | undefined> {
   return Object.fromEntries(
-    SNAPSHOT_FILTER_KEYS.flatMap((keys) => {
-      const key = keys[target];
-      if (!key) {
-        return [];
-      }
-
-      const value = parseCommaSeparatedValues(options[keys.option])?.join(",");
-      return [
-        [key, value ?? (target === "webKey" ? keys.webDefault : undefined)],
-      ];
-    }),
+    Object.entries(SNAPSHOT_FILTER_KEYS).map(([option, apiKey]) => [
+      apiKey,
+      parseCommaSeparatedValues(
+        options[option as keyof SnapshotFilterOptions],
+      )?.join(","),
+    ]),
   );
 }
 
@@ -999,18 +984,24 @@ function renderSnapshotInfo(
 
 const SCORE_DETAILS_TERM_WIDTH = 17;
 
-// Shared layout for the score commands: title, active filters, count, web
-// link, then one section per result
+// Shared layout for the score commands: title, active filters, count, then
+// one section per result. No web link: its filter params would not match
+// the web app's.
 function renderSnapshotScores<TResult extends { hidden: boolean }>(
   config: SnapshotScoresCommandConfig<TResult>,
   response: SnapshotScoresResponse<TResult>,
-  snapshotId: string,
   filterOptions: SnapshotFilterOptions,
-  runtime: Runtime,
 ): void {
   const { results } = response;
   const filterDetails = scoresFilterDetails(response.filters);
-  const webFilters = snapshotWebFilters(filterOptions);
+  // Key the hint on the flags the user passed, not the API's echo: an ID the
+  // API doesn't recognize echoes back as nothing, and that is exactly when
+  // the user should check it
+  const filterHint = Object.values(snapshotFilterQuery(filterOptions)).some(
+    Boolean,
+  )
+    ? " Check the filter IDs or broaden the filters."
+    : "";
   const blocks: ui.Block[] = [ui.h1(config.title)];
 
   if (filterDetails.length > 0) {
@@ -1026,29 +1017,14 @@ function renderSnapshotScores<TResult extends { hidden: boolean }>(
     );
   }
 
-  blocks.push(
-    ui.p(
-      ui.link(
-        snapshotWebLink(snapshotId, config.section, runtime, {
-          ...webFilters.query,
-          ...config.webQuery,
-        }),
-      ),
-    ),
-  );
-
-  if (webFilters.omittedFlags.length > 0) {
+  if (results.length === 0) {
     blocks.push(
       ui.p(
         ui.dim(
-          `Web link omits ${webFilters.omittedFlags.join(" and ")}; the web app can't apply those filters.`,
+          `No ${config.noun} were returned for this snapshot.${filterHint}`,
         ),
       ),
     );
-  }
-
-  if (results.length === 0) {
-    blocks.push(ui.p(ui.dim("(None)")));
     renderRichText(blocks);
     return;
   }
@@ -1057,15 +1033,12 @@ function renderSnapshotScores<TResult extends { hidden: boolean }>(
     blocks.push(...config.heading(result));
 
     if (result.hidden) {
-      blocks.push(ui.p(ui.dim("(Hidden)")));
+      blocks.push(ui.p(ui.dim(`Hidden: ${HIDDEN_REASON}.${filterHint}`)));
       continue;
     }
 
     blocks.push(
-      ui.dl(
-        config.details(result).filter((detail) => detail !== null),
-        { termWidth: SCORE_DETAILS_TERM_WIDTH },
-      ),
+      ui.dl(config.details(result), { termWidth: SCORE_DETAILS_TERM_WIDTH }),
     );
     blocks.push(ui.h3(config.table.heading));
     blocks.push(ui.p(config.table.render(result)));
@@ -1079,10 +1052,7 @@ const ALLOCATION_PERCENTAGES_COMMAND: SnapshotScoresCommandConfig<SnapshotAlloca
     name: "allocationPercentages",
     noun: "allocation percentages",
     listDescription: "List allocation question percentages for a snapshot",
-    endpoint: "/snapshots.allocationPercentages",
     title: "Snapshot Allocation Percentages",
-    section: "allocation",
-    webQuery: { aggregation: "team" },
     countNouns: ["question", "questions"],
     heading: (result) => [ui.h2(result.question.prompt)],
     details: (result) => [
@@ -1104,16 +1074,12 @@ const CSAT_SCORES_COMMAND: SnapshotScoresCommandConfig<SnapshotCsatScoreResult> 
     name: "csatScores",
     noun: "CSAT scores",
     listDescription: "List CSAT scores and details for a snapshot",
-    endpoint: "/snapshots.csatScores",
     title: "Snapshot CSAT Scores",
-    section: "csat",
-    // Sort the web view by score, ascending (sb = sort by, sr = sort reversed)
-    webQuery: { sb: "score", sr: "false" },
     countNouns: ["CSAT item", "CSAT items"],
     heading: (result) => [ui.h2(result.csat.name), ui.p(result.csat.prompt)],
     details: (result) => [
       ui.dli("CSAT ID", result.csat.id),
-      ui.dli("Score", formatNumber(result.score, "%")),
+      ui.dli("Score", formatScore(result.score, "%")),
       ui.dli("Target role", formatText(result.csat.target_role)),
     ],
     table: {
@@ -1127,9 +1093,7 @@ const DRIVER_SCORES_COMMAND: SnapshotScoresCommandConfig<SnapshotDriverScoreResu
     name: "driverScores",
     noun: "driver scores",
     listDescription: "List driver scores and details for a snapshot",
-    endpoint: "/snapshots.driverScores",
     title: "Snapshot Driver Scores",
-    section: "drivers",
     countNouns: ["driver", "drivers"],
     heading: (result) => [
       ui.h2(result.driver.name),
@@ -1137,7 +1101,7 @@ const DRIVER_SCORES_COMMAND: SnapshotScoresCommandConfig<SnapshotDriverScoreResu
     ],
     details: (result) => [
       ui.dli("Driver ID", result.driver.id),
-      ui.dli("Score", formatNumber(result.score)),
+      ui.dli("Score", formatScore(result.score)),
       ui.dli("Votes", formatNumber(result.total_votes)),
       ui.dli("Target role", formatText(result.driver.target_role)),
       ui.dli("Benchmark", formatBenchmark(result.driver.benchmark)),
@@ -1154,16 +1118,16 @@ const DXI_SCORES_COMMAND: SnapshotScoresCommandConfig<SnapshotDxiScoreResult> =
     noun: "DXI scores",
     listDescription:
       "List Developer Experience Index (DXI) scores for a snapshot",
-    endpoint: "/snapshots.dxiScores",
     title: "Snapshot DXI Scores",
-    section: "drivers",
-    webQuery: { ddt: "overview", dxi: "true" },
+    notes: [
+      "The DXI is only calculated from the main branch's drivers, so --branch-ids must include the snapshot's main branch.",
+    ],
     heading: (result) => [
       ui.h2(
         `DXI (${result.is_five_point_scale ? "5-point" : "3-point"} scale)`,
       ),
     ],
-    details: (result) => [ui.dli("Score", formatNumber(result.score))],
+    details: (result) => [ui.dli("Score", formatScore(result.score))],
     table: {
       heading: "Drivers",
       render: (result) => formatDxiDriversTable(result.drivers),
@@ -1175,15 +1139,7 @@ const IMPACT_SCORES_COMMAND: SnapshotScoresCommandConfig<SnapshotImpactScoreResu
     name: "impactScores",
     noun: "impact scores",
     listDescription: "List impact scores and details for a snapshot",
-    endpoint: "/snapshots.impactScores",
     title: "Snapshot Impact Scores",
-    section: "impact",
-    webQuery: {
-      metric: "speed",
-      data_type: "drivers",
-      adt: "risk",
-      aggregation: "team",
-    },
     countNouns: ["impact", "impacts"],
     heading: (result) => [
       ui.h2(result.impact.name),
@@ -1191,7 +1147,7 @@ const IMPACT_SCORES_COMMAND: SnapshotScoresCommandConfig<SnapshotImpactScoreResu
     ],
     details: (result) => [
       ui.dli("Impact ID", result.impact.id),
-      ui.dli("Score", formatNumber(result.score)),
+      ui.dli("Score", formatScore(result.score)),
       ui.dli("Target role", formatText(result.impact.target_role)),
       ui.dli("Scoring method", formatText(result.impact.scoring_method)),
       ui.dli("Lower is better", yesNo(result.impact.lower_is_better)),
@@ -1208,11 +1164,7 @@ const WORKFLOW_SCORES_COMMAND: SnapshotScoresCommandConfig<SnapshotWorkflowScore
     name: "workflowScores",
     noun: "workflow scores",
     listDescription: "List workflow scores and details for a snapshot",
-    endpoint: "/snapshots.workflowScores",
     title: "Snapshot Workflow Scores",
-    section: "workflow",
-    // Sort the web view by workflow name, ascending (sb = sort by, sr = sort reversed)
-    webQuery: { sb: "name", sr: "false" },
     countNouns: ["workflow", "workflows"],
     heading: (result) => [
       ui.h2(result.workflow.name),
@@ -1220,17 +1172,9 @@ const WORKFLOW_SCORES_COMMAND: SnapshotScoresCommandConfig<SnapshotWorkflowScore
     ],
     details: (result) => [
       ui.dli("Workflow ID", result.workflow.id),
-      ui.dli("Score", formatNumber(result.score)),
-      optionalDetail(
-        "Respondents",
-        formatNumber(result.total_respondents),
-        result.total_respondents,
-      ),
-      optionalDetail(
-        "Cohort size",
-        formatNumber(result.total_cohort),
-        result.total_cohort,
-      ),
+      ui.dli("Score", formatScore(result.score)),
+      ui.dli("Respondents", formatNumber(result.total_respondents)),
+      ui.dli("Cohort size", formatNumber(result.total_cohort)),
       ui.dli("Unit", formatText(result.workflow.unit)),
       ui.dli("Lower is better", yesNo(result.workflow.lower_is_better)),
       ui.dli("Benchmark", formatBenchmark(result.workflow.benchmark)),
@@ -1473,6 +1417,14 @@ function formatNumber(value: unknown, suffix = ""): string {
     : ui.dim("(None)");
 }
 
+// A visible result with a null score had respondents but no scored answers,
+// e.g. every CSAT answer was N/A
+function formatScore(score: number | null, suffix = ""): string {
+  return score === null
+    ? ui.dim("Unavailable (no scored answers)")
+    : formatNumber(score, suffix);
+}
+
 function formatTimestamp(value: unknown): string {
   if (typeof value !== "string" || value.trim().length === 0) {
     return "";
@@ -1552,7 +1504,12 @@ function formatDistributionTable(
 // Labels for the flat count distributions returned by driver and CSAT scores,
 // in scale order. 3-point drivers use bad/so_so/good, 5-point drivers use
 // never..always, and CSAT uses very_dissatisfied..very_satisfied.
-const COUNT_DISTRIBUTION_LABELS: Record<string, string> = {
+type SnapshotCountKey =
+  | keyof SnapshotThreePointDistribution
+  | keyof SnapshotFivePointDistribution
+  | keyof SnapshotCsatScoreDistribution;
+
+const COUNT_DISTRIBUTION_LABELS: Record<SnapshotCountKey, string> = {
   bad_count: "Bad",
   so_so_count: "So-so",
   good_count: "Good",
@@ -1570,33 +1527,17 @@ const COUNT_DISTRIBUTION_LABELS: Record<string, string> = {
 };
 
 function formatCountDistributionTable(
-  distribution: SnapshotScoreCountDistribution | null,
+  distribution: Partial<Record<SnapshotCountKey, number>> | null,
 ): string {
   if (!distribution) {
     return ui.dim("(None)");
   }
 
-  // Known keys first in scale order, then any keys the API added that we
-  // don't have a label for, so no counts are silently dropped
-  const knownRows = Object.entries(COUNT_DISTRIBUTION_LABELS)
-    .filter(([key]) => key in distribution)
-    .map(([key, label]) => [label, distribution[key]]);
-  const unknownRows = Object.keys(distribution)
-    .filter((key) => !(key in COUNT_DISTRIBUTION_LABELS))
-    .map((key) => [humanizeCountKey(key), distribution[key]]);
-  const rows = [...knownRows, ...unknownRows];
-
-  if (rows.length === 0) {
-    return ui.dim("(None)");
-  }
+  const rows = (Object.keys(COUNT_DISTRIBUTION_LABELS) as SnapshotCountKey[])
+    .filter((key) => key in distribution)
+    .map((key) => [COUNT_DISTRIBUTION_LABELS[key], distribution[key]]);
 
   return buildTable(["Response", "Count"], rows);
-}
-
-// `neither_count` -> "Neither"
-function humanizeCountKey(key: string): string {
-  const words = key.replace(/_count$/, "").replace(/_/g, " ");
-  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 function formatAllocationItemsTable(items: SnapshotAllocationItem[]): string {
@@ -1647,33 +1588,14 @@ function buildTable(columns: string[], cells: unknown[][]): string {
   return [border, header, border, ...body, border].join("\n");
 }
 
-type SnapshotWebSection =
-  | "allocation"
-  | "csat"
-  | "csat/comments"
-  | "drivers"
-  | "drivers/comments"
-  | "impact"
-  | "workflow";
+type SnapshotWebSection = "csat/comments" | "drivers" | "drivers/comments";
 
 function snapshotWebLink(
   snapshotId: string,
   section: SnapshotWebSection,
   runtime: Runtime,
-  queryParams: Record<string, string | undefined> = {},
 ): string {
-  let urlPath = `/snapshots/${snapshotId}/${section}`;
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(queryParams)) {
-    if (value !== undefined) {
-      params.set(key, value);
-    }
-  }
-  if (params.size > 0) {
-    urlPath += `?${params.toString()}`;
-  }
-
-  return ui.webLink(urlPath, runtime);
+  return ui.webLink(`/snapshots/${snapshotId}/${section}`, runtime);
 }
 
 function parseRequiredTextOption(value: unknown, flag: string): string {

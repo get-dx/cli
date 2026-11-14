@@ -120,7 +120,7 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
    dx snapshots allocationPercentages list --id <snapshot_id> --json
    ```
 
-   Driver and CSAT distributions are count objects keyed by scale option (e.g. `good_count`, `satisfied_count`, `idk_na_count`). CSAT `score` is the percent of non-N/A answers rated 4 or 5. DXI returns one result per driver scale and rejects `--branch-ids` that omit the main branch. Allocation `items[].percentage` sums to 100 per question; use `total_respondents - na_count` as the numeric denominator.
+   Driver and CSAT distributions are count objects keyed by scale option (e.g. `good_count`, `satisfied_count`, `idk_na_count`). CSAT `score` is the percent of non-N/A answers rated 4 or 5. DXI returns one result per driver scale and rejects `--branch-ids` that omit the main branch. Allocation `items[].percentage` sums to 100 per question and `items[].bucket` is `innovation`, `ktlo`, or `null`; use `total_respondents - na_count` as the numeric denominator.
 
 7. Interpret the snapshot info response:
    - Read score rows from `snapshot.team_scores`.
