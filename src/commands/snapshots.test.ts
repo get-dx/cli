@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EXIT_CODES } from "../errors.js";
+import type {
+  SnapshotAllocationPercentagesResult,
+  SnapshotCsatScoreResult,
+  SnapshotDriverScoreResult,
+  SnapshotDxiScoreResult,
+  SnapshotImpactScoreResult,
+  SnapshotScoresResponse,
+  SnapshotWorkflowScoreResult,
+} from "./snapshots.js";
 
 const setToken = vi.fn();
 const deleteToken = vi.fn();
@@ -188,7 +197,19 @@ describe("snapshots command", () => {
       attribute_groups: [],
     },
     results: [],
-  };
+  } satisfies SnapshotScoresResponse<SnapshotWorkflowScoreResult>;
+
+  // Fixtures mirror the app's serializers: every result in one response
+  // shares the same filtered cohort, so the hidden flag is uniform within a
+  // response for workflows and DXI. Scores agree with the counts below.
+  const buildTimeOptions = [
+    { label: "Under 5 minutes", value: 5 },
+    { label: "5-15 minutes", value: 10 },
+  ];
+  const reviewWaitOptions = [
+    { label: "Under 1 hour", value: 0.5 },
+    { label: "1-4 hours", value: 2.5 },
+  ];
 
   const workflowScoresWithResultsResponse = {
     ...workflowScoresResponse,
@@ -198,7 +219,7 @@ describe("snapshots command", () => {
           id: "wf-build",
           name: "Build time",
           prompt: "How long do builds take?",
-          options: [],
+          options: buildTimeOptions,
           unit: "minutes",
           lower_is_better: true,
           benchmark: {
@@ -209,10 +230,11 @@ describe("snapshots command", () => {
             year: 2024,
           },
         },
-        score: 10.5,
+        // (5 * 42 + 10 * 17) / 59, rounded to 4 places
+        score: 6.4407,
         distribution: [
-          { label: "Under 5 minutes", value: 5, count: 42 },
-          { label: " 5-15 minutes", value: 10, count: 17 },
+          { ...buildTimeOptions[0], count: 42 },
+          { ...buildTimeOptions[1], count: 17 },
         ],
         total_respondents: 59,
         total_cohort: 80,
@@ -223,19 +245,343 @@ describe("snapshots command", () => {
           id: "wf-review",
           name: "Review wait time",
           prompt: "How long do you wait for review?",
-          options: [],
+          options: reviewWaitOptions,
           unit: "hours",
           lower_is_better: true,
           benchmark: null,
         },
+        // (0.5 * 30 + 2.5 * 29) / 59, rounded to 4 places
+        score: 1.4831,
+        distribution: [
+          { ...reviewWaitOptions[0], count: 30 },
+          { ...reviewWaitOptions[1], count: 29 },
+        ],
+        total_respondents: 59,
+        total_cohort: 80,
+        hidden: false,
+      },
+    ],
+  } satisfies SnapshotScoresResponse<SnapshotWorkflowScoreResult>;
+
+  const workflowScoresHiddenResponse = {
+    ...workflowScoresResponse,
+    results: workflowScoresWithResultsResponse.results.map((result) => ({
+      ...result,
+      score: null,
+      distribution: null,
+      total_respondents: 2,
+      total_cohort: 3,
+      hidden: true,
+    })),
+  } satisfies SnapshotScoresResponse<SnapshotWorkflowScoreResult>;
+
+  const scoresFilters = workflowScoresResponse.filters;
+
+  const csatScoresResponse = {
+    ok: true as const,
+    filters: scoresFilters,
+    results: [
+      {
+        csat: {
+          id: "csat-ci",
+          name: "CI service",
+          prompt: "How satisfied are you with CI?",
+          target_role: "all",
+        },
+        // 2 of 5 non-N/A answers were satisfied or very satisfied
+        score: 40,
+        distribution: {
+          very_dissatisfied_count: 1,
+          dissatisfied_count: 1,
+          neutral_count: 1,
+          satisfied_count: 1,
+          very_satisfied_count: 1,
+          idk_na_count: 2,
+        },
+        hidden: false,
+      },
+      {
+        csat: {
+          id: "csat-wiki",
+          name: "Wiki",
+          prompt: "How satisfied are you with the wiki?",
+          target_role: "all",
+        },
+        // Visible, but every answer was N/A so there is no score
         score: null,
-        distribution: [],
-        total_respondents: 2,
-        total_cohort: 3,
+        distribution: {
+          very_dissatisfied_count: 0,
+          dissatisfied_count: 0,
+          neutral_count: 0,
+          satisfied_count: 0,
+          very_satisfied_count: 0,
+          idk_na_count: 7,
+        },
+        hidden: false,
+      },
+      {
+        csat: {
+          id: "csat-docs",
+          name: "Docs portal",
+          prompt: "How satisfied are you with docs?",
+          target_role: "dev",
+        },
+        score: null,
+        distribution: null,
         hidden: true,
       },
     ],
+  } satisfies SnapshotScoresResponse<SnapshotCsatScoreResult>;
+
+  const deepWorkBenchmark = {
+    name: "Industry",
+    p_50: 60,
+    p_75: 70,
+    p_90: 80,
+    year: 2024,
   };
+
+  const driverScoresResponse = {
+    ok: true as const,
+    filters: scoresFilters,
+    results: [
+      {
+        driver: {
+          id: "drv-deep",
+          name: "Deep work",
+          prompt: "How often can you focus?",
+          target_role: "dev",
+          benchmark: deepWorkBenchmark,
+        },
+        // 5-point scale: 100 * (10 + 6) / 30 non-N/A answers
+        score: 53,
+        distribution: {
+          never_count: 2,
+          rarely_count: 4,
+          sometimes_count: 8,
+          very_often_count: 10,
+          always_count: 6,
+          idk_na_count: 1,
+        },
+        hidden: false,
+        total_votes: 12,
+      },
+      {
+        driver: {
+          id: "drv-review",
+          name: "Code review",
+          prompt: "How is code review?",
+          target_role: "dev",
+          benchmark: null,
+        },
+        // 3-point scale: 100 * 20 / 34 non-N/A answers
+        score: 59,
+        distribution: {
+          bad_count: 4,
+          so_so_count: 10,
+          good_count: 20,
+          idk_na_count: 1,
+        },
+        hidden: false,
+        total_votes: 8,
+      },
+      {
+        driver: {
+          id: "drv-docs",
+          name: "Documentation",
+          prompt: "How is documentation?",
+          target_role: "nondev",
+          benchmark: null,
+        },
+        score: null,
+        distribution: null,
+        hidden: true,
+        total_votes: null,
+      },
+    ],
+  } satisfies SnapshotScoresResponse<SnapshotDriverScoreResult>;
+
+  const speedOptions = [
+    { label: "Very slow", value: 1 },
+    { label: "Slow", value: 2 },
+    { label: "Moderate", value: 3 },
+    { label: "Fast", value: 4 },
+    { label: "Very fast", value: 5 },
+  ];
+  const qualityOptions = [
+    { label: "Very poor", value: 1 },
+    { label: "Poor", value: 2 },
+    { label: "Acceptable", value: 3 },
+    { label: "Good", value: 4 },
+    { label: "Very good", value: 5 },
+  ];
+
+  const impactScoresResponse = {
+    ok: true as const,
+    filters: scoresFilters,
+    results: [
+      {
+        impact: {
+          id: "imp-speed",
+          name: "Speed",
+          prompt:
+            "How would you rate the speed at which your team delivers software?",
+          target_role: "all",
+          benchmark: {
+            name: "Industry",
+            p_50: 45,
+            p_75: 55,
+            p_90: 65,
+            year: 2024,
+          },
+          options: speedOptions,
+          scoring_method: "Percent favorable",
+          lower_is_better: false,
+        },
+        // 100 * (6 + 4) favorable / 20 non-N/A answers
+        score: 50,
+        distribution: [
+          { ...speedOptions[0], count: 2 },
+          { ...speedOptions[1], count: 3 },
+          { ...speedOptions[2], count: 5 },
+          { ...speedOptions[3], count: 6 },
+          { ...speedOptions[4], count: 4 },
+          { label: "I don't know / N/A", value: null, count: 2 },
+        ],
+        hidden: false,
+      },
+      {
+        impact: {
+          id: "imp-quality",
+          name: "Quality",
+          prompt:
+            "How would you rate the technical stability of your product area?",
+          target_role: "all",
+          benchmark: null,
+          options: qualityOptions,
+          scoring_method: "Percent favorable",
+          lower_is_better: false,
+        },
+        score: null,
+        distribution: null,
+        hidden: true,
+      },
+    ],
+  } satisfies SnapshotScoresResponse<SnapshotImpactScoreResult>;
+
+  const allocationPercentagesResponse = {
+    ok: true as const,
+    filters: scoresFilters,
+    results: [
+      {
+        question: {
+          id: "q-alloc",
+          prompt: "How is your time allocated?",
+          core: true,
+          custom: false,
+          target_role: "all",
+        },
+        items: [
+          {
+            id: "item-features",
+            name: "New features",
+            description: null,
+            bucket: "innovation",
+            percentage: 62.5,
+          },
+          {
+            id: "item-ktlo",
+            name: "KTLO",
+            description: "Keep the lights on",
+            bucket: "ktlo",
+            percentage: 37.5,
+          },
+        ],
+        total_respondents: 40,
+        na_count: 3,
+        hidden: false,
+      },
+      {
+        question: {
+          id: "q-custom",
+          prompt: "Custom allocation question",
+          core: false,
+          custom: true,
+          target_role: "dev",
+        },
+        items: [
+          {
+            id: "item-custom",
+            name: "Platform migration",
+            description: null,
+            bucket: null,
+            percentage: null,
+          },
+        ],
+        total_respondents: 1,
+        na_count: 0,
+        hidden: true,
+      },
+    ],
+  } satisfies SnapshotScoresResponse<SnapshotAllocationPercentagesResult>;
+
+  const dxiScoresResponse = {
+    ok: true as const,
+    filters: scoresFilters,
+    results: [
+      {
+        is_five_point_scale: true,
+        // Average of the contributing driver scores
+        score: 62,
+        hidden: false,
+        drivers: [
+          {
+            id: "drv-deep",
+            name: "Deep work",
+            prompt: "How often can you focus?",
+            target_role: "dev",
+            score: 53,
+            benchmark: deepWorkBenchmark,
+          },
+          {
+            id: "drv-docs",
+            name: "Documentation",
+            prompt: "How is documentation?",
+            target_role: "dev",
+            score: 71,
+            benchmark: null,
+          },
+        ],
+      },
+      {
+        is_five_point_scale: false,
+        score: 59,
+        hidden: false,
+        drivers: [
+          {
+            id: "drv-review",
+            name: "Code review",
+            prompt: "How is code review?",
+            target_role: "dev",
+            score: 59,
+            benchmark: null,
+          },
+        ],
+      },
+    ],
+  } satisfies SnapshotScoresResponse<SnapshotDxiScoreResult>;
+
+  // The DXI threshold applies to the whole filtered cohort, so hiding nulls
+  // every score in the response while keeping the driver metadata
+  const dxiScoresHiddenResponse = {
+    ...dxiScoresResponse,
+    results: dxiScoresResponse.results.map((result) => ({
+      ...result,
+      score: null,
+      hidden: true,
+      drivers: result.drivers.map((driver) => ({ ...driver, score: null })),
+    })),
+  } satisfies SnapshotScoresResponse<SnapshotDxiScoreResult>;
 
   it("lists snapshot CSAT comments in human-readable output", async () => {
     process.env.DX_API_BASE_URL = "https://api.example.com";
@@ -736,18 +1082,7 @@ describe("snapshots command", () => {
   });
 
   it("lists snapshot workflow scores in human-readable output", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
-    process.env.DX_WEB_BASE_URL = "https://app.example.com";
-    getToken.mockReturnValue("token-123");
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(workflowScoresResponse), {
-          status: 200,
-        }),
-      ),
-    );
+    stubScoresFetch(workflowScoresResponse);
 
     const { run } = await import("../cli.js");
     await run([
@@ -767,23 +1102,13 @@ describe("snapshots command", () => {
     expect(stdoutWrites.join("")).toContain("Snapshot Workflow Scores");
     expect(stdoutWrites.join("")).toContain("Displaying 0 workflows.");
     expect(stdoutWrites.join("")).toContain(
-      "https://app.example.com/snapshots/MjUyNbaY/workflow?sb=name&sr=false",
+      "No workflow scores were returned for this snapshot.",
     );
   });
 
-  it("renders visible and hidden workflow scores", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
+  it("renders visible workflow scores without a web link", async () => {
     process.env.DX_WEB_BASE_URL = "https://app.example.com";
-    getToken.mockReturnValue("token-123");
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(workflowScoresWithResultsResponse), {
-          status: 200,
-        }),
-      ),
-    );
+    stubScoresFetch(workflowScoresWithResultsResponse);
 
     const { run } = await import("../cli.js");
     await run([
@@ -796,39 +1121,30 @@ describe("snapshots command", () => {
       "MjUyNbaY",
     ]);
 
-    const [visible, hidden] = stdoutWrites.join("").split("Review wait time");
-    expect(visible).toContain("Displaying 2 workflows.");
-    expect(visible).toContain("Build time");
-    expect(visible).toContain("10.5");
-    expect(visible).toContain("Industry (2024) p50=12, p75=8, p90=5");
-    expect(visible).toContain("Under 5 minutes");
-    expect(visible).toContain("42");
-    expect(visible).toContain("| 5-15 minutes    |");
-    expect(visible).toContain("Lower is better: Yes");
-    expect(visible).not.toContain("(Hidden)");
-    expect(hidden).toContain("(Hidden)");
-    expect(hidden).not.toContain("wf-review");
-    expect(hidden).not.toContain("Distribution");
+    const [build, review] = stdoutWrites.join("").split("Review wait time");
+    expect(build).toContain("Displaying 2 workflows.");
+    expect(build).toContain("Build time");
+    expect(build).toMatch(/Score:\s+6\.4407/);
+    expect(build).toMatch(/Respondents:\s+59/);
+    expect(build).toMatch(/Cohort size:\s+80/);
+    expect(build).toContain("Industry (2024) p50=12, p75=8, p90=5");
+    expect(build).toContain("| Under 5 minutes | 5     | 42    |");
+    expect(build).toContain("| 5-15 minutes    | 10    | 17    |");
+    expect(build).toContain("Lower is better: Yes");
+    expect(review).toMatch(/Score:\s+1\.4831/);
+    expect(review).toContain("| Under 1 hour | 0.5   | 30    |");
+    expect(stdoutWrites.join("")).not.toContain("Hidden");
+    expect(stdoutWrites.join("")).not.toContain("https://app.example.com");
   });
 
-  it("renders a single workflow and the empty distribution", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
-    process.env.DX_WEB_BASE_URL = "https://app.example.com";
-    getToken.mockReturnValue("token-123");
-
-    const [visibleResult] = workflowScoresWithResultsResponse.results;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            ...workflowScoresResponse,
-            results: [{ ...visibleResult, distribution: [] }],
-          }),
-          { status: 200 },
-        ),
-      ),
-    );
+  it("explains hidden workflow scores and suggests broadening filters", async () => {
+    stubScoresFetch({
+      ...workflowScoresHiddenResponse,
+      filters: {
+        ...scoresFilters,
+        teams: [{ id: "MTExNDg5", name: "Platform" }],
+      },
+    });
 
     const { run } = await import("../cli.js");
     await run([
@@ -839,25 +1155,25 @@ describe("snapshots command", () => {
       "list",
       "--id",
       "MjUyNbaY",
+      "--team-ids",
+      "MTExNDg5",
     ]);
 
-    const [, distribution] = stdoutWrites.join("").split("Distribution");
-    expect(stdoutWrites.join("")).toContain("Displaying 1 workflow.");
-    expect(distribution).toContain("(None)");
+    const output = stdoutWrites.join("");
+    expect(output).toMatch(/Teams:\s+Platform/);
+    expect(output).toContain("Displaying 2 workflows.");
+    expect(output).toContain("Build time");
+    expect(output).toContain("Review wait time");
+    expect(output.match(/Hidden: too few responses/g)).toHaveLength(2);
+    expect(output).toContain(
+      "Hidden: too few responses to meet the account's minimum reporting threshold. Check the filter IDs or broaden the filters.",
+    );
+    expect(output).not.toContain("wf-build");
+    expect(output).not.toContain("Distribution");
   });
 
   it("passes workflow scores filter options to the API", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
-    getToken.mockReturnValue("token-123");
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(workflowScoresResponse), {
-          status: 200,
-        }),
-      ),
-    );
+    stubScoresFetch(workflowScoresResponse);
 
     const { run } = await import("../cli.js");
     await run([
@@ -890,34 +1206,6 @@ describe("snapshots command", () => {
       branch_ids: "branch-1,branch-2",
       attribute_ids: "attribute-1,attribute-2",
     });
-  });
-
-  it("prints the snapshots workflow scores API response with --json", async () => {
-    process.env.DX_API_BASE_URL = "https://api.example.com";
-    getToken.mockReturnValue("token-123");
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(workflowScoresResponse), {
-          status: 200,
-        }),
-      ),
-    );
-
-    const { run } = await import("../cli.js");
-    await run([
-      "node",
-      "dx",
-      "--json",
-      "snapshots",
-      "workflowScores",
-      "list",
-      "--id",
-      "MjUyNbaY",
-    ]);
-
-    expect(JSON.parse(stdoutWrites.join(""))).toEqual(workflowScoresResponse);
   });
 
   it("surfaces workflow scores invalid argument details when the API rejects the request", async () => {
@@ -986,4 +1274,377 @@ describe("snapshots command", () => {
     expect(stderrWrites.join("")).toContain("--id is required");
     expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
   });
+
+  function stubScoresFetch(response: unknown): void {
+    process.env.DX_API_BASE_URL = "https://api.example.com";
+    getToken.mockReturnValue("token-123");
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify(response), { status: 200 }),
+        ),
+    );
+  }
+
+  it("lists snapshot CSAT scores in human-readable output", async () => {
+    stubScoresFetch(csatScoresResponse);
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "csatScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.csatScores?snapshot_id=MjUyNbaY",
+      expect.objectContaining({ method: "GET" }),
+    );
+    const [scored, unscored, hidden] = stdoutWrites
+      .join("")
+      .split(/Wiki|Docs portal/);
+    expect(scored).toContain("Snapshot CSAT Scores");
+    expect(scored).toContain("Displaying 3 CSAT items.");
+    expect(scored).toContain("CI service");
+    expect(scored).toMatch(/Score:\s+40%/);
+    expect(scored).toMatch(/Target role:\s+all/);
+    expect(scored).toContain("| Very dissatisfied  | 1     |");
+    expect(scored).toContain("| I don't know / N/A | 2     |");
+    // Visible but every answer was N/A: explain the missing score
+    expect(unscored).toMatch(/Score:\s+Unavailable \(no scored answers\)/);
+    expect(unscored).toContain("| I don't know / N/A | 7     |");
+    expect(hidden).toContain(
+      "Hidden: too few responses to meet the account's minimum reporting threshold.",
+    );
+    expect(hidden).not.toContain("broaden");
+    expect(hidden).not.toContain("csat-docs");
+  });
+
+  it("lists snapshot driver scores in human-readable output", async () => {
+    stubScoresFetch(driverScoresResponse);
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "driverScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+      "--branch-ids",
+      "MQ",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.driverScores?snapshot_id=MjUyNbaY&branch_ids=MQ",
+      expect.objectContaining({ method: "GET" }),
+    );
+    const [fivePoint, threePoint, hidden] = stdoutWrites
+      .join("")
+      .split(/Code review|Documentation/);
+    expect(fivePoint).toContain("Snapshot Driver Scores");
+    expect(fivePoint).toContain("Displaying 3 drivers.");
+    expect(fivePoint).toContain("Deep work");
+    expect(fivePoint).toMatch(/Score:\s+53/);
+    expect(fivePoint).toMatch(/Votes:\s+12/);
+    expect(fivePoint).toMatch(/Target role:\s+dev/);
+    expect(fivePoint).toContain("Industry (2024) p50=60, p75=70, p90=80");
+    expect(fivePoint).toContain("| Never              | 2     |");
+    expect(fivePoint).toContain("| Very often         | 10    |");
+    expect(fivePoint).toContain("| Always             | 6     |");
+    expect(fivePoint).toContain("| I don't know / N/A | 1     |");
+    expect(fivePoint).not.toContain("So-so");
+    expect(threePoint).toMatch(/Score:\s+59/);
+    expect(threePoint).toContain("| Bad                | 4     |");
+    expect(threePoint).toContain("| So-so              | 10    |");
+    expect(threePoint).toContain("| Good               | 20    |");
+    expect(threePoint).not.toContain("Never");
+    expect(hidden).toContain("Hidden: too few responses");
+    expect(hidden).not.toContain("drv-docs");
+  });
+
+  it("lists snapshot impact scores in human-readable output", async () => {
+    stubScoresFetch(impactScoresResponse);
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "impactScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.impactScores?snapshot_id=MjUyNbaY",
+      expect.objectContaining({ method: "GET" }),
+    );
+    const [visible, hidden] = stdoutWrites.join("").split("Quality");
+    expect(visible).toContain("Snapshot Impact Scores");
+    expect(visible).toContain("Displaying 2 impacts.");
+    expect(visible).toContain("Speed");
+    expect(visible).toMatch(/Score:\s+50\n/);
+    expect(visible).toMatch(/Target role:\s+all/);
+    expect(visible).toMatch(/Scoring method:\s+Percent favorable/);
+    expect(visible).toContain("Lower is better: No");
+    expect(visible).toContain("Industry (2024) p50=45, p75=55, p90=65");
+    expect(visible).toContain("| Very slow          | 1      | 2     |");
+    expect(visible).toContain("| Very fast          | 5      | 4     |");
+    expect(visible).toContain("| I don't know / N/A | (None) | 2     |");
+    expect(hidden).toContain("Hidden: too few responses");
+    expect(hidden).not.toContain("imp-quality");
+    expect(hidden).not.toContain("Very poor");
+  });
+
+  it("lists snapshot allocation percentages in human-readable output", async () => {
+    stubScoresFetch(allocationPercentagesResponse);
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "allocationPercentages",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.allocationPercentages?snapshot_id=MjUyNbaY",
+      expect.objectContaining({ method: "GET" }),
+    );
+    const [visible, hidden] = stdoutWrites
+      .join("")
+      .split("Custom allocation question");
+    expect(visible).toContain("Snapshot Allocation Percentages");
+    expect(visible).toContain("Displaying 2 questions.");
+    expect(visible).toContain("How is your time allocated?");
+    expect(visible).toMatch(/Core:\s+Yes/);
+    expect(visible).toMatch(/Respondents:\s+40/);
+    expect(visible).toMatch(/N\/A count:\s+3/);
+    expect(visible).toContain("| New features | innovation | 62.5%      |");
+    expect(visible).toContain("| KTLO         | ktlo       | 37.5%      |");
+    expect(visible).not.toContain("Keep the lights on");
+    expect(hidden).toContain("Hidden: too few responses");
+    expect(hidden).not.toContain("q-custom");
+    expect(hidden).not.toContain("Platform migration");
+  });
+
+  it("lists snapshot DXI scores in human-readable output", async () => {
+    stubScoresFetch(dxiScoresResponse);
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "dxiScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/snapshots.dxiScores?snapshot_id=MjUyNbaY",
+      expect.objectContaining({ method: "GET" }),
+    );
+    const [fivePoint, threePoint] = stdoutWrites
+      .join("")
+      .split("DXI (3-point scale)");
+    expect(fivePoint).toContain("Snapshot DXI Scores");
+    expect(fivePoint).not.toContain("Displaying");
+    expect(fivePoint).toContain("DXI (5-point scale)");
+    expect(fivePoint).toMatch(/Score:\s+62/);
+    expect(fivePoint).toContain(
+      "| Deep work     | drv-deep  | 53    | 60     | 70     | 80     |",
+    );
+    expect(fivePoint).toContain(
+      "| Documentation | drv-docs  | 71    | (None) | (None) | (None) |",
+    );
+    expect(threePoint).toMatch(/Score:\s+59/);
+    expect(threePoint).toContain("| Code review | drv-review | 59    |");
+    expect(stdoutWrites.join("")).not.toContain("Hidden");
+  });
+
+  it("explains hidden DXI scores", async () => {
+    stubScoresFetch(dxiScoresHiddenResponse);
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "dxiScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    const output = stdoutWrites.join("");
+    expect(output).toContain("DXI (5-point scale)");
+    expect(output).toContain("DXI (3-point scale)");
+    expect(output.match(/Hidden: too few responses/g)).toHaveLength(2);
+    expect(output).not.toContain("Drivers");
+    expect(output).not.toContain("drv-deep");
+  });
+
+  it("renders the DXI scores empty state", async () => {
+    stubScoresFetch({ ...dxiScoresResponse, results: [] });
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "dxiScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+    ]);
+
+    expect(stdoutWrites.join("")).toContain(
+      "No DXI scores were returned for this snapshot.",
+    );
+  });
+
+  it("shows where to find IDs and the main-branch rule in DXI scores help", async () => {
+    vi.spyOn(process, "exit").mockImplementation(((
+      code?: string | number | null,
+    ) => {
+      throw new Error(`process.exit called with ${code}`);
+    }) as typeof process.exit);
+
+    const { run } = await import("../cli.js");
+    await expect(
+      run(["node", "dx", "snapshots", "dxiScores", "list", "--help"]),
+    ).rejects.toThrow("process.exit called with 0");
+
+    const output = stdoutWrites.join("").replace(/\s+/g, " ");
+    expect(output).toContain("Find snapshot IDs with `dx snapshots list`");
+    expect(output).toContain(
+      "`dx snapshots snapshotTeams list --id <snapshot_id>`",
+    );
+    expect(output).toContain("attribute IDs from `dx attributeGroups list`");
+    expect(output).toContain("Results marked hidden have too few responses");
+    expect(output).toContain(
+      "--branch-ids must include the snapshot's main branch",
+    );
+    expect(output).toContain("dx snapshots dxiScores list --id MjUyNbaY");
+  });
+
+  it("suggests checking filters when a filtered score request has no results", async () => {
+    stubScoresFetch({
+      ...csatScoresResponse,
+      filters: {
+        ...scoresFilters,
+        attribute_groups: [
+          {
+            id: "ag-1",
+            name: "Location",
+            type: "admin_managed",
+            attributes: [{ id: "NzI4OA", name: "Remote" }],
+          },
+        ],
+      },
+      results: [],
+    });
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "csatScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+      "--attribute-ids",
+      "NzI4OA",
+    ]);
+
+    const output = stdoutWrites.join("");
+    expect(output).toMatch(/Attributes:\s+Location: Remote/);
+    expect(output).toContain(
+      "No CSAT scores were returned for this snapshot. Check the filter IDs or broaden the filters.",
+    );
+  });
+
+  it("still hints at the filters when the API does not recognize the IDs", async () => {
+    // An unknown attribute ID echoes back as no filter at all
+    stubScoresFetch({ ...csatScoresResponse, results: [] });
+
+    const { run } = await import("../cli.js");
+    await run([
+      "node",
+      "dx",
+      "snapshots",
+      "csatScores",
+      "list",
+      "--id",
+      "MjUyNbaY",
+      "--attribute-ids",
+      "bogus",
+    ]);
+
+    const output = stdoutWrites.join("");
+    expect(output).not.toContain("Attributes:");
+    expect(output).toContain(
+      "No CSAT scores were returned for this snapshot. Check the filter IDs or broaden the filters.",
+    );
+  });
+
+  const scoreCommands = [
+    ["allocationPercentages", allocationPercentagesResponse],
+    ["csatScores", csatScoresResponse],
+    ["driverScores", driverScoresResponse],
+    ["dxiScores", dxiScoresResponse],
+    ["impactScores", impactScoresResponse],
+    ["workflowScores", workflowScoresResponse],
+  ] as const;
+
+  it.each(scoreCommands)(
+    "prints the snapshots %s API response with --json",
+    async (commandName, response) => {
+      stubScoresFetch(response);
+
+      const { run } = await import("../cli.js");
+      await run([
+        "node",
+        "dx",
+        "--json",
+        "snapshots",
+        commandName,
+        "list",
+        "--id",
+        "MjUyNbaY",
+      ]);
+
+      expect(JSON.parse(stdoutWrites.join(""))).toEqual(response);
+    },
+  );
+
+  it.each(scoreCommands)(
+    "errors when snapshot %s is missing --id",
+    async (commandName) => {
+      const exitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation(() => undefined as never);
+
+      const { run } = await import("../cli.js");
+      await run(["node", "dx", "snapshots", commandName, "list"]);
+
+      expect(stderrWrites.join("")).toContain("--id is required");
+      expect(exitSpy).toHaveBeenCalledWith(EXIT_CODES.ARGUMENT_ERROR);
+    },
+  );
 });

@@ -102,7 +102,7 @@ Every table page is also available as Markdown at `https://docs.getdx.com/schema
 - [Report creation](./references/report-creation.md) — Studio reports: initializing YAML, creating reports, and updating existing reports.
 - [Scorecards management](./references/scorecards-management.md) — Scorecards and checks: listing, inspecting, creating, updating, and deleting via YAML.
 - [Failing checks](./references/failing-checks.md) — Review and resolve an entity's failing scorecard checks: triage, diagnosis, fixes, and re-evaluation.
-- [Snapshot analysis](./references/snapshot-analysis.md) — Analyze snapshot scores, teams, workflow scores, driver comments, and CSAT comments.
+- [Snapshot analysis](./references/snapshot-analysis.md) — Analyze snapshot scores, teams, driver, CSAT, impact, workflow, DXI and allocation scores, driver comments, and CSAT comments.
 - [Snapshot settings](./references/snapshot-settings.md) — Read and manage snapshot survey settings (requires `snapshots:admin`).
 
 ## Snapshot teams
@@ -113,10 +113,15 @@ Use `dx snapshots snapshotTeams list --id <snapshot_id>` to list the teams captu
 - `team_id` is the stable DX team ID. It can be used with `dx teams info --team-id <team_id>` to inspect the current DX team record.
 - Use `--json` to return the raw API response unchanged.
 
-## Snapshot workflow scores
+## Snapshot scores
 
-Use `dx snapshots workflowScores list --id <snapshot_id>` to list workflow scores (e.g. build time, review wait time) with benchmarks and response distributions.
+Six commands return filtered scores for one snapshot. Each takes `--id <snapshot_id>` plus comma-separated `--team-ids`, `--snapshot-team-ids`, `--group-ids`, `--branch-ids`, and `--attribute-ids` filters, and returns `{ filters, results }`.
 
-- Filter with comma-separated `--team-ids`, `--snapshot-team-ids`, `--group-ids`, `--branch-ids`, and `--attribute-ids`.
-- Workflows with `hidden: true` are below the reporting threshold; their `score` is `null`.
-- The printed web link carries the same filters, except where the web app can't represent them (attributes, groups with snapshot teams, or multiple branches); the output notes which were omitted. Use `--json` to return the raw API response unchanged.
+- `dx snapshots driverScores list` — driver scores with benchmarks and a response-count distribution (3-point or 5-point scale).
+- `dx snapshots csatScores list` — CSAT item scores (percent satisfied) with a response-count distribution. No benchmark.
+- `dx snapshots impactScores list` — impact scores with benchmarks, `scoring_method`, `lower_is_better`, and a labeled distribution.
+- `dx snapshots workflowScores list` — workflow scores (e.g. build time, review wait time) in each workflow's `unit` with benchmarks and distributions.
+- `dx snapshots dxiScores list` — one DXI score per driver scale with the contributing drivers and their benchmarks. `--branch-ids` must include the main branch.
+- `dx snapshots allocationPercentages list` — allocation question items with percentages, `total_respondents`, and `na_count`.
+
+Results with `hidden: true` have too few responses to meet the account's minimum reporting threshold; their `score` and distribution are `null`. A visible result with a `null` score had respondents but no scored answers (for example, every CSAT answer was N/A). Find IDs for the filters with `dx snapshots list`, `dx snapshots snapshotTeams list --id <snapshot_id>`, `dx teams list`, `dx attributeGroups list`, and `dx snapshots settings branches list`. Use `--json` to return the raw API response unchanged.
