@@ -7,9 +7,11 @@ Use the `dx` CLI snapshot endpoints to turn one snapshot into a concise insight 
 - **Snapshot**: A completed DX Snapshot survey/reporting cycle. Use `dx snapshots list --json` for IDs, timing, and completion counts before choosing one to analyze.
 - **Snapshot team**: A team record frozen at the time of the snapshot. The Snapshot Team `id` is only valid within that snapshot and feeds score endpoint `snapshot_team_ids` filters. `snapshot_team.is_parent` identifies parent-rollup rows; `snapshot_team.team_id` links back to the stable DX team.
 - **Snapshot item**: A scored question or metric included in the snapshot. `snapshot.snapshot_items` groups item metadata into `factors`, `csat`, and `kpis`.
-- **Developer Experience Index (DXI)**: The overall developer-experience score, calculated from driver scores out of 100. Treat it as a baseline for quarterly progress and as an impact/ROI framing device.
-- **Driver / factor**: A developer-experience driver. Product-facing docs and reports call these drivers; the API uses `factor` as the `item_type` and stores metadata in `snapshot_items.factors`.
-- **CSAT**: A satisfaction item, commonly for internal tools or services. CSAT score rows use `item_type: "csat"` and CSAT comments come from `dx snapshots csatComments list`.
+- **Developer Experience Index (DXI)**: The overall developer-experience score, calculated from driver scores out of 100. Treat it as a baseline for quarterly progress and as an impact/ROI framing device. Fetch with `dx snapshots dxiScores list`.
+- **Driver / factor**: A developer-experience driver. Product-facing docs and reports call these drivers; the API uses `factor` as the `item_type` and stores metadata in `snapshot_items.factors`. Fetch filtered driver scores with `dx snapshots driverScores list`.
+- **CSAT**: A satisfaction item, commonly for internal tools or services. CSAT score rows use `item_type: "csat"`, filtered CSAT scores come from `dx snapshots csatScores list`, and CSAT comments come from `dx snapshots csatComments list`.
+- **Impact**: An outcome question such as speed, quality, or time loss. Fetch with `dx snapshots impactScores list`; `lower_is_better` tells you which direction is good.
+- **Allocation**: How respondents split their time across work categories such as new features and KTLO. Fetch with `dx snapshots allocationPercentages list`.
 - **KPI**: A key performance indicator included in the snapshot results. KPI score rows use `item_type: "kpi"` and metadata comes from `snapshot_items.kpis`.
 - **Workflow**: A snapshot workflow question measuring a specific activity or friction point, such as build time, review wait time, interruption frequency, meeting load, rework, or time saved with AI. Fetch with `dx snapshots workflowScores list`.
 - **Workflow score**: The cohort's result for one workflow in the workflow's `unit` (e.g. hours, times per day). Compare `score` against `workflow.benchmark` percentiles using `workflow.lower_is_better`.
@@ -107,6 +109,18 @@ Adapt the analysis to the user's role. If the role is unclear, produce a balance
    All filters take comma-separated IDs. Attribute value IDs come from step 3 and Snapshot Team IDs come from step 5. A person must match every filter type supplied, and within a filter type any one of the listed IDs. Attribute filters apply per attribute group: values from the same group match any one of them, and values from different groups must all match.
 
    Skip results with `hidden: true`; their `score` is `null` because too few people responded. Compare `score` against `workflow.benchmark` using `workflow.lower_is_better`, and read `distribution[]` for how responses spread across the workflow's options. Each workflow has its own `unit`, so never sum or average scores across workflows. The `filters` object in the response echoes the names of the applied filters.
+
+   The same filters work with the other score commands when you need a filtered view instead of the per-team rows from `dx snapshots info`:
+
+   ```bash
+   dx snapshots driverScores list --id <snapshot_id> --snapshot-team-ids <snapshot_team_id> --json
+   dx snapshots csatScores list --id <snapshot_id> --json
+   dx snapshots impactScores list --id <snapshot_id> --json
+   dx snapshots dxiScores list --id <snapshot_id> --json
+   dx snapshots allocationPercentages list --id <snapshot_id> --json
+   ```
+
+   Driver and CSAT distributions are count objects keyed by scale option (e.g. `good_count`, `satisfied_count`, `idk_na_count`). CSAT `score` is the percent of non-N/A answers rated 4 or 5. DXI returns one result per driver scale and rejects `--branch-ids` that omit the main branch. Allocation `items[].percentage` sums to 100 per question and `items[].bucket` is `innovation`, `ktlo`, or `null`; use `total_respondents - na_count` as the numeric denominator.
 
 7. Interpret the snapshot info response:
    - Read score rows from `snapshot.team_scores`.
