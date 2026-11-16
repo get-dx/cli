@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.13.0 - 2026-11-16
+
+### Added
+
+- `dx snapshots allocationPercentages/csatScores/driverScores/dxiScores/impactScores list`: List filtered snapshot scores with the same filters as `workflowScores`.
+
 ## 0.12.0 - 2026-11-13
 
 ### Added
 
 - `dx snapshots settings`: Read survey settings, create/update custom items, replace selections, and order CSAT items.
-- `dx snapshots allocationPercentages/csatScores/driverScores/dxiScores/impactScores list`: List filtered snapshot scores with the same filters as `workflowScores`.
 
 ### Updated
 
