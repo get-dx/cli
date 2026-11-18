@@ -340,6 +340,18 @@ type StudioReportSection = {
   description: string | null;
 };
 
+type StudioReportVariable = StudioReportStandardVariable | StudioReportDateRangeVariable;
+
+type StudioReportDateRangeVariable = {
+  name: "start_date" | "end_date";
+}
+
+type StudioReportStandardVariable = {
+  name: string;
+  default_values: string[];
+  show_in_header: boolean;
+};
+
 type StudioReportOwner = {
   id: string;
   name: string;
@@ -359,6 +371,8 @@ type StudioReport = {
   url: string;
   tiles: StudioReportTile[];
   sections: StudioReportSection[];
+  variables: StudioReportVariable[];
+  default_date_range_period?: string;
   created_at: string;
   updated_at: string;
 };
@@ -380,6 +394,12 @@ type StudioReportSectionPayload = {
   description: string | null;
 };
 
+type StudioReportVariablePayload = {
+  name: string;
+  default_values?: string[];
+  show_in_header?: boolean;
+};
+
 type ResponseMetadata = {
   next_cursor?: string | null;
 };
@@ -393,8 +413,10 @@ type CreateStudioReportPayload = {
   edit_access_type?: string;
   viewer_emails?: string[];
   editor_emails?: string[];
+  default_date_range_period?: string;
   tiles?: StudioReportTilePayload[];
   sections?: StudioReportSectionPayload[];
+  variables?: StudioReportVariablePayload[] | string[];
 };
 
 type UpdateStudioReportPayload = CreateStudioReportPayload & {
@@ -548,6 +570,7 @@ function renderStudioReport(report: StudioReport): ui.Block[] {
         ui.dli("View access", formatViewAccessType(report.view_access_type)),
         ui.dli("Edit access", formatEditAccessType(report.edit_access_type)),
         ui.dli("Tiles", report.tiles.length.toString()),
+        ui.dli("Variables", formatVariables(report.variables)),
         ui.dli("Created", ui.timestampSummary(report.created_at)),
         ui.dli("Updated", ui.timestampSummary(report.updated_at)),
       ],
@@ -644,7 +667,11 @@ function studioReportToYaml(report: StudioReport): string {
       width: tile.width,
       height: tile.height,
     })),
+    variables: report.variables
   };
+  if (Object.hasOwn(report, 'default_date_range_period')) {
+    payload.default_date_range_period = report.default_date_range_period
+  }
 
   return stringifyYaml(payload, { blockQuote: "literal" });
 }
@@ -693,5 +720,13 @@ function formatEditAccessType(value: string): string {
       return "Editable by owner only";
     default:
       return value;
+  }
+}
+
+function formatVariables(variables: StudioReportVariable[]): string {
+  if (variables.length === 0) {
+    return ui.dim("(None)");
+  } else {
+    return variables.map((v) => ui.code(`$${v.name}`)).join(", ");
   }
 }
