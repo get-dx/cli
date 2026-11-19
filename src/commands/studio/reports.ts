@@ -340,11 +340,13 @@ type StudioReportSection = {
   description: string | null;
 };
 
-type StudioReportVariable = StudioReportStandardVariable | StudioReportDateRangeVariable;
+type StudioReportVariable =
+  | StudioReportStandardVariable
+  | StudioReportDateRangeVariable;
 
 type StudioReportDateRangeVariable = {
   name: "start_date" | "end_date";
-}
+};
 
 type StudioReportStandardVariable = {
   name: string;
@@ -667,10 +669,10 @@ function studioReportToYaml(report: StudioReport): string {
       width: tile.width,
       height: tile.height,
     })),
-    variables: report.variables
+    variables: report.variables,
   };
-  if (Object.hasOwn(report, 'default_date_range_period')) {
-    payload.default_date_range_period = report.default_date_range_period
+  if (Object.hasOwn(report, "default_date_range_period")) {
+    payload.default_date_range_period = report.default_date_range_period;
   }
 
   return stringifyYaml(payload, { blockQuote: "literal" });

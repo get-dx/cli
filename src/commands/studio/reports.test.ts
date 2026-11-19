@@ -779,12 +779,16 @@ describe("studio reports command", () => {
 
       // The scaffolded YAML round-trips into an update payload that keeps IDs.
       const parsed = parseYaml(yaml) as {
-        variables: { name: string; default_values?: string[]; show_in_header?: boolean; }[];
+        variables: {
+          name: string;
+          default_values?: string[];
+          show_in_header?: boolean;
+        }[];
       };
       expect(parsed.variables.map((v) => v.name)).toEqual([
         "start_date",
         "end_date",
-        "team_ids"
+        "team_ids",
       ]);
       const variable = parsed.variables[2];
       expect(variable.default_values?.join(",")).toEqual("1,2");

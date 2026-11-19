@@ -15,6 +15,7 @@ dx studio variables list
 Will return a list of built-in variables and account-defined custom variables. Built-in variables are available to use in reports, but cannot otherwise be inspected or modified.
 
 Example output:
+
 ```
 ### Example Custom Variable ($variable_name)
 
@@ -82,7 +83,6 @@ Use `--from-stdin` only when the YAML is being generated dynamically or piped fr
 cat ./my-variable.yaml | dx studio variables create --from-stdin
 cat ./my-variable.yaml | dx studio variables update <identifier> --from-stdin
 ```
-
 
 ---
 

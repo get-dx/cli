@@ -427,7 +427,7 @@ describe("studio variables command", () => {
       expect(output).toContain("Creator: Alice Example (alice@example.com)");
       expect(output).toContain("Type: Dropdown menu");
       expect(output).toContain("Selection: Multi-select");
-      expect(output).toContain("SQL: \"SELECT name AS label");
+      expect(output).toContain('SQL: "SELECT name AS label');
       expect(output).toContain("Values in SQL: Adds quotes around values");
       expect(output).toContain("Can modify?: Yes");
       expect(output).toContain("Can delete?: No");
@@ -771,9 +771,15 @@ describe("studio variables command", () => {
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValueOnce(
-          new Response(JSON.stringify({ ok: true, variables: { built_in: [], custom: [] } }), {
-            status: 200,
-          }),
+          new Response(
+            JSON.stringify({
+              ok: true,
+              variables: { built_in: [], custom: [] },
+            }),
+            {
+              status: 200,
+            },
+          ),
         ),
       );
 
@@ -920,12 +926,14 @@ describe("studio variables command", () => {
       const updatedVariable = { ...selectVariable, label: "JSON Updated" };
       vi.stubGlobal(
         "fetch",
-        vi.fn().mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({ ok: true, variable: updatedVariable }),
-            { status: 200 },
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify({ ok: true, variable: updatedVariable }),
+              { status: 200 },
+            ),
           ),
-        ),
       );
 
       const { run } = await import("../../cli.js");

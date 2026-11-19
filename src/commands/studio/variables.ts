@@ -397,7 +397,7 @@ type ListStudioVariablesResponse = {
   variables: {
     built_in: BuiltInStudioVariableListItem[];
     custom: CustomStudioVariableListItem[];
-  }
+  };
 };
 
 type GetStudioVariableInfoResponse = {
@@ -564,18 +564,16 @@ function renderStudioVariablesList(
   blocks.push(ui.h2("Built-in Variables"));
 
   if (response.variables.built_in.length === 0) {
-    blocks.push(
-      ui.p(ui.dim("(None)")),
-    );
+    blocks.push(ui.p(ui.dim("(None)")));
   } else {
     blocks.push(
       ui.dl(
         response.variables.built_in.map((variable) => {
-          return ui.dli(variable.label, ui.code(`$${variable.name}`))
+          return ui.dli(variable.label, ui.code(`$${variable.name}`));
         }),
         { termWidth: 13 },
       ),
-    )
+    );
   }
 
   blocks.push(ui.h2("Custom Variables"));

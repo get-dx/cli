@@ -152,6 +152,7 @@ In order to use variables in SQL for a report, they must be enabled and configur
 By default, all variable values are controlled by a single dropdown or text field for each variable, located on the report's header. Optionally, tiles may display their own individual filter controls for variables by setting a field `tileFilters` within `chartConfig` to an array of variable names.
 
 For example, a tile with the configuration
+
 ```yaml
 tiles:
   - title: "Table"
@@ -163,6 +164,7 @@ tiles:
         - team_ids
         - tag_ids
 ```
+
 will show a Teams and an Attributes dropdown next to itself, in addition to the controls on the report header.
 
 If a variable should only be controlled on each tile, the `show_in_header` field on the report's variable may also be set to set to false to hide that variable's controls on the report header.
