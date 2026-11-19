@@ -336,7 +336,7 @@ export function variablesCommand() {
         if (runtime.context.json) {
           renderJson({ ok: true });
         } else {
-          renderStudioReportDeleted(identifier);
+          renderStudioVariableDeleted(identifier);
         }
       }),
     );
@@ -605,7 +605,7 @@ function renderStudioVariablesList(
   renderRichText(blocks);
 }
 
-function renderStudioReportDeleted(identifier: string): void {
+function renderStudioVariableDeleted(identifier: string): void {
   renderRichText([
     ui.p(
       `${ui.success(ui.GLYPHS.CHECK)} Studio variable "${identifier}" deleted`,
