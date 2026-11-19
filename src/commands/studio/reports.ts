@@ -23,7 +23,7 @@ import {
 } from "../../utils/yaml.js";
 
 const VARIABLES_NOTE_TEXT = [
-  "Variables can be enabled or disabled for a given report via the report's `enabled_variables` property. Once enabled, any tile's SQL can reference the variable using the `$variable_name` syntax.",
+  "Variables can be enabled or disabled for a given report via the report's `variables` property. Once enabled, any tile's SQL can reference the variable using the `$variable_name` syntax.",
   "Built-in variables — $service_ids, $team_ids, $tag_ids, $user_ids, $repo_ids, $start_date, $end_date — filter by service, team, attribute, user, repo, and date range, respectively.",
   "Custom variables are account-defined, and can be created and updated via the `dx studio variables` commands.",
 ];
@@ -724,7 +724,7 @@ function formatEditAccessType(value: string): string {
 }
 
 function formatVariables(variables: StudioReportVariable[]): string {
-  if (variables.length === 0) {
+  if (!variables?.length) {
     return ui.dim("(None)");
   } else {
     return variables.map((v) => ui.code(`$${v.name}`)).join(", ");
