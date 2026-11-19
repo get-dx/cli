@@ -333,7 +333,11 @@ export function variablesCommand() {
 
         await deleteStudioVariable(runtime, identifier);
 
-        renderStudioReportDeleted(identifier);
+        if (runtime.context.json) {
+          renderJson({ ok: true });
+        } else {
+          renderStudioReportDeleted(identifier);
+        }
       }),
     );
 
