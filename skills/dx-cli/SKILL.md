@@ -94,7 +94,7 @@ Every table page is also available as Markdown at `https://docs.getdx.com/schema
 
 **Tile** — A single saved query and chart configuration within a report. Each tile's SQL can reference report variables.
 
-**Variable** — A named, `$`-prefixed placeholder (e.g. `$team_ids`) that a report's tile SQL can reference for interactive filtering. **Built-in variables** (`$service_ids`, `$team_ids`, `$tag_ids`, `$user_ids`, `$repo_ids`, `$start_date`, `$end_date`) are provided out of the box and just need to be toggled on. **Custom variables** are account-defined dropdown filters backed by a SQL query that returns `value` and `label` columns. Custom variables for an account can be be managed through `dx studio variables` — enabling/disabling built-in and available custom variables on a report may done in via `dx studio reports create`/`update` allowing any tile's SQL to can reference them.
+**Variable** — A named, `$`-prefixed placeholder (e.g. `$team_ids`) that a report's tile SQL can reference for interactive filtering. **Built-in variables** (`$service_ids`, `$team_ids`, `$tag_ids`, `$user_ids`, `$repo_ids`, `$start_date`, `$end_date`) are provided out of the box and just need to be toggled on. **Custom variables** are account-defined dropdown filters backed by a SQL query that returns `value` and `label` columns. Custom variables for an account can be managed through `dx studio variables` — enabling/disabling built-in and available custom variables on a report may be done via `dx studio reports create`/`update` allowing any tile's SQL to reference them.
 
 ## Reference Docs
 

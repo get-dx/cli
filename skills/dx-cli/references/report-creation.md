@@ -125,6 +125,10 @@ Supported `edit_access_type` values:
 
 Provide `editor_emails` only when `edit_access_type` is `specific_users`.
 
+### Chart config
+
+`chart_config` contains various settings for chart and tile display. Fields in `chart_config` remain unless explicitly cleared, so updating a report with a template that does not include a previously set setting will not inadvertently erase it.
+
 ### Tiles
 
 Supported tile `chart_type` values are `line`, `pie`, `stacked_bar`, `scatter`, and `table`.
@@ -149,7 +153,7 @@ In order to use variables in SQL for a report, they must be enabled and configur
 
 ### Tile filters
 
-By default, all variable values are controlled by a single dropdown or text field for each variable, located on the report's header. Optionally, tiles may display their own individual filter controls for variables by setting a field `tileFilters` within `chartConfig` to an array of variable names.
+By default, all variable values are controlled by a single dropdown or text field for each variable, located on the report's header. Optionally, tiles may display their own individual filter controls for variables by setting a field `tileFilters` within `chart_config` to an array of variable names. Because fields in `chart_config` remain unless explicitly cleared, to clear this setting, `tileFilters` must be set to an empty array.
 
 For example, a tile with the configuration
 
@@ -167,7 +171,7 @@ tiles:
 
 will show a Teams and an Attributes dropdown next to itself, in addition to the controls on the report header.
 
-If a variable should only be controlled on each tile, the `show_in_header` field on the report's variable may also be set to set to false to hide that variable's controls on the report header.
+If a variable should only be controlled on each tile, the `show_in_header` field on the report's variable may also be set to false to hide that variable's controls on the report header.
 
 ### Built-in variables
 

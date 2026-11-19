@@ -100,7 +100,7 @@ export function variablesCommand() {
   variables
     .command("delete")
     .description("Delete a Data Studio variable.")
-    .argument("<identifier>", "Variable ID or name (e.g. $my_variable_name)")
+    .argument("<identifier>", "Variable ID or name (e.g. '$my_variable_name')")
     .addHelpText("afterAll", createNoteText(DELETE_NOTE_TEXT))
     .addHelpText(
       "afterAll",
