@@ -98,6 +98,34 @@ export function variablesCommand() {
     );
 
   variables
+    .command("delete")
+    .description("Delete a Data Studio variable.")
+    .argument("<identifier>", "Variable ID or name (e.g. $my_variable_name)")
+    .addHelpText("afterAll", createNoteText(DELETE_NOTE_TEXT))
+    .addHelpText(
+      "afterAll",
+      createExampleText([
+        {
+          label: "Delete an unused custom studio variable",
+          command: "dx studio variables delete my_variable_name",
+        },
+      ]),
+    )
+    .action(
+      wrapAction(async (identifier, _options, command) => {
+        const runtime = await buildRuntime(getContext(command));
+
+        await deleteStudioVariable(runtime, identifier);
+
+        if (runtime.context.json) {
+          renderJson({ ok: true });
+        } else {
+          renderStudioVariableDeleted(identifier);
+        }
+      }),
+    );
+
+  variables
     .command("info")
     .description("Retrieve details for an individual Data Studio variable")
     .argument("<identifier>", "Variable ID or name (e.g. $my_variable_name)")
@@ -309,34 +337,6 @@ export function variablesCommand() {
           renderJson(response);
         } else {
           renderStudioVariableProcessed(response.variable, "updated");
-        }
-      }),
-    );
-
-  variables
-    .command("delete")
-    .description("Delete a Data Studio variable.")
-    .argument("<identifier>", "Variable ID or name (e.g. $my_variable_name)")
-    .addHelpText("afterAll", createNoteText(DELETE_NOTE_TEXT))
-    .addHelpText(
-      "afterAll",
-      createExampleText([
-        {
-          label: "Delete an unused custom studio variable",
-          command: "dx studio variables delete my_variable_name",
-        },
-      ]),
-    )
-    .action(
-      wrapAction(async (identifier, _options, command) => {
-        const runtime = await buildRuntime(getContext(command));
-
-        await deleteStudioVariable(runtime, identifier);
-
-        if (runtime.context.json) {
-          renderJson({ ok: true });
-        } else {
-          renderStudioVariableDeleted(identifier);
         }
       }),
     );
