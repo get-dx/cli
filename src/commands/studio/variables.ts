@@ -673,10 +673,11 @@ function formatSql(sql: string | null): string {
 
   // truncate for display purposes
   const maxLength = 40;
+  const collapsed = sql.replace(/\s+/g, " ").trim(); // drop newlines
 
-  if (sql.length <= maxLength) {
-    return `"${sql}"`;
+  if (collapsed.length <= maxLength) {
+    return `"${collapsed}"`;
   } else {
-    return `"${sql.slice(0, maxLength)}..."`;
+    return `"${collapsed.slice(0, maxLength)}..."`;
   }
 }
