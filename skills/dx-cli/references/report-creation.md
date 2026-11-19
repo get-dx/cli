@@ -98,6 +98,12 @@ tiles:
     section_name: "Top section"
     width: full
     height: "1/2"
+variables:
+  - name: "team_ids"
+    default_values:
+      - "1"
+      - "2"
+    show_in_header: true
 ```
 
 ### Access settings
@@ -135,7 +141,31 @@ A report can be split into multiple sections, listed in the report's `sections` 
 
 ## Variables
 
-Tile `sql` can reference report variables to make a report interactive: place `$variable_name` anywhere in the query, and the selected value(s) are substituted in when the report runs.
+Tile `sql` can reference built-in and custom studio variables to make a report interactive: place `$variable_name` anywhere in the query, and the selected value(s) are substituted in when the report runs.
+
+A list of variables available for use in reports may be retrieved using `dx studio variables list`, and account-defined custom variables may be managed using the other `dx studio variables` commands. (See "Studio Variables Management")
+
+In order to use variables in SQL for a report, they must be enabled and configured using the report's `variables` field. An enabled variable's `name` field is the their unique name that will be used to reference the variable result in SQL. For example, `name: "team_ids"` will enable the built-in Teams dropdown and can be referenced with `$team_ids` in tile SQL. An enabled `select` variable may optionally have `default_values` set to an array of string values which will be automatically selected when a user views the report for the first time. If a default is not set, a `select` variable will initially select either all available options if `single_select` is false, or the first option if `single_select` is true.
+
+### Tile filters
+
+By default, all variable values are controlled by a single dropdown or text field for each variable, located on the report's header. Optionally, tiles may display their own individual filter controls for variables by setting a field `tileFilters` within `chartConfig` to an array of variable names.
+
+For example, a tile with the configuration
+```yaml
+tiles:
+  - title: "Table"
+    sql: |-
+      SELECT 1 AS value
+    chart_type: table
+    chart_config:
+      tileFilters:
+        - team_ids
+        - tag_ids
+```
+will show a Teams and an Attributes dropdown next to itself, in addition to the controls on the report header.
+
+If a variable should only be controlled on each tile, the `show_in_header` field on the report's variable may also be set to set to false to hide that variable's controls on the report header.
 
 ### Built-in variables
 
@@ -146,15 +176,4 @@ Tile `sql` can reference report variables to make a report interactive: place `$
 - `$repo_ids` — filter by specific repositories
 - `$start_date` and `$end_date` — filter by date range
 
-### Custom variables
-
-Custom variables are account-defined dropdown filters backed by a SQL query. Each has a title, a variable name (used as `$variable_name` in tile SQL), a description, and a SQL statement that must return exactly two columns: `value` (used in the substitution) and `label` (shown to users in the dropdown).
-
-### Limitation: no CLI/API management
-
-Variables cannot be created, updated, enabled, or disabled through this CLI or the API. There is no field for them in the report YAML.
-
-- Built-in variables are toggled on/off per report in the Data Studio UI.
-- Custom variables are added, edited, and deleted per account in the Data Studio UI.
-
-Once a variable is enabled on a report (via the UI), any tile's `sql` — including tiles created or updated via `dx studio reports create`/`update` — can reference it as `$variable_name`.
+Note: `$start_date` and `$end_date` are controlled by a single dropdown filter, and they must either both be added to `variables` or neither added.
