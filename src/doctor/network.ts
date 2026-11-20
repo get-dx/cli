@@ -22,9 +22,17 @@ export async function checkNetwork(options: {
   webBaseUrl: string;
   version: string;
   probes: NetworkProbes;
+  /** Whether `fetch` sends API requests through a proxy. */
+  proxyActive?: boolean;
 }): Promise<{ section: Section; facts: NetworkFacts }> {
   const { apiBaseUrl, webBaseUrl, version, probes } = options;
+  const proxyActive = options.proxyActive ?? false;
   const checks: Check[] = [];
+  // DNS, TCP, and TLS connect directly, bypassing any proxy. When requests
+  // use a proxy, a direct failure says nothing about whether they work, so
+  // report it as a warning and never let it skip the HTTPS check.
+  const pushDirect = (directCheck: Check) =>
+    checks.push(proxyActive ? bypassingProxy(directCheck) : directCheck);
 
   let url: URL;
   try {
@@ -54,7 +62,7 @@ export async function checkNetwork(options: {
   // 1. DNS
   try {
     const { value: addresses, ms } = await timed(() => probes.lookup(host));
-    checks.push(
+    pushDirect(
       check(
         "dns",
         "DNS",
@@ -65,7 +73,7 @@ export async function checkNetwork(options: {
     );
   } catch (error) {
     const code = errorCode(error);
-    checks.push(
+    pushDirect(
       check("dns", "DNS", "fail", describeError(error, "DNS lookup"), {
         hint:
           code === "ENOTFOUND"
@@ -81,17 +89,17 @@ export async function checkNetwork(options: {
 
   // 2. TCP
   if (skipReason) {
-    checks.push(skip("tcp", "TCP connect"));
+    pushDirect(skip("tcp", "TCP connect"));
   } else {
     try {
       const { ms } = await timed(() => probes.tcpConnect(host, port));
-      checks.push(
+      pushDirect(
         check("tcp", "TCP connect", "ok", `port ${port} open (${ms}ms)`, {
           data: { port, ms },
         }),
       );
     } catch (error) {
-      checks.push(
+      pushDirect(
         check(
           "tcp",
           "TCP connect",
@@ -111,7 +119,7 @@ export async function checkNetwork(options: {
 
   // 3. TLS
   if (!isHttps) {
-    checks.push(
+    pushDirect(
       check(
         "tls",
         "TLS handshake",
@@ -120,10 +128,10 @@ export async function checkNetwork(options: {
       ),
     );
   } else if (skipReason) {
-    checks.push(skip("tls", "TLS handshake"));
+    pushDirect(skip("tls", "TLS handshake"));
   } else {
     const tlsCheck = await tlsHandshakeCheck(host, port, probes, fill);
-    checks.push(tlsCheck);
+    pushDirect(tlsCheck);
     if (tlsCheck.status === "fail") {
       skipReason = "the TLS handshake failed";
     }
@@ -131,11 +139,19 @@ export async function checkNetwork(options: {
 
   // 4. HTTPS request to the API
   let apiReachable = false;
-  if (skipReason) {
+  if (skipReason && !proxyActive) {
     checks.push(skip("https", "HTTPS"));
   } else {
-    const httpsCheck = await apiRequestCheck(apiBaseUrl, version, probes, fill);
-    checks.push(httpsCheck);
+    const httpsCheck = await apiRequestCheck(
+      apiBaseUrl,
+      version,
+      probes,
+      proxyActive,
+      fill,
+    );
+    checks.push(
+      proxyActive ? { ...httpsCheck, label: "HTTPS (via proxy)" } : httpsCheck,
+    );
     apiReachable = httpsCheck.status === "ok";
   }
 
@@ -225,6 +241,7 @@ async function apiRequestCheck(
   apiBaseUrl: string,
   version: string,
   probes: NetworkProbes,
+  proxyActive: boolean,
   fill: (text: string) => string,
 ): Promise<Check> {
   const url = `${apiBaseUrl}/auth.info`;
@@ -278,7 +295,9 @@ async function apiRequestCheck(
   } catch (error) {
     return check("https", "HTTPS", "fail", describeError(error, "request"), {
       hint: fill(
-        "Requests to {host} are failing even though the connection succeeded. A proxy or firewall may be interfering.",
+        proxyActive
+          ? "Requests to {host} through your proxy are failing. Check the proxy URL, or ask your network team whether the proxy allows {host}."
+          : "Requests to {host} are failing even though the connection succeeded. A proxy or firewall may be interfering.",
       ),
       data: { url, code: errorCode(error) },
     });
@@ -343,6 +362,21 @@ async function webAppCheck(
       },
     );
   }
+}
+
+const BYPASSES_PROXY_HINT =
+  "This check connects directly, bypassing your proxy, so a failure is expected if your network only allows traffic through the proxy. The HTTPS check uses the proxy.";
+
+/** Mark a direct check as bypassing the proxy, downgrading failures to warnings. */
+function bypassingProxy(directCheck: Check): Check {
+  const failed = directCheck.status === "fail";
+  return {
+    ...directCheck,
+    label: `${directCheck.label} (direct)`,
+    status: failed ? "warn" : directCheck.status,
+    hint: failed ? BYPASSES_PROXY_HINT : directCheck.hint,
+    data: { ...directCheck.data, bypassesProxy: true },
+  };
 }
 
 function clientHeaders(version: string): Record<string, string> {
