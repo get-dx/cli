@@ -10,4 +10,5 @@ cp src/commands/scorecard-blank-template.yaml dist/commands/
 cp src/commands/catalog/entity-type-blank-template.yaml dist/commands/catalog/
 cp src/commands/catalog/relation-edges-blank-template.yaml dist/commands/catalog/
 cp src/commands/studio/report-blank-template.yaml dist/commands/studio/
+cp src/commands/studio/variable-blank-template.yaml dist/commands/studio/
 cp src/commands/workflow-blank-template.yaml dist/commands/

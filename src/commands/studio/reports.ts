@@ -1,7 +1,7 @@
 import fs from "fs";
 
 import { Command } from "commander";
-import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+import { stringify as stringifyYaml } from "yaml";
 
 import {
   createExampleText,
@@ -16,10 +16,16 @@ import { renderJson, renderRichText } from "../../renderers.js";
 import { buildRuntime } from "../../runtime.js";
 import type { Runtime } from "../../types.js";
 import * as ui from "../../ui.js";
+import {
+  readYamlFile,
+  readYamlStdin,
+  parseYamlObject,
+} from "../../utils/yaml.js";
 
 const VARIABLES_NOTE_TEXT = [
-  "Tile SQL can reference report variables using `$variable_name` syntax. Built-in variables — $service_ids, $team_ids, $tag_ids, $user_ids, $repo_ids, $start_date, $end_date — filter by service, team, attribute, user, repo, and date range, respectively. Custom variables are account-defined dropdown filters backed by a SQL query.",
-  "Variables cannot be created, updated, enabled, or disabled via this CLI or the API. Built-in variables must be toggled, and custom variables must be added, edited, or removed, from the report's settings in the Data Studio UI. Once a variable is enabled on a report, its `$variable_name` can be used in any tile's SQL via --from-file/--from-stdin.",
+  "Variables can be enabled or disabled for a given report via the report's `variables` property. Once enabled, any tile's SQL can reference the variable using the `$variable_name` syntax.",
+  "Built-in variables — $service_ids, $team_ids, $tag_ids, $user_ids, $repo_ids, $start_date, $end_date — filter by service, team, attribute, user, repo, and date range, respectively.",
+  "Custom variables are account-defined, and can be created and updated via the `dx studio variables` commands.",
 ];
 
 export function reportsCommand() {
@@ -334,6 +340,20 @@ type StudioReportSection = {
   description: string | null;
 };
 
+type StudioReportVariable =
+  | StudioReportStandardVariable
+  | StudioReportDateRangeVariable;
+
+type StudioReportDateRangeVariable = {
+  name: "start_date" | "end_date";
+};
+
+type StudioReportStandardVariable = {
+  name: string;
+  default_values: string[];
+  show_in_header: boolean;
+};
+
 type StudioReportOwner = {
   id: string;
   name: string;
@@ -353,6 +373,8 @@ type StudioReport = {
   url: string;
   tiles: StudioReportTile[];
   sections: StudioReportSection[];
+  variables: StudioReportVariable[];
+  default_date_range_period?: string;
   created_at: string;
   updated_at: string;
 };
@@ -374,6 +396,12 @@ type StudioReportSectionPayload = {
   description: string | null;
 };
 
+type StudioReportVariablePayload = {
+  name: string;
+  default_values?: string[];
+  show_in_header?: boolean;
+};
+
 type ResponseMetadata = {
   next_cursor?: string | null;
 };
@@ -387,8 +415,10 @@ type CreateStudioReportPayload = {
   edit_access_type?: string;
   viewer_emails?: string[];
   editor_emails?: string[];
+  default_date_range_period?: string;
   tiles?: StudioReportTilePayload[];
   sections?: StudioReportSectionPayload[];
+  variables?: StudioReportVariablePayload[] | string[];
 };
 
 type UpdateStudioReportPayload = CreateStudioReportPayload & {
@@ -542,6 +572,7 @@ function renderStudioReport(report: StudioReport): ui.Block[] {
         ui.dli("View access", formatViewAccessType(report.view_access_type)),
         ui.dli("Edit access", formatEditAccessType(report.edit_access_type)),
         ui.dli("Tiles", report.tiles.length.toString()),
+        ui.dli("Variables", formatVariables(report.variables)),
         ui.dli("Created", ui.timestampSummary(report.created_at)),
         ui.dli("Updated", ui.timestampSummary(report.updated_at)),
       ],
@@ -584,40 +615,6 @@ function parseLimitOption(value: string, flag: string): number {
   return limit;
 }
 
-function readYamlFile(filePath: string): unknown {
-  let content: string;
-  try {
-    content = fs.readFileSync(filePath, "utf8");
-  } catch (err) {
-    throw new CliError(
-      `Could not read file "${filePath}": ${(err as Error).message}`,
-      EXIT_CODES.ARGUMENT_ERROR,
-    );
-  }
-  return parseYaml(content);
-}
-
-async function readYamlStdin(): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk));
-    process.stdin.on("end", () => {
-      const content = Buffer.concat(chunks).toString("utf8");
-      try {
-        resolve(parseYaml(content));
-      } catch (err) {
-        reject(
-          new CliError(
-            `Could not parse YAML from stdin: ${(err as Error).message}`,
-            EXIT_CODES.ARGUMENT_ERROR,
-          ),
-        );
-      }
-    });
-    process.stdin.on("error", reject);
-  });
-}
-
 function buildCreateReportPayload(raw: unknown): CreateStudioReportPayload {
   const { id: _id, tiles, ...rest } = parseYamlObject(raw);
   const payload = rest as CreateStudioReportPayload;
@@ -640,17 +637,6 @@ function buildUpdateReportPayload(
   raw: unknown,
 ): UpdateStudioReportPayload {
   return { ...parseYamlObject(raw), id } as UpdateStudioReportPayload;
-}
-
-function parseYamlObject(raw: unknown): Record<string, unknown> {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new CliError(
-      "YAML content must be an object",
-      EXIT_CODES.ARGUMENT_ERROR,
-    );
-  }
-
-  return raw as Record<string, unknown>;
 }
 
 const STUDIO_REPORT_BLANK_TEMPLATE_YAML = fs.readFileSync(
@@ -683,7 +669,11 @@ function studioReportToYaml(report: StudioReport): string {
       width: tile.width,
       height: tile.height,
     })),
+    variables: report.variables,
   };
+  if (Object.hasOwn(report, "default_date_range_period")) {
+    payload.default_date_range_period = report.default_date_range_period;
+  }
 
   return stringifyYaml(payload, { blockQuote: "literal" });
 }
@@ -732,5 +722,13 @@ function formatEditAccessType(value: string): string {
       return "Editable by owner only";
     default:
       return value;
+  }
+}
+
+function formatVariables(variables: StudioReportVariable[]): string {
+  if (!variables?.length) {
+    return ui.dim("(None)");
+  } else {
+    return variables.map((v) => ui.code(`$${v.name}`)).join(", ");
   }
 }

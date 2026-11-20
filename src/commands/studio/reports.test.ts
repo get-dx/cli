@@ -110,6 +110,19 @@ describe("studio reports command", () => {
         description: "Optional section description",
       },
     ],
+    variables: [
+      {
+        name: "start_date",
+      },
+      {
+        name: "end_date",
+      },
+      {
+        name: "team_ids",
+        default_values: ["1", "2"],
+        show_in_header: false,
+      },
+    ],
     created_at: "2026-04-13T20:10:05Z",
     updated_at: "2026-04-14T20:10:05Z",
   };
@@ -731,6 +744,55 @@ describe("studio reports command", () => {
       expect(section.id).toEqual("section_one");
       expect(section.name).toEqual("A section");
       expect(section.description).toEqual("Optional section description");
+    });
+
+    it("--id scaffolds variables", async () => {
+      process.env.DX_API_BASE_URL = "https://api.example.com";
+      getToken.mockReturnValue("token-123");
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValueOnce(
+          new Response(JSON.stringify(infoResponse), {
+            status: 200,
+          }),
+        ),
+      );
+      const writeFileSyncSpy = vi
+        .spyOn(fs, "writeFileSync")
+        .mockImplementation(() => undefined);
+
+      const { run } = await import("../../cli.js");
+      await run([
+        "node",
+        "dx",
+        "studio",
+        "reports",
+        "init",
+        "./my-report.yaml",
+        "--id",
+        "rpt_new",
+      ]);
+
+      const yaml = writeFileSyncSpy.mock.calls[0]?.[1] as string;
+      expect(yaml).toContain("name: team_ids");
+
+      // The scaffolded YAML round-trips into an update payload that keeps IDs.
+      const parsed = parseYaml(yaml) as {
+        variables: {
+          name: string;
+          default_values?: string[];
+          show_in_header?: boolean;
+        }[];
+      };
+      expect(parsed.variables.map((v) => v.name)).toEqual([
+        "start_date",
+        "end_date",
+        "team_ids",
+      ]);
+      const variable = parsed.variables[2];
+      expect(variable.default_values?.join(",")).toEqual("1,2");
+      expect(variable.show_in_header).toEqual(false);
     });
 
     it("--id returns JSON with --json flag", async () => {

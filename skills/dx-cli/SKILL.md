@@ -94,12 +94,13 @@ Every table page is also available as Markdown at `https://docs.getdx.com/schema
 
 **Tile** — A single saved query and chart configuration within a report. Each tile's SQL can reference report variables.
 
-**Variable** — A named, `$`-prefixed placeholder (e.g. `$team_ids`) that a report's tile SQL can reference for interactive filtering. **Built-in variables** (`$service_ids`, `$team_ids`, `$tag_ids`, `$user_ids`, `$repo_ids`, `$start_date`, `$end_date`) are provided out of the box and just need to be toggled on. **Custom variables** are account-defined dropdown filters backed by a SQL query that returns `value` and `label` columns. Variables cannot be managed through the CLI/API — enabling/disabling built-ins and adding/updating/deleting custom variables must be done in the Data Studio UI — but once enabled on a report, any tile's SQL (including tiles set via `dx studio reports create`/`update`) can reference them.
+**Variable** — A named, `$`-prefixed placeholder (e.g. `$team_ids`) that a report's tile SQL can reference for interactive filtering. **Built-in variables** (`$service_ids`, `$team_ids`, `$tag_ids`, `$user_ids`, `$repo_ids`, `$start_date`, `$end_date`) are provided out of the box and just need to be toggled on. **Custom variables** are account-defined dropdown filters backed by a SQL query that returns `value` and `label` columns. Custom variables for an account can be managed through `dx studio variables` — enabling/disabling built-in and available custom variables on a report may be done via `dx studio reports create`/`update` allowing any tile's SQL to reference them.
 
 ## Reference Docs
 
 - [Catalog management](./references/catalog-management.md) — Entities and entity types: listing, inspecting, creating, updating, and deleting.
 - [Report creation](./references/report-creation.md) — Studio reports: initializing YAML, creating reports, and updating existing reports.
+- [Variables management](./references/variables-management.md) — Studio variables: initializing YAML, creating and updating custom variables.
 - [Scorecards management](./references/scorecards-management.md) — Scorecards and checks: listing, inspecting, creating, updating, and deleting via YAML.
 - [Failing checks](./references/failing-checks.md) — Review and resolve an entity's failing scorecard checks: triage, diagnosis, fixes, and re-evaluation.
 - [Snapshot analysis](./references/snapshot-analysis.md) — Analyze snapshot scores, teams, driver, CSAT, impact, workflow, DXI and allocation scores, driver comments, and CSAT comments.
