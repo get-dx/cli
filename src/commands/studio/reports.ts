@@ -332,6 +332,10 @@ type StudioReportTile = {
   section_id?: number | null;
   width?: string;
   height?: string;
+  description?: string | null;
+  drilldown_sql?: string | null;
+  drilldown_column_sql?: Record<string, string>;
+  drilldown_variables_info?: Record<string, string>[]; // purely informational, can't be edited directly
 };
 
 type StudioReportSection = {
@@ -382,12 +386,15 @@ type StudioReport = {
 type StudioReportTilePayload = {
   id?: string;
   title: string | null;
+  description?: string | null;
   sql: string | null;
   chart_type: string;
   chart_config: Record<string, unknown>;
   section_id?: number | null;
   width?: string;
   height?: string;
+  drilldown_sql?: string | null;
+  drilldown_column_sql?: Record<string, string>;
 };
 
 type StudioReportSectionPayload = {
@@ -662,12 +669,20 @@ function studioReportToYaml(report: StudioReport): string {
     tiles: report.tiles.map((tile) => ({
       id: tile.id,
       title: tile.title,
+      description: tile.description,
       sql: tile.sql,
       chart_type: tile.chart_type,
       chart_config: tile.chart_config,
       section_id: tile.section_id,
       width: tile.width,
       height: tile.height,
+      drilldown_sql: tile.drilldown_sql,
+      ...(Object.hasOwn(tile, "drilldown_column_sql")
+        ? { drilldown_column_sql: tile.drilldown_column_sql }
+        : {}),
+      ...(Object.hasOwn(tile, "drilldown_variables_info")
+        ? { drilldown_variables_info: tile.drilldown_variables_info }
+        : {}),
     })),
     variables: report.variables,
   };
