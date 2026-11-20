@@ -184,6 +184,60 @@ drilldown_column_sql:
 
 Note: Drilldown SQL for `breakdown_table` tiles must return the same `user_id` or `team_id` (`breakdownJoin`) column as the original tile's query.
 
+### Other display options
+
+Listed below are other optional fields supported in `chart_config`, depending on chart type.
+
+**All tiles**
+
+- `descriptionPlacement` — where the tile's `description` is shown: `below`, `above`, or `tooltip`.
+
+**Line, stacked bar, and scatter charts**
+
+- `groupByColumn` — a column whose distinct values split the data into separate series (`line` and `stacked_bar`).
+- `xAxisLabel`, `yAxisLabel` — axis titles.
+- `xAxisFormat` — display format for a date x-axis: `Jan`, `Jan 2024`, `Jan 1`, `Jan 1, 2024`, `01/01`, or `2024-01-01`. Defaults to a format based on the column type.
+- `yAxisMinValue`, `yAxisMaxValue` — fixed y-axis bounds. The axis is sized automatically when unset.
+- `showLegend`, `showTrendLine` — display toggles (`line`, `stacked_bar`).
+- `valuePrefix`, `valueSuffix` — text shown before or after values, e.g. `"$"` or `"%"` (`line`, `stacked_bar`).
+- `seriesLabels` — object mapping a `yAxes` column name to the display name for that series.
+- `goalLines` — array of `yAxes` column names to draw as goal lines instead of regular series (`line`, `stacked_bar`).
+- `annotations` — array of markers on a date x-axis, each with `date`, `label`, and `description`. `date` is an ISO date (`YYYY-MM-DD`) and must be unique; entries with a missing, invalid, or duplicate date are dropped. Not shown on horizontal bar charts.
+
+**Stacked bar charts only**
+
+- `groupingMode` — `stacked` (default) or `clustered`.
+- `orientation` — `vertical` (default) or `horizontal`.
+- `showDataLabels` — show values on the bars.
+- `showLineOverlay` — overlay a line of the total across bars. Applies when bars are stacked (or there is a single series) and the chart is vertical.
+- `hideXAxisTickMarks` — hide the x-axis tick labels.
+
+**Colors (line, stacked bar, and pie charts)**
+
+- `overrideColors` — object mapping a series name (or pie label) to a color, e.g. `{"Bug": "#e5484d"}`.
+
+**Tables and breakdown tables**
+
+- `conditionalFormats` — array of highlighting rules, each with `column`, `operator`, `value`, `value2` (optional), and `color`. A `null` `column` applies the rule to all columns; `value2` is only used with `between` operator. Supported `operator` values:
+  - Text: `contains`, `not_contains`, `equals`, `starts_with`, `ends_with`, `is_empty`, `is_not_empty`
+  - Number: `gt`, `gte`, `lt`, `lte`, `eq`, `neq`, `between`
+
+Example:
+
+```yaml
+chart_type: stacked_bar
+chart_config:
+  xAxis: week
+  yAxes: [merged, opened]
+  groupingMode: clustered
+  showLegend: true
+  yAxisLabel: Pull requests
+  seriesLabels:
+    merged: Merged PRs
+  overrideColors:
+    merged: "#30a46c"
+```
+
 ## Variables
 
 Tile `sql` can reference built-in and custom studio variables to make a report interactive: place `$variable_name` anywhere in the query, and the selected value(s) are substituted in when the report runs.
