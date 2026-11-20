@@ -125,23 +125,64 @@ Supported `edit_access_type` values:
 
 Provide `editor_emails` only when `edit_access_type` is `specific_users`.
 
-### Chart config
-
-`chart_config` contains various settings for chart and tile display. Fields in `chart_config` remain unless explicitly cleared, so updating a report with a template that does not include a previously set setting will not inadvertently erase it.
-
-### Tiles
-
-Supported tile `chart_type` values are `line`, `pie`, `stacked_bar`, `scatter`, and `table`.
-
-`line`, `stacked_bar`, and `scatter` chart configs require `xAxis` and `yAxes`; `pie` chart configs require `labelColumn` and `valueColumn`; `table` chart configs can be `{}`.
-
-Tiles `width` and `height` fields may set to one of the following values: "1/4", "1/3", "1/2", "2/3", "3/4", or "full".
-
 ### Sections
 
 A report can be split into multiple sections, listed in the report's `sections` field. Each section should have a unique `name` field, and can have an optional `description`. Tiles can be assigned to a section that has yet to be created by setting the tile's `section_name` field to the `name` of the section, or they may be assigned to an existing section by setting the tile's `section_id` field to the `id` of the section.
 
 ---
+
+## Tile configuration
+
+Supported tile `chart_type` values are `line`, `pie`, `stacked_bar`, `scatter`, `table`, and `breakdown_table`.
+
+Tiles `width` and `height` fields may be set to one of the following values: "1/4", "1/3", "1/2", "2/3", "3/4", or "full".
+
+### Chart config
+
+`line`, `stacked_bar`, and `scatter` chart configs require `xAxis` and `yAxes`; `pie` chart configs require `labelColumn` and `valueColumn`; `table` chart configs can be `{}`.
+
+`chart_config` contains various settings for chart and tile display. Fields in `chart_config` remain unless explicitly cleared, so updating a report with a template that does not include a previously set setting will not inadvertently erase it.
+
+### Breakdown tables
+
+A `breakdown_table` type allows a tile to display a table with automatically aggregated results along teams, attributes, and groups. In order to use a breakdown table, the `sql` must return either `user_id` or `team_id` (if user-level data is unavailable), matching the `breakdownJoin` field in its `chart_config`. Additionally, the chart config should contain one or more `breakdownColumns`, each corresponding to a column in the displayed table. For example:
+
+```yaml
+breakdownColumns:
+  - id: column_1
+    label: Average PR size
+    source: pr_size
+    precision: 1
+    calculation: mean
+```
+
+will have the table display a single column calculated based on the average value (rounded to a 1 decimal precision) of the tile query's `pr_size` column (`source`) within each aggregated team, attribute, or group. Valid `calculation` settings are `count`, `total`, `mean`, `median`, `p10`, `p25`, `p75`, and `p90`.
+
+### Drilldowns
+
+Tiles may optionally provide a Drilldown configuration, which allows report users to click on a data point on a chart or cell on a table to view another table with additional details based on where they clicked. To set up Drilldowns, a tile requires a `drilldown_sql` field to be provided with a separate SQL query that will be used to populate the table. This query will be provided access to several unique variables, prefixed with `$drilldown_` depending on the chart configuration and the columns returned in the tile's SQL.
+
+To assist with constructing the `drilldown_sql`, existing tiles that are able to support adding a drilldown will return a `drilldown_variables_info` field, listing most of the variables available for use in the drilldown SQL. For example, a bar chart that has `xAxis` set to a `'date'` column, will return a value like:
+
+```yaml
+drilldown_variables_info:
+  - column: date
+    type: xaxis
+    label: X-axis value
+    param: drilldown_date
+```
+
+indicating on the `param` field, that `$drilldown_date` will be set to the value of the original query's `date` column corresponding to the bar on the chart that the user clicked on.
+
+In addition, `table` and `breakdown_table` tiles will pass in drilldown variables for each column of the original query, that will each be set to their respective column's value for the row containing the cell that the user clicked on. For example, a table with sql returning `team_id` and `team_name` columns will pass the row values via `$drilldown_team_id` and `$drilldown_team_name`. Tiles with table chart types also support overriding the `drilldown_sql` when clicking on cells in specific columns, by setting the tile's `drilldown_column_sql` field to an object using the column names (or labels for breakdown tables) as keys and the overriding SQL as values. For example:
+
+```yaml
+drilldown_column_sql:
+  pr_size: |-
+    SELECT title, additions, deletions FROM pull_requests WHERE repo_id = $drilldown_repo_id
+```
+
+Note: Drilldown SQL for `breakdown_table` tiles must return the same `user_id` or `team_id` (`breakdownJoin`) column as the original tile's query.
 
 ## Variables
 
@@ -149,7 +190,7 @@ Tile `sql` can reference built-in and custom studio variables to make a report i
 
 A list of variables available for use in reports may be retrieved using `dx studio variables list`, and account-defined custom variables may be managed using the other `dx studio variables` commands. (See "Studio Variables Management")
 
-In order to use variables in SQL for a report, they must be enabled and configured using the report's `variables` field. An enabled variable's `name` field is the their unique name that will be used to reference the variable result in SQL. For example, `name: "team_ids"` will enable the built-in Teams dropdown and can be referenced with `$team_ids` in tile SQL. An enabled `select` variable may optionally have `default_values` set to an array of string values which will be automatically selected when a user views the report for the first time. If a default is not set, a `select` variable will initially select either all available options if `single_select` is false, or the first option if `single_select` is true.
+In order to use variables in SQL for a report, they must be enabled and configured using the report's `variables` field. An enabled variable's `name` field is their unique name that will be used to reference the variable result in SQL. For example, `name: "team_ids"` will enable the built-in Teams dropdown and can be referenced with `$team_ids` in tile SQL. An enabled `select` variable may optionally have `default_values` set to an array of string values which will be automatically selected when a user views the report for the first time. If a default is not set, a `select` variable will initially select either all available options if `single_select` is false, or the first option if `single_select` is true.
 
 ### Tile filters
 

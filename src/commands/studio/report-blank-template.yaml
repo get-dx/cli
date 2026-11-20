@@ -21,7 +21,7 @@ edit_access_type: read_only
 # Required only when edit_access_type is specific_users
 editor_emails: []
 
-# Supported chart_type values: line, pie, stacked_bar, scatter, table
+# Supported chart_type values: line, pie, stacked_bar, scatter, table, breakdown_table
 #
 # Tile sql can reference report variables (e.g. $team_ids, $start_date, or a
 # custom variable) as $variable_name. Variables themselves can't be managed
@@ -52,3 +52,18 @@ tiles:
   #   chart_config:
   #     labelColumn: label
   #     valueColumn: value
+
+  # `breakdown_table` tiles require a breakdownJoin set to either `user_id` or `team_id` (which must be a column returned by the `sql`),
+  # and one or more `breakdownColumns` for each calculated column to display
+  # - title: ""
+  #   sql: |-
+  #     SELECT 'Example' AS label, 1 AS value, 1 AS user_id
+  #   chart_type: breakdown_table
+  #   chart_config:
+  #     breakdownJoin: user_id
+  #     breakdownColumns:
+  #       - id: column_1
+  #         label: Value (Average)
+  #         source: value
+  #         precision: 1
+  #         calculation: mean
