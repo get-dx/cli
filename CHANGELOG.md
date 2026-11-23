@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.14.0 - 2026-11-23
+
 ### Added
 
 - `dx studio variables create/delete/info/list/update`: Manage custom variables for an account.
